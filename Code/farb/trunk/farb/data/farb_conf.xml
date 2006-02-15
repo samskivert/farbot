@@ -1,0 +1,18 @@
+<!--
+    ZConfig Configuration Schema for FARB
+    farb_conf.xml vi:ts=4:sw=4:expandtab
+-->
+<schema>
+    <!-- LDAP Configuration -->
+    <sectiontype name="Release">
+        <key name="CVSRoot" datatype="existing-directory" required="yes"/>
+        <key name="CVSTag" datatype="string" required="yes"/>
+        <key name="BuildRoot" datatype="existing-directory" required="yes"/>
+    </sectiontype>
+    <section type="Release" name="+" attribute="Release" required="yes"/>
+
+    <!-- Logging Configuration -->
+    <import package="ZConfig.components.logger"/>
+    <sectiontype name="Logging" extends="eventlog"/>
+    <section type="Logging" name="*" attribute="Logging" required="yes"/>
+</schema>

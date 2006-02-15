@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# farbctl vi:ts=4:sw=4:expandtab:
+# __init__.py vi:ts=4:sw=4:expandtab:
 #
 # Copyright (c) 2006 Three Rings Design, Inc.
 # All rights reserved.
@@ -28,49 +27,23 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import getopt, sys
-import ZConfig
+import os
 
-import farb
+__all__ = []
 
-def usage():
-    print "%s: [-h] [-f config file]" % sys.argv[0]
-    print "    -h             Print usage (this message)"
-    print "    -f <config>    Use configuration file"
+# General Info
+__version__ = '0.1'
+__license__ = 'BSD License'
+__author__ = 'Three Rings Design, Inc.'
+__author_email__ = 'dpw@threerings.net'
+__copyright__ = 'Copyright (C) 2006 Three Rings Design, Inc. All rights reserved.'
 
-def main():
-    conf_file = None
-    try:
-        opts,args = getopt.getopt(sys.argv[1:], "hf:")
-    except getopt.GetoptError:
-        usage()
-        sys.exit(2)
+# Useful Constants
+LOG_NAME = 'farb:'
+INSTALL_DIR = os.path.dirname(__file__)
+DATA_DIR = os.path.join(INSTALL_DIR, 'data')
+CONFIG_SCHEMA = os.path.join(DATA_DIR, "farb_conf.xml")
 
-    for opt,arg in opts:
-        if opt == "-h":
-            usage()
-            sys.exit()
-        if opt == "-f":
-            conf_file = arg
-
-    if (conf_file == None):
-        usage()
-        sys.exit(1)
-
-    # Load our configuration schema
-    schema = ZConfig.loadSchema(farb.CONFIG_SCHEMA)
-    try:
-        config, handler = ZConfig.loadConfig(schema, conf_file)
-    except ZConfig.ConfigurationError, e:
-        print "Configuration Error: %s" % e
-        sys.exit(1)
-
-    # Set up logging
-    try:
-        config.Logging()
-    except Exception, e:
-        print "Log initialization failed: %s" % e
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()
+# Exceptions
+class FarbError(Exception):
+    pass
