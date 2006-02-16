@@ -106,7 +106,7 @@ class ReleaseBuilderTestCase(unittest.TestCase):
     def _buildResult(self, result):
         self.assertEquals(result, 0)
         self.log.seek(0)
-        self.assertEquals(self.log.read(), 'ReleaseBuilder:\n')
+        self.assertEquals(self.log.read(), 'ReleaseBuilder: %s %s %s no no\n' % (BUILDROOT, CVSROOT, CVSTAG))
 
     def test_build(self):
         d = self.builder.build(self.log)

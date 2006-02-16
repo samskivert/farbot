@@ -12,4 +12,4 @@ makecommand:
 	@echo MakeCommand ${TEST1} ${TEST2}
 
 release:
-	@echo ReleaseBuilder: ${BUILDNAME} ${CHROOTDIR} ${CVSROOT} ${RELEASETAG} ${NOPORTS} ${NODOC} ${MAKE_ISOS}
+	@echo ReleaseBuilder: ${BUILDNAME} ${CHROOTDIR} ${CVSROOT} ${RELEASETAG} ${NOPORTS} ${NODOC}

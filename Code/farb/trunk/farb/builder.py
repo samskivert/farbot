@@ -93,6 +93,11 @@ class MakeCommand(object):
         return d
 
 class ReleaseBuilder(object):
+    defaultMakeOptions = {
+        'NOPORTS' : 'no',
+        'NODOC' : 'no'
+    }
+
     """
     Build a FreeBSD Release
     """
@@ -114,5 +119,11 @@ class ReleaseBuilder(object):
         @param log: Open log file
         @return Returns a deferred that will be called when make(1) completes
         """
-        makecmd = MakeCommand(FREEBSD_REL_PATH, 'release', {})
+
+        makeOptions = self.defaultMakeOptions.copy()
+        makeOptions['CHROOTDIR'] = self.buildroot
+        makeOptions['CVSROOT'] = self.cvsroot
+        makeOptions['RELEASETAG'] = self.cvstag
+
+        makecmd = MakeCommand(FREEBSD_REL_PATH, 'release', makeOptions)
         return makecmd.make(log)
