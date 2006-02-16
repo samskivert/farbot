@@ -33,7 +33,7 @@ from twisted.internet import reactor, defer, protocol
 MAKE_PATH = '/usr/bin/make'
 
 # Standard FreeBSD src location
-FREEBSD_SRC = '/usr/src'
+FREEBSD_REL_PATH = '/usr/src/release'
 
 class MakeProcessProtocol(protocol.ProcessProtocol):
     """
@@ -76,8 +76,12 @@ class ReleaseBuilder(object):
         self.cvstag = cvstag
         self.buildroot = buildroot
 
-    def build(self):
+    def build(self, log):
         """
         Build the release
         """
-        pass
+        d = defer.Deferred()
+        protocol = MakeProcessProtocol(d, log)
+        reactor.spawnProcess(protocol, MAKE_PATH, [MAKE_PATH, '-C', FREEBSD_REL_PATH, 'release'])
+
+        return d

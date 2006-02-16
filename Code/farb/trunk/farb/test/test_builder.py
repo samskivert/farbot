@@ -39,15 +39,14 @@ from farb import builder
 # Useful Constants
 from farb.test import DATA_DIR
 
-FREEBSD_SRC = os.path.join(DATA_DIR, 'buildtest')
-MAKE_OUTPUT = os.path.join(FREEBSD_SRC, 'make.out')
-MAKE_LOG = os.path.join(FREEBSD_SRC, 'make.log')
+FREEBSD_REL_PATH = os.path.join(DATA_DIR, 'buildtest')
+MAKE_LOG = os.path.join(FREEBSD_REL_PATH, 'make.log')
 BUILDROOT = os.path.join(DATA_DIR, 'buildtest')
 CVSROOT = '/cvs'
 CVSTAG = 'tag'
 
-# Reach in and tweak the FREEBSD_SRC constant
-builder.FREEBSD_SRC = FREEBSD_SRC
+# Reach in and tweak the FREEBSD_REL_PATH constant
+builder.FREEBSD_REL_PATH = FREEBSD_REL_PATH
 
 class MakeProcessProtocolTestCase(unittest.TestCase):
     def setUp(self):
@@ -73,10 +72,18 @@ class MakeProcessProtocolTestCase(unittest.TestCase):
 class ReleaseBuilderTestCase(unittest.TestCase):
     def setUp(self):
         self.builder = builder.ReleaseBuilder(CVSROOT, CVSTAG, BUILDROOT)
+        self.log = file(MAKE_LOG, 'w+')
 
     def tearDown(self):
-        pass
-        #os.unlink(MAKE_OUTPUT)
+        self.log.close()
+        os.unlink(MAKE_LOG)
+
+    def _buildResult(self, result):
+        self.assertEquals(result, 0)
+        self.log.seek(0)
+        self.assertEquals(self.log.read(), 'ReleaseBuilder:\n')
 
     def test_build(self):
-        self.builder.build()
+        d = self.builder.build(self.log)
+        d.addCallback(self._buildResult)
+        return d
