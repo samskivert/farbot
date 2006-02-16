@@ -28,12 +28,29 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from twisted.internet import reactor, defer, protocol
+import re
+
+import farb
 
 # make(1) path
 MAKE_PATH = '/usr/bin/make'
 
+# cvs(1) path
+CVS_PATH = '/usr/bin/cvs'
+
 # Standard FreeBSD src location
 FREEBSD_REL_PATH = '/usr/src/release'
+
+# Relative path of newvers.sh file in the FreeBSD CVS repository
+NEWVERS_PATH = 'src/sys/conf/newvers.sh'
+
+# Exceptions
+class CVSCommandError(farb.FarbError):
+    pass
+
+class NCVSParseError(farb.FarbError):
+    pass
+
 
 class MakeProcessProtocol(protocol.ProcessProtocol):
     """
@@ -59,6 +76,59 @@ class MakeProcessProtocol(protocol.ProcessProtocol):
 
     def processEnded(self, status):
         self.d.callback(status.value.exitCode)
+
+
+class NCVSBuildnameProcessProtocol(protocol.ProcessProtocol):
+    """
+    FreeBSD CVS newvers.sh information extraction.
+
+    Extracts the release build name from a copy of newvers.sh written by
+    cvs(1) to stdout.
+    """
+    _buffer = ''
+    delimiter = '\n'
+
+    def __init__(self, deferred):
+        """
+        @param deferred: Deferred to call with process return code
+        """
+        self.d = deferred
+        self.shVarRegex = re.compile(r'^([A-Za-z]+)="([A-Za-z0-9\.\-]+)"')
+        self.fbsdRevision = None
+        self.fbsdBranch = None
+
+
+    def outReceived(self, data):
+        """
+        Searches a shell script for lines matching VARIABLE=VALUE, 
+        looking for the FreeBSD revision and branch variable assignments
+        Uses line-oriented input buffering.
+        """
+        # Split the input into lines
+        lines = (self._buffer + data).split(self.delimiter)
+        # Pop the last (potentially incomplete) line
+        self._buffer = lines.pop(-1)
+
+        # Search for the revision and branch variables
+        for line in lines:
+            vmatch = re.search(self.shVarRegex, line)
+            if (vmatch):
+                if (vmatch.group(1) == 'REVISION'):
+                    self.fbsdRevision = vmatch.group(2)
+                elif (vmatch.group(1) == 'BRANCH'):
+                    self.fbsdBranch = vmatch.group(2)
+
+    def processEnded(self, status):
+        if (status.value.exitCode != 0):
+            self.d.errback(CVSCommandError('cvs(1) returned %d' % status.value.exitCode))
+            return
+
+        if (not self.fbsdRevision or not self.fbsdBranch):
+            self.d.errback(NCVSParseError('Could not parse both REVISION and BRANCH variables'))
+            return
+
+        self.d.callback(self.fbsdRevision+ '-' + self.fbsdBranch)
+
 
 class MakeCommand(object):
     """
@@ -91,6 +161,7 @@ class MakeCommand(object):
         reactor.spawnProcess(protocol, MAKE_PATH, argv)
 
         return d
+
 
 class ReleaseBuilder(object):
     defaultMakeOptions = {

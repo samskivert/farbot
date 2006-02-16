@@ -42,8 +42,8 @@ from farb.test import DATA_DIR
 FREEBSD_REL_PATH = os.path.join(DATA_DIR, 'buildtest')
 MAKE_LOG = os.path.join(FREEBSD_REL_PATH, 'make.log')
 BUILDROOT = os.path.join(DATA_DIR, 'buildtest')
-CVSROOT = '/cvs'
-CVSTAG = 'tag'
+CVSROOT = os.path.join(DATA_DIR, 'fakencvs')
+CVSTAG = 'RELENG_6_0'
 
 # Reach in and tweak the FREEBSD_REL_PATH constant
 builder.FREEBSD_REL_PATH = FREEBSD_REL_PATH
@@ -94,6 +94,31 @@ class MakeCommandTestCase(unittest.TestCase):
 
         return d
 
+class NCVSBuildnameProcessProtocolTestCase(unittest.TestCase):
+    def _cvsResult(self, result):
+        self.assertEquals(result, '6.0-RELEASE-p4')
+
+    def test_spawnProcess(self):
+        d = defer.Deferred()
+        pp = builder.NCVSBuildnameProcessProtocol(d)
+        d.addCallback(self._cvsResult)
+
+        reactor.spawnProcess(pp, builder.CVS_PATH, [builder.CVS_PATH, '-d', CVSROOT, 'co', '-p', '-r', CVSTAG, builder.NEWVERS_PATH])
+
+        return d
+
+    def _cvsFailure(self, failure):
+        self.assert_(isinstance(failure.value, builder.CVSCommandError))
+
+    def test_failureHandling(self):
+        d = defer.Deferred()
+        pp = builder.NCVSBuildnameProcessProtocol(d)
+        d.addErrback(self._cvsFailure)
+
+        reactor.spawnProcess(pp, builder.CVS_PATH, [builder.CVS_PATH, 'die horribly'])
+
+        return d
+
 class ReleaseBuilderTestCase(unittest.TestCase):
     def setUp(self):
         self.builder = builder.ReleaseBuilder(CVSROOT, CVSTAG, BUILDROOT)
@@ -106,6 +131,7 @@ class ReleaseBuilderTestCase(unittest.TestCase):
     def _buildResult(self, result):
         self.assertEquals(result, 0)
         self.log.seek(0)
+#        self.assertEquals(self.log.read(), 'ReleaseBuilder: 6.0-RELEASE-p4 %s %s %s no no\n' % (BUILDROOT, CVSROOT, CVSTAG))
         self.assertEquals(self.log.read(), 'ReleaseBuilder: %s %s %s no no\n' % (BUILDROOT, CVSROOT, CVSTAG))
 
     def test_build(self):
