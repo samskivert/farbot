@@ -184,6 +184,16 @@ class ReleaseBuilder(object):
         self.cvstag = cvstag
         self.buildroot = buildroot
 
+    def _doBuild(self, buildname, log):
+        makeOptions = self.defaultMakeOptions.copy()
+        makeOptions['CHROOTDIR'] = self.buildroot
+        makeOptions['CVSROOT'] = self.cvsroot
+        makeOptions['RELEASETAG'] = self.cvstag
+        makeOptions['BUILDNAME'] = buildname
+
+        makecmd = MakeCommand(FREEBSD_REL_PATH, 'release', makeOptions)
+        return makecmd.make(log)
+ 
     def build(self, log):
         """
         Build the release
@@ -191,10 +201,12 @@ class ReleaseBuilder(object):
         @return Returns a deferred that will be called when make(1) completes
         """
 
-        makeOptions = self.defaultMakeOptions.copy()
-        makeOptions['CHROOTDIR'] = self.buildroot
-        makeOptions['CVSROOT'] = self.cvsroot
-        makeOptions['RELEASETAG'] = self.cvstag
+        # Grab the correct buildname from CVS
+        d = defer.Deferred()
+        pp = NCVSBuildnameProcessProtocol(d)
 
-        makecmd = MakeCommand(FREEBSD_REL_PATH, 'release', makeOptions)
-        return makecmd.make(log)
+        # Kick off the build once we get the release name from CVS,
+        # but pass any CVS exceptions directly to the caller
+        d.addCallback(self._doBuild, log)
+        reactor.spawnProcess(pp, CVS_PATH, [CVS_PATH, '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH])
+        return d
