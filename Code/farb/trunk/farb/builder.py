@@ -97,7 +97,6 @@ class NCVSBuildnameProcessProtocol(protocol.ProcessProtocol):
         self.fbsdRevision = None
         self.fbsdBranch = None
 
-
     def outReceived(self, data):
         """
         Searches a shell script for lines matching VARIABLE=VALUE, 
