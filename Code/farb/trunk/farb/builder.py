@@ -112,9 +112,7 @@ class ReleaseBuilder(object):
         """
         Build the release
         @param log: Open log file
+        @return Returns a deferred that will be called when make(1) completes
         """
-        d = defer.Deferred()
-        protocol = MakeProcessProtocol(d, log)
-        reactor.spawnProcess(protocol, MAKE_PATH, [MAKE_PATH, '-C', FREEBSD_REL_PATH, 'release'])
-
-        return d
+        makecmd = MakeCommand(FREEBSD_REL_PATH, 'release', {})
+        return makecmd.make(log)
