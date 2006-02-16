@@ -27,15 +27,56 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-""" Splat Daemon Unit Tests """
+""" Builder Unit Tests """
+
+import os
 
 from twisted.trial import unittest
+from twisted.internet import reactor, defer
 
 from farb import builder
 
 # Useful Constants
 from farb.test import DATA_DIR
 
-class BuilderTestCase(unittest.TestCase):
-    def test_nothing(self):
+FREEBSD_SRC = os.path.join(DATA_DIR, 'buildtest')
+MAKE_OUTPUT = os.path.join(FREEBSD_SRC, 'make.out')
+MAKE_LOG = os.path.join(FREEBSD_SRC, 'make.log')
+BUILDROOT = os.path.join(DATA_DIR, 'buildtest')
+CVSROOT = '/cvs'
+CVSTAG = 'tag'
+
+# Reach in and tweak the FREEBSD_SRC constant
+builder.FREEBSD_SRC = FREEBSD_SRC
+
+class MakeProcessProtocolTestCase(unittest.TestCase):
+    def setUp(self):
+        self.log = file(MAKE_LOG, 'w+')
+
+    def tearDown(self):
+        self.log.close()
+        os.unlink(MAKE_LOG)
+
+    def _makeResult(self, result):
+        self.assertEquals(result, 0)
+        self.log.seek(0)
+        self.assertEquals('MakeProcessProtocol\n', self.log.read())
+
+    def test_spawnProcess(self):
+        d = defer.Deferred()
+        pp = builder.MakeProcessProtocol(d, self.log)
+        d.addCallback(self._makeResult)
+
+        reactor.spawnProcess(pp, builder.MAKE_PATH, [builder.MAKE_PATH, '-C', BUILDROOT, 'protocol'])
+        return d
+
+class ReleaseBuilderTestCase(unittest.TestCase):
+    def setUp(self):
+        self.builder = builder.ReleaseBuilder(CVSROOT, CVSTAG, BUILDROOT)
+
+    def tearDown(self):
         pass
+        #os.unlink(MAKE_OUTPUT)
+
+    def test_build(self):
+        self.builder.build()

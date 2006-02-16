@@ -26,3 +26,58 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+
+from twisted.internet import reactor, defer, protocol
+
+# make(1) path
+MAKE_PATH = '/usr/bin/make'
+
+# Standard FreeBSD src location
+FREEBSD_SRC = '/usr/src'
+
+class MakeProcessProtocol(protocol.ProcessProtocol):
+    """
+    make(1) process protocol
+    """
+    def __init__(self, deferred, log):
+        """
+        @param deferred: Deferred to call with process return code
+        @param log: Open log file
+        """
+        self.log = log
+        self.d = deferred
+
+    def outReceived(self, data):
+        self.log.write(data)
+
+    def errReceived(self, data):
+        self.log.write(data)
+
+    def connectionMade(self):
+        # We're not interested in writing to stdin
+        self.transport.closeStdin()
+
+    def processEnded(self, status):
+        self.d.callback(status.value.exitCode)
+
+class ReleaseBuilder(object):
+    """
+    Build a FreeBSD Release
+    """
+    def __init__(self, cvsroot, cvstag, buildroot):
+        """
+        Create a new ReleaseBuilder instance.
+
+        @param cvsroot: Path to FreeBSD CVS Repository
+        @param cvstag: FreeBSD Release Tag
+        @param buildroot: Working build directory
+        """
+        self.cvsroot = cvsroot
+        self.cvstag = cvstag
+        self.buildroot = buildroot
+
+    def build(self):
+        """
+        Build the release
+        """
+        pass
