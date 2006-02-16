@@ -1,4 +1,4 @@
-# __init__.py vi:ts=4:sw=4:expandtab:
+# test_builder.py vi:ts=4:sw=4:expandtab:
 #
 # Copyright (c) 2006 Three Rings Design, Inc.
 # All rights reserved.
@@ -27,23 +27,15 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import os
+""" Splat Daemon Unit Tests """
 
-__all__ = ['builder', 'test']
+from twisted.trial import unittest
 
-# General Info
-__version__ = '0.1'
-__license__ = 'BSD License'
-__author__ = 'Three Rings Design, Inc.'
-__author_email__ = 'dpw@threerings.net'
-__copyright__ = 'Copyright (C) 2006 Three Rings Design, Inc. All rights reserved.'
+from farb import builder
 
 # Useful Constants
-LOG_NAME = 'farb:'
-INSTALL_DIR = os.path.dirname(__file__)
-DATA_DIR = os.path.join(INSTALL_DIR, 'data')
-CONFIG_SCHEMA = os.path.join(DATA_DIR, "farb_conf.xml")
+from farb.test import DATA_DIR
 
-# Exceptions
-class FarbError(Exception):
-    pass
+class BuilderTestCase(unittest.TestCase):
+    def test_nothing(self):
+        pass
