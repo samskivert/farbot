@@ -3,13 +3,49 @@
     farb_conf.xml vi:ts=4:sw=4:expandtab
 -->
 <schema>
-    <!-- LDAP Configuration -->
+    <!-- Release Configuration -->
     <sectiontype name="Release">
         <key name="CVSRoot" datatype="existing-directory" required="yes"/>
         <key name="CVSTag" datatype="string" required="yes"/>
         <key name="BuildRoot" datatype="existing-directory" required="yes"/>
     </sectiontype>
-    <section type="Release" name="+" attribute="Release" required="yes"/>
+
+    <sectiontype name="Releases">
+        <multisection type="Release" name="+" attribute="Release" required="yes"/>
+    </sectiontype>
+    <section type="Releases" name="*" attribute="Releases" required="yes"/>
+
+    <!-- Partitioning Schema -->
+    <sectiontype name="Partition">
+        <key name="Type" datatype="string" required="yes"/>
+        <key name="Size" datatype="byte-size" required="yes"/>
+        <key name="Mount" datatype="string" required="no"/>
+        <key name="SoftUpdates" datatype="boolean" default="true" required="no"/>
+    </sectiontype>
+
+    <sectiontype name="PartitionMap">
+        <multisection type="Partition" name="+" attribute="Partition" required="yes"/>
+    </sectiontype>
+    
+    <sectiontype name="Partitions">
+        <multisection type="PartitionMap" name="+" attribute="PartitionMap" required="yes"/>
+    </sectiontype>
+    <section type="Partitions" name="*" attribute="Partitions" required="no"/>
+
+    <!-- Installation Configuration -->
+    <sectiontype name="Disk">
+        <key name="PartitionMap" datatype="string" required="yes"/>
+    </sectiontype>
+
+    <sectiontype name="Installation">
+        <multikey name="Release" datatype="string" required="yes"/>
+        <multisection type="Disk" name="+" attribute="Disk" required="yes"/>
+    </sectiontype>
+
+    <sectiontype name="Installs">
+        <multisection type="Installation" name="+" attribute="Install" required="yes"/>
+    </sectiontype>
+    <section type="Installs" name="*" attribute="Installs" required="no"/>
 
     <!-- Logging Configuration -->
     <import package="ZConfig.components.logger"/>
