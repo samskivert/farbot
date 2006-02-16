@@ -69,6 +69,31 @@ class MakeProcessProtocolTestCase(unittest.TestCase):
         reactor.spawnProcess(pp, builder.MAKE_PATH, [builder.MAKE_PATH, '-C', BUILDROOT, 'protocol'])
         return d
 
+class MakeCommandTestCase(unittest.TestCase):
+    def setUp(self):
+        self.log = file(MAKE_LOG, 'w+')
+
+    def tearDown(self):
+        self.log.close()
+        os.unlink(MAKE_LOG)
+
+    def _makeResult(self, result):
+        self.assertEquals(result, 0)
+        self.log.seek(0)
+        self.assertEquals('MakeCommand 1 2\n', self.log.read())
+
+    def test_make(self):
+        makeOptions = {
+            'TEST1' : '1',
+            'TEST2' : '2'
+        }
+
+        mc = builder.MakeCommand(BUILDROOT, 'makecommand', makeOptions)
+        d = mc.make(self.log)
+        d.addCallback(self._makeResult)
+
+        return d
+
 class ReleaseBuilderTestCase(unittest.TestCase):
     def setUp(self):
         self.builder = builder.ReleaseBuilder(CVSROOT, CVSTAG, BUILDROOT)

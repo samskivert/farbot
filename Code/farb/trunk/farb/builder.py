@@ -60,6 +60,38 @@ class MakeProcessProtocol(protocol.ProcessProtocol):
     def processEnded(self, status):
         self.d.callback(status.value.exitCode)
 
+class MakeCommand(object):
+    """
+    make(1) command context
+    """
+    def __init__(self, directory, target, options):
+        """
+        Create a new MakeCommand instance
+        @param directory: Directory in which to run make(1)
+        @param target: Makefile target
+        @param options: Dictionary of Makefile options
+        """
+        self.directory = directory
+        self.target = target
+        self.options = options
+
+    def make(self, log):
+        """
+        Run make(1)
+        @param log: Open log file
+        """
+
+        # Create command argv
+        argv = [MAKE_PATH, '-C', self.directory, self.target]
+        for option, value in self.options.items():
+            argv.append("%s=%s" % (option, value))
+
+        d = defer.Deferred()
+        protocol = MakeProcessProtocol(d, log)
+        reactor.spawnProcess(protocol, MAKE_PATH, argv)
+
+        return d
+
 class ReleaseBuilder(object):
     """
     Build a FreeBSD Release
