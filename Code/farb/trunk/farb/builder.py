@@ -79,6 +79,7 @@ class ReleaseBuilder(object):
     def build(self, log):
         """
         Build the release
+        @param log: Open log file
         """
         d = defer.Deferred()
         protocol = MakeProcessProtocol(d, log)
