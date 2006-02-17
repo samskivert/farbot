@@ -1,4 +1,4 @@
-# __init__.py vi:ts=4:sw=4:expandtab:
+# utils.py vi:ts=4:sw=4:expandtab:
 #
 # Copyright (c) 2006 Three Rings Design, Inc.
 # All rights reserved.
@@ -27,10 +27,54 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import os
+from twisted.internet import reactor, defer
 
-__all__ = ['test_builder', 'test_utils']
+class OrderedExecutor(object):
+    """
+    Serialized execution of a list of deferred-returning callables
+    according to the order in which they are added.
+    """
+    def __init__(self):
+        self.callables = []
 
-# Useful Constants
-INSTALL_DIR = os.path.dirname(__file__)
-DATA_DIR = os.path.join(INSTALL_DIR, 'data')
+    def appendCallable(self, callable, *args, **kwargs):
+        """
+        Append a callable to the end of the ordered list
+        """
+        self.callables.append((callable, args, kwargs))
+
+    def _callWorker(self):
+        """
+        Callable generator
+        """
+        for callable in self.callables:
+            yield callable[0](*callable[1], **callable[2])
+
+    def run(self):
+        """
+        Run all callables serially. Stop if an error occurs.
+        @result A deferred that while fire when all callables have been run,
+        or an error has occured.
+        """
+        d = defer.Deferred()
+        work = iter(self._callWorker())
+
+        # In our nested callback, iterate over callables returned by our
+        # generator
+        def cb(result):
+            try:
+                new = work.next()
+            except StopIteration:
+                # Iteration complete
+                d.callback(None)
+            else:
+                # Add our nested callback to the new deferred
+                new.addCallbacks(cb, d.errback)
+
+        # Kick-off the looping deferred calls
+        try:
+            cb(None)
+        except Exception, e:
+            d.errback(e)
+
+        return d

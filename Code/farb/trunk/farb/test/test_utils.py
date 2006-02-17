@@ -1,4 +1,4 @@
-# __init__.py vi:ts=4:sw=4:expandtab:
+# test_utils.py vi:ts=4:sw=4:expandtab:
 #
 # Copyright (c) 2006 Three Rings Design, Inc.
 # All rights reserved.
@@ -27,10 +27,40 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+""" Misc Utilities Unit Tests """
+
 import os
 
-__all__ = ['test_builder', 'test_utils']
+from twisted.trial import unittest
+from twisted.internet import reactor, defer
+
+from farb import utils
 
 # Useful Constants
-INSTALL_DIR = os.path.dirname(__file__)
-DATA_DIR = os.path.join(INSTALL_DIR, 'data')
+from farb.test import DATA_DIR
+
+class OrderedExecutorTestCase(unittest.TestCase):
+    def setUp(self):
+        self.oe = utils.OrderedExecutor()
+        self.callCount = 0
+
+    def _callMeJoe(self, arg0, arg1, keyword='key'):
+        self.callCount += 1
+        self.assertEquals(arg0, 'Hello')
+        self.assertEquals(arg1, 'Joe')
+        self.assertEquals(keyword, 'key')
+
+        return defer.succeed(None)
+
+    def _testExecution(self, result, expectedCount):
+        self.assertEquals(self.callCount, expectedCount)
+
+    def test_appendCallable(self):
+        # Run our test method twice
+        self.oe.appendCallable(self._callMeJoe, 'Hello', 'Joe', keyword='key')
+        self.oe.appendCallable(self._callMeJoe, 'Hello', 'Joe', keyword='key')
+
+        d = self.oe.run()
+        d.addCallback(self._testExecution, 2)
+
+        return d
