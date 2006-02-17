@@ -2,6 +2,8 @@
 # The do nothing makefile
 #
 
+OUTPUT=make.out
+
 
 all:
 

@@ -53,7 +53,7 @@ builder.FREEBSD_REL_PATH = FREEBSD_REL_PATH
 
 class MakeProcessProtocolTestCase(unittest.TestCase):
     def setUp(self):
-        self.log = file(MAKE_LOG, 'w+')
+        self.log = open(MAKE_LOG, 'w+')
 
     def tearDown(self):
         self.log.close()
@@ -61,22 +61,22 @@ class MakeProcessProtocolTestCase(unittest.TestCase):
         os.unlink(MAKE_OUT)
 
     def _makeResult(self, result):
-        self.assertEquals(result, 0)
-        o = file(MAKE_OUT, 'r')
+        o = open(MAKE_OUT, 'r')
         self.assertEquals('MakeProcessProtocol\n', o.read())
         o.close()
+        self.assertEquals(result, 0)
 
     def test_spawnProcess(self):
         d = defer.Deferred()
         pp = builder.MakeProcessProtocol(d, self.log)
         d.addCallback(self._makeResult)
 
-        reactor.spawnProcess(pp, builder.MAKE_PATH, [builder.MAKE_PATH, '-C', BUILDROOT, 'protocol', 'OUTPUT=' + MAKE_OUT])
+        reactor.spawnProcess(pp, builder.MAKE_PATH, [builder.MAKE_PATH, '-C', BUILDROOT, 'protocol'])
         return d
 
 class MakeCommandTestCase(unittest.TestCase):
     def setUp(self):
-        self.log = file(MAKE_LOG, 'w+')
+        self.log = open(MAKE_LOG, 'w+')
 
     def tearDown(self):
         self.log.close()
@@ -84,16 +84,15 @@ class MakeCommandTestCase(unittest.TestCase):
         os.unlink(MAKE_OUT)
 
     def _makeResult(self, result):
-        self.assertEquals(result, 0)
-        o = file(MAKE_OUT, 'r')
+        o = open(MAKE_OUT, 'r')
         self.assertEquals('MakeCommand 1 2\n', o.read())
         o.close()
+        self.assertEquals(result, 0)
 
     def test_make(self):
         makeOptions = {
             'TEST1' : '1',
-            'TEST2' : '2',
-            'OUTPUT' : MAKE_OUT
+            'TEST2' : '2'
         }
 
         mc = builder.MakeCommand(BUILDROOT, 'makecommand', makeOptions)
@@ -130,16 +129,18 @@ class NCVSBuildnameProcessProtocolTestCase(unittest.TestCase):
 class ReleaseBuilderTestCase(unittest.TestCase):
     def setUp(self):
         self.builder = builder.ReleaseBuilder(CVSROOT, CVSTAG, BUILDROOT)
-        self.log = file(MAKE_LOG, 'w+')
+        self.log = open(MAKE_LOG, 'w+')
 
     def tearDown(self):
         self.log.close()
         os.unlink(MAKE_LOG)
+        os.unlink(MAKE_OUT)
 
     def _buildResult(self, result):
+        o = open(MAKE_OUT, 'r')
+        self.assertEquals(o.read(), 'ReleaseBuilder: 6.0-RELEASE-p4 %s %s %s no no\n' % (BUILDROOT, CVSROOT, CVSTAG))
+        o.close()
         self.assertEquals(result, 0)
-        self.log.seek(0)
-        self.assertEquals(self.log.read(), 'ReleaseBuilder: 6.0-RELEASE-p4 %s %s %s no no\n' % (BUILDROOT, CVSROOT, CVSTAG))
 
     def test_build(self):
         d = self.builder.build(self.log)
