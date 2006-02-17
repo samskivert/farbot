@@ -32,6 +32,22 @@
     </sectiontype>
     <section type="Partitions" name="*" attribute="Partitions" required="no"/>
 
+    <!-- Packaging Schema -->
+    <sectiontype name="Package">
+        <key name="Port" datatype="string" required="yes"/>
+        <key name="Package" datatype="string" required="yes"/>
+        <multikey name="BuildOption" datatype="string" required="no"/>
+    </sectiontype>
+
+    <sectiontype name="PackageSet">
+        <multisection type="Package" name="*" attribute="Package" required="yes"/>
+    </sectiontype>
+
+    <sectiontype name="PackageSets">
+        <multisection type="PackageSet" name="*" attribute="PackageSet" required="yes"/>
+    </sectiontype>
+    <section type="PackageSets" name="*" attribute="PackageSets" required="no"/>
+
     <!-- Installation Configuration -->
     <sectiontype name="Disk">
         <key name="PartitionMap" datatype="string" required="yes"/>
