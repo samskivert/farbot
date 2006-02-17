@@ -6,10 +6,10 @@
 all:
 
 protocol:
-	@echo MakeProcessProtocol
+	@echo MakeProcessProtocol >${OUTPUT}
 
 makecommand:
-	@echo MakeCommand ${TEST1} ${TEST2}
+	@echo MakeCommand ${TEST1} ${TEST2} >${OUTPUT}
 
 release:
-	@echo ReleaseBuilder: ${BUILDNAME} ${CHROOTDIR} ${CVSROOT} ${RELEASETAG} ${NOPORTS} ${NODOC}
+	@echo ReleaseBuilder: ${BUILDNAME} ${CHROOTDIR} ${CVSROOT} ${RELEASETAG} ${NOPORTS} ${NODOC} >${OUTPUT}

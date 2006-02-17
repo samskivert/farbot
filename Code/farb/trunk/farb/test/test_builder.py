@@ -41,6 +41,9 @@ from farb.test import DATA_DIR
 
 FREEBSD_REL_PATH = os.path.join(DATA_DIR, 'buildtest')
 MAKE_LOG = os.path.join(FREEBSD_REL_PATH, 'make.log')
+MAKE_OUT = os.path.join(FREEBSD_REL_PATH, 'make.out')
+
+
 BUILDROOT = os.path.join(DATA_DIR, 'buildtest')
 CVSROOT = os.path.join(DATA_DIR, 'fakencvs')
 CVSTAG = 'RELENG_6_0'
@@ -55,18 +58,20 @@ class MakeProcessProtocolTestCase(unittest.TestCase):
     def tearDown(self):
         self.log.close()
         os.unlink(MAKE_LOG)
+        os.unlink(MAKE_OUT)
 
     def _makeResult(self, result):
         self.assertEquals(result, 0)
-        self.log.seek(0)
-        self.assertEquals('MakeProcessProtocol\n', self.log.read())
+        o = file(MAKE_OUT, 'r')
+        self.assertEquals('MakeProcessProtocol\n', o.read())
+        o.close()
 
     def test_spawnProcess(self):
         d = defer.Deferred()
         pp = builder.MakeProcessProtocol(d, self.log)
         d.addCallback(self._makeResult)
 
-        reactor.spawnProcess(pp, builder.MAKE_PATH, [builder.MAKE_PATH, '-C', BUILDROOT, 'protocol'])
+        reactor.spawnProcess(pp, builder.MAKE_PATH, [builder.MAKE_PATH, '-C', BUILDROOT, 'protocol', 'OUTPUT=' + MAKE_OUT])
         return d
 
 class MakeCommandTestCase(unittest.TestCase):
@@ -76,16 +81,19 @@ class MakeCommandTestCase(unittest.TestCase):
     def tearDown(self):
         self.log.close()
         os.unlink(MAKE_LOG)
+        os.unlink(MAKE_OUT)
 
     def _makeResult(self, result):
         self.assertEquals(result, 0)
-        self.log.seek(0)
-        self.assertEquals('MakeCommand 1 2\n', self.log.read())
+        o = file(MAKE_OUT, 'r')
+        self.assertEquals('MakeCommand 1 2\n', o.read())
+        o.close()
 
     def test_make(self):
         makeOptions = {
             'TEST1' : '1',
-            'TEST2' : '2'
+            'TEST2' : '2',
+            'OUTPUT' : MAKE_OUT
         }
 
         mc = builder.MakeCommand(BUILDROOT, 'makecommand', makeOptions)
