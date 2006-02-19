@@ -31,17 +31,24 @@
 import getopt, sys
 import ZConfig
 
+from twisted.internet import reactor
+
 import farb
 
 def usage():
-    print "%s: [-h] [-f config file]" % sys.argv[0]
+    print "Usage: %s [-h] [-f config file] [-r action]" % sys.argv[0]
     print "    -h             Print usage (this message)"
     print "    -f <config>    Use configuration file"
+    print "    -r <action>    Execute <action>"
+    print "\nSupported actions:"
+    print "    release        Build all defined releases"
 
 def main():
     conf_file = None
+    action = None
+
     try:
-        opts,args = getopt.getopt(sys.argv[1:], "hf:")
+        opts,args = getopt.getopt(sys.argv[1:], "hf:r:")
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -52,8 +59,10 @@ def main():
             sys.exit()
         if opt == "-f":
             conf_file = arg
+        if opt == "-r":
+            action = arg
 
-    if (conf_file == None):
+    if (conf_file == None or action == None):
         usage()
         sys.exit(1)
 
@@ -71,6 +80,22 @@ def main():
     except Exception, e:
         print "Log initialization failed: %s" % e
         sys.exit(1)
+
+    # Execute requested action
+    if (action == "release"):
+        release_build(config)
+    else:
+        print "Unknown action \"%s\".\n" % (action)
+        usage()
+        sys.exit(1)
+
+
+#    reactor.run()
+
+def release_build(config):
+    for release in config.Releases.Release:
+        print release
+#    builder = farb.builder.ReleaseBuilder(
 
 if __name__ == "__main__":
     main()
