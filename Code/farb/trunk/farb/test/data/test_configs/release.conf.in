@@ -2,13 +2,13 @@
 # Releases
 #
 <Releases>
+	# Release Build Working Directory
+	BuildRoot @BUILDROOT@
 	<Release 6.0>
 		# FreeBSD CVS Repository Mirror
 		CVSRoot	@CVSROOT@
 		# Release Tag
 		CVSTag	RELENG_6_0
-		# Release Build Working Directory
-		BuildRoot	@BUILDROOT@
 	</Release>
 
 	<Release 6-STABLE>
@@ -16,8 +16,6 @@
 		CVSRoot	@CVSROOT@
 		# Release Tag
 		CVSTag	RELENG_6
-		# Release Build Working Directory
-		BuildRoot	@BUILDROOT@
 	</Release>
 </Releases>
 

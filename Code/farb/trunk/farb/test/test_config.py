@@ -48,7 +48,9 @@ RELEASE_CONFIG_FILE_IN = RELEASE_CONFIG_FILE + '.in'
 
 CONFIG_SUBS = {
     '@CVSROOT@' : CVSROOT,
-    '@BUILDROOT@' : BUILDROOT
+    '@BUILDROOT@' : BUILDROOT,
+    '@TAG1@' : 'RELENG_6_0',
+    '@TAG2@' : 'RELENG_6'
 }
 
 def rewrite_config(inpath, outpath, variables):
@@ -73,5 +75,14 @@ class ConfigParsingTestCase(unittest.TestCase):
     def tearDown(self):
         os.unlink(RELEASE_CONFIG_FILE)
 
-    def test_release(self):
+    def test_releases_cvstag(self):
+        """ Test handling of duplicate CVS Tags """
+        bs = CONFIG_SUBS.copy()
+        bs['@TAG1@'] = 'boom'
+        bs['@TAG2@'] = 'boom'
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, bs)
+        self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
+
+    def test_releases(self):
+        """ Load a standard release configuration """
         config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)

@@ -27,11 +27,30 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+import ZConfig
+
 import builder
 
-def release_factory(section):
+
+def releases_handler(section):
     """
-    Parse the Release config file section
-    and initialize a Release instance.
+    Validate a group of defined releases.
+    Instantiate corresponding ReleaseBuilder objects.
     """
-    return builder.ReleaseBuilder(section.cvsroot, section.cvstag, section.buildroot)
+    tags = []
+    releases = []
+
+    # Validate release sections and instantiate
+    # ReleaseBuilders.
+    for release in section.Release:
+        if (tags.count(release.cvstag) > 0):
+            raise ZConfig.ConfigurationError("CVS Tags may not be re-used in mutiple Release sections. (Tag: \"%s\")" % (release.cvstag))
+        else:
+            tags.append(release.cvstag)
+
+        releases.append(builder.ReleaseBuilder(release.cvsroot, release.cvstag, section.buildroot))
+
+    # Replace our list of release SectionValues
+    section.Release = releases
+
+    return section

@@ -4,13 +4,13 @@
 -->
 <schema prefix="farb.config">
     <!-- Release Configuration -->
-    <sectiontype name="Release" datatype=".release_factory">
+    <sectiontype name="Release">
         <key name="CVSRoot" datatype="existing-directory" required="yes"/>
         <key name="CVSTag" datatype="string" required="yes"/>
-        <key name="BuildRoot" datatype="existing-directory" required="yes"/>
     </sectiontype>
 
-    <sectiontype name="Releases">
+    <sectiontype name="Releases" datatype=".releases_handler">
+        <key name="BuildRoot" datatype="existing-directory" required="yes"/>
         <multisection type="Release" name="+" attribute="Release" required="yes"/>
     </sectiontype>
     <section type="Releases" name="*" attribute="Releases" required="yes"/>
