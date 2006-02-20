@@ -46,7 +46,7 @@ class OrderedExecutorTestCase(unittest.TestCase):
 
     def _callMeJoe(self, arg0, arg1, keyword='key'):
         self.callCount += 1
-        self.assertEquals(arg0, 'Hello')
+        self.assertEquals(self.callCount, arg0)
         self.assertEquals(arg1, 'Joe')
         self.assertEquals(keyword, 'key')
 
@@ -57,8 +57,8 @@ class OrderedExecutorTestCase(unittest.TestCase):
 
     def test_appendCallable(self):
         # Run our test method twice
-        self.oe.appendCallable(self._callMeJoe, 'Hello', 'Joe', keyword='key')
-        self.oe.appendCallable(self._callMeJoe, 'Hello', 'Joe', keyword='key')
+        self.oe.appendCallable(self._callMeJoe, 1, 'Joe', keyword='key')
+        self.oe.appendCallable(self._callMeJoe, 2, 'Joe', keyword='key')
 
         d = self.oe.run()
         d.addCallback(self._testExecution, 2)
