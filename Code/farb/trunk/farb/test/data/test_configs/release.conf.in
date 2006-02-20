@@ -8,14 +8,14 @@
 		# FreeBSD CVS Repository Mirror
 		CVSRoot	@CVSROOT@
 		# Release Tag
-		CVSTag	RELENG_6_0
+		CVSTag	@TAG1@
 	</Release>
 
 	<Release 6-STABLE>
 		# FreeBSD CVS Repository Mirror
 		CVSRoot	@CVSROOT@
 		# Release Tag
-		CVSTag	RELENG_6
+		CVSTag	@TAG2@
 	</Release>
 </Releases>
 
