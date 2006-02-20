@@ -84,7 +84,8 @@ def main():
 
     # Execute requested action
     if (action == "release"):
-        release_build(config)
+        rbr = ReleaseBuildRunner(config)
+        rbr.run()
     else:
         print "Unknown action \"%s\".\n" % (action)
         usage()
@@ -92,51 +93,58 @@ def main():
 
     reactor.run()
 
-def _cbReleaseBuild(result, logs):
-    print "Release Build Complete"
 
-    # Close all the log files
-    for logFile in logs:
-        logFile.close()
+class ReleaseBuildRunner(object):
+    """
+    Run a set of release builds, printing
+    an error and stopping the reactor on failure.
+    """
+    def __init__(self, config):
+        self.logs = []
+        self.oe = utils.OrderedExecutor()
 
-    reactor.stop()
+        for rb in config.Releases.Release:
+            # Create the build directory
+            try:
+                if (not os.path.exists(rb.buildroot)):
+                    os.makedirs(rb.buildroot)
+            except Exception, e:
+                print "Failed to create build root: %s" % (e)
+                sys.exit(1)
 
-def _ebReleaseBuild(failure, logs):
-    failure.trap(builder.ReleaseBuildError)
-    print "Release Build Failed: %s" % (failure.value)
-    print "For more information, refer to the build.log"
+            # Open the log file
+            logPath = os.path.join(rb.buildroot, 'build.log')
+            logFile = open(logPath, 'w')
+            self.logs.append(logFile)
 
-    # Close all the log files
-    for logFile in logs:
-        logFile.close()
+            # Add our builder to the list of callables
+            self.oe.appendCallable(rb.build, logFile)
 
-    reactor.stop()
+    def _cbReleaseBuild(self, result):
+        print "Release Build Complete"
 
-def release_build(config):
-    logs = []
-    oe = utils.OrderedExecutor()
+        # Close all the log files
+        for logFile in self.logs:
+            logFile.close()
 
-    for rb in config.Releases.Release:
-        # Create the build directory
-        try:
-            if (not os.path.exists(rb.buildroot)):
-                os.makedirs(rb.buildroot)
-        except Exception, e:
-            print "Failed to create build root: %s" % (e)
-            sys.exit(1)
+        reactor.stop()
 
-        # Open the log file
-        logPath = os.path.join(rb.buildroot, 'build.log')
-        logFile = open(logPath, 'w')
-        logs.append(logFile)
+    def _ebReleaseBuild(self, failure):
+        failure.trap(builder.ReleaseBuildError)
+        print "Release Build Failed: %s" % (failure.value)
+        print "For more information, refer to the build.log"
 
-        # Add our builder to the list of callables
-        oe.appendCallable(rb.build, logFile)
+        # Close all the log files
+        for logFile in self.logs:
+            logFile.close()
 
-    # Run!
-    d = oe.run()
-    d.addCallback(_cbReleaseBuild, logs)
-    d.addErrback(_ebReleaseBuild, logs)
+        reactor.stop()
+
+    def run(self):
+        # Run!
+        d = self.oe.run()
+        d.addCallback(self._cbReleaseBuild)
+        d.addErrback(self._ebReleaseBuild)
 
 
 if __name__ == "__main__":
