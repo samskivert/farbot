@@ -208,5 +208,5 @@ class ReleaseBuilder(object):
         # Kick off the build once we get the release name from CVS,
         # but pass any CVS exceptions directly to the caller
         d.addCallback(self._doBuild, log)
-        reactor.spawnProcess(pp, CVS_PATH, [CVS_PATH, '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH])
+        reactor.spawnProcess(pp, CVS_PATH, [CVS_PATH, '-R', '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH])
         return d
