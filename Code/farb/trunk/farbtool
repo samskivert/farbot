@@ -34,7 +34,7 @@ import ZConfig
 from twisted.internet import reactor
 
 import farb
-from farb import utils
+from farb import utils, builder
 
 def usage():
     print "Usage: %s [-h] [-f config file] [-r action]" % sys.argv[0]
@@ -102,7 +102,9 @@ def _cbReleaseBuild(result, logs):
     reactor.stop()
 
 def _ebReleaseBuild(failure, logs):
-    print "Release Build Failed: %s" % (failure)
+    failure.trap(builder.ReleaseBuildError)
+    print "Release Build Failed: %s" % (failure.value)
+    print "For more information, refer to the build.log"
 
     # Close all the log files
     for logFile in logs:
