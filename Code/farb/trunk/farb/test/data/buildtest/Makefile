@@ -15,3 +15,7 @@ makecommand:
 
 release:
 	@echo ReleaseBuilder: ${BUILDNAME} ${CHROOTDIR} ${CVSROOT} ${RELEASETAG} ${NOPORTS} ${NODOC} >${OUTPUT}
+
+error:
+	@echo Implosion >${OUTPUT}
+	Implode here

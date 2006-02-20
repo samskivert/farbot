@@ -75,6 +75,20 @@ class MakeProcessProtocolTestCase(unittest.TestCase):
         reactor.spawnProcess(pp, builder.MAKE_PATH, [builder.MAKE_PATH, '-C', BUILDROOT, 'protocol'])
         return d
 
+    def _makeSuccess(self, result):
+        self.fail("This call should not have succeeded")
+
+    def _makeError(self, result):
+        self.assertNotEqual(result, 0)
+
+    def test_makeError(self):
+        d = defer.Deferred()
+        pp = builder.MakeProcessProtocol(d, self.log)
+        d.addCallbacks(self._makeSuccess, self._makeError)
+
+        reactor.spawnProcess(pp, builder.MAKE_PATH, [builder.MAKE_PATH, '-C', BUILDROOT, 'error'])
+        return d
+
 class MakeCommandTestCase(unittest.TestCase):
     def setUp(self):
         self.log = open(MAKE_LOG, 'w+')

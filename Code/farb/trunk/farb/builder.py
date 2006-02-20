@@ -75,7 +75,10 @@ class MakeProcessProtocol(protocol.ProcessProtocol):
         self.transport.closeStdin()
 
     def processEnded(self, status):
-        self.d.callback(status.value.exitCode)
+        if (status.value.exitCode == 0):
+            self.d.callback(status.value.exitCode)
+        else:
+            self.d.errback(status.value.exitCode)
 
 
 class NCVSBuildnameProcessProtocol(protocol.ProcessProtocol):
