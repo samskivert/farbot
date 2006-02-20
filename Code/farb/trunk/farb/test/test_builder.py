@@ -148,8 +148,10 @@ class ReleaseBuilderTestCase(unittest.TestCase):
 
     def tearDown(self):
         self.log.close()
-        os.unlink(MAKE_LOG)
-        os.unlink(MAKE_OUT)
+        if (os.path.exists(MAKE_LOG)):
+            os.unlink(MAKE_LOG)
+        if (os.path.exists(MAKE_OUT)):
+            os.unlink(MAKE_OUT)
 
     def _buildResult(self, result):
         o = open(MAKE_OUT, 'r')
@@ -160,4 +162,30 @@ class ReleaseBuilderTestCase(unittest.TestCase):
     def test_build(self):
         d = self.builder.build(self.log)
         d.addCallback(self._buildResult)
+        return d
+
+    def _buildSuccess(self, result):
+        self.fail("This call should not have succeeded")
+
+    def _buildError(self, failure):
+        failure.trap(builder.ReleaseBuildError)
+
+    def test_buildFailure(self):
+        # Reach into our builder and force an implosion
+        self.builder.makeTarget = 'error'
+        d = self.builder.build(self.log)
+        d.addCallbacks(self._buildSuccess, self._buildError)
+        return d
+
+    def _buildCVSSuccess(self, result):
+        self.fail("This call should not have succeeded")
+
+    def _buildCVSError(self, failure):
+        failure.trap(builder.ReleaseBuildError)
+
+    def test_cvsFailure(self):
+        # Reach into our builder and force a CVS implosion
+        self.builder.cvsroot = 'nonexistent'
+        d = self.builder.build(self.log)
+        d.addCallbacks(self._buildCVSSuccess, self._buildCVSError)
         return d

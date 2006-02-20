@@ -51,6 +51,9 @@ class CVSCommandError(farb.FarbError):
 class NCVSParseError(farb.FarbError):
     pass
 
+class ReleaseBuildError(farb.FarbError):
+    pass
+
 
 class MakeProcessProtocol(protocol.ProcessProtocol):
     """
@@ -166,6 +169,7 @@ class MakeCommand(object):
 
 
 class ReleaseBuilder(object):
+    makeTarget = 'release'
     defaultMakeOptions = {
         'NOPORTS' : 'no',
         'NODOC' : 'no'
@@ -187,6 +191,9 @@ class ReleaseBuilder(object):
         self.buildroot = buildroot
         self.chroot = os.path.join(self.buildroot, 'chroot')
 
+    def _ebBuildError(self, failure):
+        raise ReleaseBuildError, "An error occured building the release in \"%s\", make command returned: %d" % (self.buildroot, failure.value)
+
     def _doBuild(self, buildname, log):
         makeOptions = self.defaultMakeOptions.copy()
         makeOptions['CHROOTDIR'] = self.chroot
@@ -194,8 +201,14 @@ class ReleaseBuilder(object):
         makeOptions['RELEASETAG'] = self.cvstag
         makeOptions['BUILDNAME'] = buildname
 
-        makecmd = MakeCommand(FREEBSD_REL_PATH, 'release', makeOptions)
-        return makecmd.make(log)
+        makecmd = MakeCommand(FREEBSD_REL_PATH, self.makeTarget, makeOptions)
+        d = makecmd.make(log)
+        d.addErrback(self._ebBuildError)
+
+        return d
+
+    def _ebCVSError(self, failure):
+        raise ReleaseBuildError, "An error occured extracting the release name from \"%s\": %s" % (self.cvsroot, failure.value)
  
     def build(self, log):
         """
@@ -208,8 +221,8 @@ class ReleaseBuilder(object):
         d = defer.Deferred()
         pp = NCVSBuildnameProcessProtocol(d)
 
-        # Kick off the build once we get the release name from CVS,
-        # but pass any CVS exceptions directly to the caller
+        # Kick off the build once we get the release name from CVS
         d.addCallback(self._doBuild, log)
+        d.addErrback(self._ebCVSError)
         reactor.spawnProcess(pp, CVS_PATH, [CVS_PATH, '-R', '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH])
         return d
