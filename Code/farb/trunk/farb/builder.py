@@ -182,10 +182,11 @@ class ReleaseBuilder(object):
         self.cvsroot = cvsroot
         self.cvstag = cvstag
         self.buildroot = buildroot
+        self.chroot = os.path.join(self.buildroot, 'chroot')
 
     def _doBuild(self, buildname, log):
         makeOptions = self.defaultMakeOptions.copy()
-        makeOptions['CHROOTDIR'] = os.path.join(self.buildroot, 'chroot')
+        makeOptions['CHROOTDIR'] = self.chroot
         makeOptions['CVSROOT'] = self.cvsroot
         makeOptions['RELEASETAG'] = self.cvstag
         makeOptions['BUILDNAME'] = buildname
