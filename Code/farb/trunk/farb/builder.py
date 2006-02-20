@@ -180,17 +180,19 @@ class ReleaseBuilder(object):
     """
     Build a FreeBSD Release
     """
-    def __init__(self, cvsroot, cvstag, buildroot):
+    def __init__(self, cvsroot, cvstag, buildroot, makecds=False):
         """
         Create a new ReleaseBuilder instance.
 
         @param cvsroot: Path to FreeBSD CVS Repository
         @param cvstag: FreeBSD Release Tag
         @param buildroot: Working build directory
+        @param makecds: Boolean enables the creation of ISO CD installation images.
         """
         self.cvsroot = cvsroot
         self.cvstag = cvstag
         self.buildroot = buildroot
+        self.makecds = makecds
         self.chroot = os.path.join(self.buildroot, 'chroot')
 
     def _ebBuildError(self, failure):
@@ -207,6 +209,9 @@ class ReleaseBuilder(object):
         makeOptions['CVSROOT'] = self.cvsroot
         makeOptions['RELEASETAG'] = self.cvstag
         makeOptions['BUILDNAME'] = buildname
+
+        if (self.makecds == True):
+            makeOptions['MAKE_ISOS'] = 'yes'
 
         makecmd = MakeCommand(FREEBSD_REL_PATH, self.makeTarget, makeOptions)
         d = makecmd.make(log)

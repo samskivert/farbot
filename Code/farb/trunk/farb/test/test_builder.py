@@ -143,7 +143,7 @@ class NCVSBuildnameProcessProtocolTestCase(unittest.TestCase):
 
 class ReleaseBuilderTestCase(unittest.TestCase):
     def setUp(self):
-        self.builder = builder.ReleaseBuilder(CVSROOT, CVSTAG, BUILDROOT)
+        self.builder = builder.ReleaseBuilder(CVSROOT, CVSTAG, BUILDROOT, makecds=True)
         self.log = open(MAKE_LOG, 'w+')
 
     def tearDown(self):
@@ -155,7 +155,7 @@ class ReleaseBuilderTestCase(unittest.TestCase):
 
     def _buildResult(self, result):
         o = open(MAKE_OUT, 'r')
-        self.assertEquals(o.read(), 'ReleaseBuilder: 6.0-RELEASE-p4 %s %s %s no no\n' % (CHROOT, CVSROOT, CVSTAG))
+        self.assertEquals(o.read(), 'ReleaseBuilder: 6.0-RELEASE-p4 %s %s %s no no yes\n' % (CHROOT, CVSROOT, CVSTAG))
         o.close()
         self.assertEquals(result, 0)
 

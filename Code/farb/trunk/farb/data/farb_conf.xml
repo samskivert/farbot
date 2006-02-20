@@ -7,6 +7,7 @@
     <sectiontype name="Release">
         <key name="CVSRoot" datatype="existing-directory" required="yes"/>
         <key name="CVSTag" datatype="string" required="yes"/>
+        <key name="InstallCDs" datatype="boolean" required="no" default="false"/>
     </sectiontype>
 
     <sectiontype name="Releases" datatype=".releases_handler">
