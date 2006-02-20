@@ -27,7 +27,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import ZConfig
+import os, ZConfig
 
 import builder
 
@@ -48,7 +48,7 @@ def releases_handler(section):
         else:
             tags.append(release.cvstag)
 
-        releases.append(builder.ReleaseBuilder(release.cvsroot, release.cvstag, section.buildroot))
+        releases.append(builder.ReleaseBuilder(release.cvsroot, release.cvstag, os.path.join(section.buildroot, release.getSectionName())))
 
     # Replace our list of release SectionValues
     section.Release = releases

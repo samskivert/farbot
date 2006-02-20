@@ -86,3 +86,4 @@ class ConfigParsingTestCase(unittest.TestCase):
     def test_releases(self):
         """ Load a standard release configuration """
         config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
+        self.assertEquals(config.Releases.Release[0].buildroot, os.path.join(BUILDROOT, '6.0'))
