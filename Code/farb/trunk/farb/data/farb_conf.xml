@@ -2,9 +2,9 @@
     ZConfig Configuration Schema for FARB
     farb_conf.xml vi:ts=4:sw=4:expandtab
 -->
-<schema>
+<schema prefix="farb.config">
     <!-- Release Configuration -->
-    <sectiontype name="Release">
+    <sectiontype name="Release" datatype=".release_factory">
         <key name="CVSRoot" datatype="existing-directory" required="yes"/>
         <key name="CVSTag" datatype="string" required="yes"/>
         <key name="BuildRoot" datatype="existing-directory" required="yes"/>

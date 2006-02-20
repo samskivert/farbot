@@ -1,4 +1,4 @@
-# __init__.py vi:ts=4:sw=4:expandtab:
+# test_config.py vi:ts=4:sw=4:expandtab:
 #
 # Copyright (c) 2006 Three Rings Design, Inc.
 # All rights reserved.
@@ -27,23 +27,51 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+""" Configuration Unit Tests """
+
 import os
+import ZConfig
 
-__all__ = ['builder', 'config', 'utils', 'test']
+from twisted.trial import unittest
 
-# General Info
-__version__ = '0.1'
-__license__ = 'BSD License'
-__author__ = 'Three Rings Design, Inc.'
-__author_email__ = 'dpw@threerings.net'
-__copyright__ = 'Copyright (C) 2006 Three Rings Design, Inc. All rights reserved.'
+import farb
+from farb import config
 
 # Useful Constants
-LOG_NAME = 'farb:'
-INSTALL_DIR = os.path.dirname(__file__)
-DATA_DIR = os.path.join(INSTALL_DIR, 'data')
-CONFIG_SCHEMA = os.path.join(DATA_DIR, "farb_conf.xml")
+from farb.test import DATA_DIR
+from farb.test.test_builder import CVSROOT, BUILDROOT
 
-# Exceptions
-class FarbError(Exception):
-    pass
+CONFIG_DIR = os.path.join(DATA_DIR, 'test_configs')
+
+RELEASE_CONFIG_FILE = os.path.join(CONFIG_DIR, 'release.conf')
+RELEASE_CONFIG_FILE_IN = RELEASE_CONFIG_FILE + '.in'
+
+CONFIG_SUBS = {
+    '@CVSROOT@' : CVSROOT,
+    '@BUILDROOT@' : BUILDROOT
+}
+
+def rewrite_config(inpath, outpath, variables):
+        # Fix up paths in the farb configuration file
+        output = open(outpath, 'w')
+        input = open(inpath, 'r')
+        for line in input:
+            for key,value in variables.iteritems():
+                line = line.replace(key, value)
+            output.write(line)
+
+        output.close()
+        input.close()
+
+
+class ConfigParsingTestCase(unittest.TestCase):
+    def setUp(self):
+        # Load ZConfig schema
+        self.schema = ZConfig.loadSchema(farb.CONFIG_SCHEMA)
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, CONFIG_SUBS)
+
+    def tearDown(self):
+        os.unlink(RELEASE_CONFIG_FILE)
+
+    def test_release(self):
+        config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)

@@ -1,0 +1,30 @@
+#
+# Releases
+#
+<Releases>
+	<Release 6.0>
+		# FreeBSD CVS Repository Mirror
+		CVSRoot	@CVSROOT@
+		# Release Tag
+		CVSTag	RELENG_6_0
+		# Release Build Working Directory
+		BuildRoot	@BUILDROOT@
+	</Release>
+
+	<Release 6-STABLE>
+		# FreeBSD CVS Repository Mirror
+		CVSRoot	@CVSROOT@
+		# Release Tag
+		CVSTag	RELENG_6
+		# Release Build Working Directory
+		BuildRoot	@BUILDROOT@
+	</Release>
+</Releases>
+
+<Logging>
+	<logfile>
+		# Log debug messages to stdout
+		Level debug
+		Path STDOUT
+	</logfile>
+</Logging>
