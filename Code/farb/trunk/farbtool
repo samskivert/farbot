@@ -28,12 +28,13 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import getopt, sys
+import getopt, sys, os
 import ZConfig
 
 from twisted.internet import reactor
 
 import farb
+from farb import utils
 
 def usage():
     print "Usage: %s [-h] [-f config file] [-r action]" % sys.argv[0]
@@ -89,13 +90,52 @@ def main():
         usage()
         sys.exit(1)
 
+    reactor.run()
 
-#    reactor.run()
+def _cbReleaseBuild(result, logs):
+    print "Release Build Complete"
+
+    # Close all the log files
+    for logFile in logs:
+        logFile.close()
+
+    reactor.stop()
+
+def _ebReleaseBuild(failure, logs):
+    print "Release Build Failed: %s" % (failure)
+
+    # Close all the log files
+    for logFile in logs:
+        logFile.close()
+
+    reactor.stop()
 
 def release_build(config):
-    for release in config.Releases.Release:
-        print release
-#    builder = farb.builder.ReleaseBuilder(
+    logs = []
+    oe = utils.OrderedExecutor()
+
+    for rb in config.Releases.Release:
+        # Create the build directory
+        try:
+            if (not os.path.exists(rb.buildroot)):
+                os.makedirs(rb.buildroot)
+        except Exception, e:
+            print "Failed to create build root: %s" % (e)
+            sys.exit(1)
+
+        # Open the log file
+        logPath = os.path.join(rb.buildroot, 'build.log')
+        logFile = open(logPath, 'w')
+        logs.append(logFile)
+
+        # Add our builder to the list of callables
+        oe.appendCallable(rb.build, logFile)
+
+    # Run!
+    d = oe.run()
+    d.addCallback(_cbReleaseBuild, logs)
+    d.addErrback(_ebReleaseBuild, logs)
+
 
 if __name__ == "__main__":
     main()
