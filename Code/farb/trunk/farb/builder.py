@@ -28,7 +28,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from twisted.internet import reactor, defer, protocol
-import re
+import os, re
 
 import farb
 
@@ -185,7 +185,7 @@ class ReleaseBuilder(object):
 
     def _doBuild(self, buildname, log):
         makeOptions = self.defaultMakeOptions.copy()
-        makeOptions['CHROOTDIR'] = self.buildroot
+        makeOptions['CHROOTDIR'] = os.path.join(self.buildroot, 'chroot')
         makeOptions['CVSROOT'] = self.cvsroot
         makeOptions['RELEASETAG'] = self.cvstag
         makeOptions['BUILDNAME'] = buildname
