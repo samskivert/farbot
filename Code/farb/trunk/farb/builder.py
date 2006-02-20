@@ -48,12 +48,14 @@ NEWVERS_PATH = 'src/sys/conf/newvers.sh'
 class CVSCommandError(farb.FarbError):
     pass
 
-class NCVSParseError(farb.FarbError):
+class NCVSParseError(CVSCommandError):
+    pass
+
+class MakeCommandError(farb.FarbError):
     pass
 
 class ReleaseBuildError(farb.FarbError):
     pass
-
 
 class MakeProcessProtocol(protocol.ProcessProtocol):
     """
@@ -81,7 +83,7 @@ class MakeProcessProtocol(protocol.ProcessProtocol):
         if (status.value.exitCode == 0):
             self.d.callback(status.value.exitCode)
         else:
-            self.d.errback(status.value.exitCode)
+            self.d.errback(MakeCommandError(status.value.exitCode))
 
 
 class NCVSBuildnameProcessProtocol(protocol.ProcessProtocol):
@@ -192,7 +194,12 @@ class ReleaseBuilder(object):
         self.chroot = os.path.join(self.buildroot, 'chroot')
 
     def _ebBuildError(self, failure):
-        raise ReleaseBuildError, "An error occured building the release in \"%s\", make command returned: %d" % (self.buildroot, failure.value)
+        try:
+            failure.raiseException()
+        except CVSCommandError, e:
+            raise ReleaseBuildError, "An error occured extracting the release name from \"%s\": %s" % (self.cvsroot, e)
+        except MakeCommandError, e:
+            raise ReleaseBuildError, "An error occured building the release in \"%s\", make command returned: %s" % (self.buildroot, e)
 
     def _doBuild(self, buildname, log):
         makeOptions = self.defaultMakeOptions.copy()
@@ -203,13 +210,9 @@ class ReleaseBuilder(object):
 
         makecmd = MakeCommand(FREEBSD_REL_PATH, self.makeTarget, makeOptions)
         d = makecmd.make(log)
-        d.addErrback(self._ebBuildError)
 
         return d
 
-    def _ebCVSError(self, failure):
-        raise ReleaseBuildError, "An error occured extracting the release name from \"%s\": %s" % (self.cvsroot, failure.value)
- 
     def build(self, log):
         """
         Build the release
@@ -223,6 +226,6 @@ class ReleaseBuilder(object):
 
         # Kick off the build once we get the release name from CVS
         d.addCallback(self._doBuild, log)
-        d.addErrback(self._ebCVSError)
+        d.addErrback(self._ebBuildError)
         reactor.spawnProcess(pp, CVS_PATH, [CVS_PATH, '-R', '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH])
         return d
