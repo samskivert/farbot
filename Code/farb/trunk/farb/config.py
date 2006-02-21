@@ -54,20 +54,3 @@ def releases_handler(section):
     section.Release = releases
 
     return section
-
-def packagesets_handler(section):
-    """
-    Validate a group of defined PackageSets.
-    Instantiate corresponding PackageSetBuilder objects.
-    """
-    packagesets = []
-
-    # Validate package sections and instantiate
-    # PackageSetBuilders.
-    for packageset in section.PackageSet:
-        packagesets.append(builder.PackageSetBuilder(packageset))
-
-    # Replace our list of packageset SectionValues
-    section.PackageSet = packagesets
-
-    return section

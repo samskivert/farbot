@@ -19,19 +19,6 @@
 	</Release>
 </Releases>
 
-#
-# Package Sets
-#
-<PackageSets>
-	<PackageSet Base>
-		<Package>
-			Port            databases/mysql50-server
-			Package         mysql50-server
-			BuildOption     WITH_COLLATION=UTF8
-		</Package>
-	</PackageSet>
-</PackageSets>
-
 <Logging>
 	<logfile>
 		# Log debug messages to stdout

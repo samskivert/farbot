@@ -28,9 +28,9 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from twisted.internet import reactor, defer, protocol
-import os, re, ZConfig
+import os, re
 
-import farb, utils
+import farb
 
 # make(1) path
 MAKE_PATH = '/usr/bin/make'
@@ -40,9 +40,6 @@ CVS_PATH = '/usr/bin/cvs'
 
 # Standard FreeBSD src location
 FREEBSD_REL_PATH = '/usr/src/release'
-
-# Standard FreeBSD ports location
-FREEBSD_PORTS_PATH = '/usr/ports'
 
 # Relative path of newvers.sh file in the FreeBSD CVS repository
 NEWVERS_PATH = 'src/sys/conf/newvers.sh'
@@ -236,40 +233,4 @@ class ReleaseBuilder(object):
         d.addCallback(self._doBuild, log)
         d.addErrback(self._ebBuildError)
         reactor.spawnProcess(pp, CVS_PATH, [CVS_PATH, '-R', '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH])
-        return d
-
-class PackageSetBuilder(object):
-    """
-    Build a Package Set 
-    """
-    def __init__(self, packageset):
-        """
-        Create a new PackageSetBuilder instance.
-
-        @param packageset: A set of packages to build
-        @param buildroot: Working build directory
-        """
-        self.oe = utils.OrderedExecutor()
-        # XXX I think I need to pass a log to _doBuildPackage
-        for package in packageset:
-            self.oe.appendCallable(self._doBuildPackage, package)
-
-    def _doBuildPackage(self, package, log):
-        makeOptions = self.defaultMakeOptions.copy()
-        makeOptions = package.buildoptions 
-
-        makecmd = MakeCommand(os.path.join(FREEBSD_PORTS_PATH, package.port), self.makeTarget, makeOptions)
-        d = makecmd.make(log)
-
-        return d
-
-    def build(self, log):
-        """
-        Build the package set
-        @param log: Open log file
-        """
-        d = self.oe.run()
-        # Failures will be handled by outer ordered executor
-        # so callbacks will not be setup here
-
         return d

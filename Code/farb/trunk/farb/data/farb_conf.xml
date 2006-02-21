@@ -44,7 +44,7 @@
         <multisection type="Package" name="*" attribute="Package" required="yes"/>
     </sectiontype>
 
-    <sectiontype name="PackageSets" datatype=".packagesets_handler">
+    <sectiontype name="PackageSets">
         <multisection type="PackageSet" name="*" attribute="PackageSet" required="yes"/>
     </sectiontype>
     <section type="PackageSets" name="*" attribute="PackageSets" required="no"/>

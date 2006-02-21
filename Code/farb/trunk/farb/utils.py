@@ -53,7 +53,7 @@ class OrderedExecutor(object):
     def run(self):
         """
         Run all callables serially. Stop if an error occurs.
-        @result A deferred that will fire when all callables have been run,
+        @result A deferred that while fire when all callables have been run,
         or an error has occured.
         """
         d = defer.Deferred()
