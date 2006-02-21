@@ -59,10 +59,10 @@
         <multisection type="Disk" name="+" attribute="Disk" required="yes"/>
     </sectiontype>
 
-    <sectiontype name="Installs">
+    <sectiontype name="Installations">
         <multisection type="Installation" name="+" attribute="Install" required="yes"/>
     </sectiontype>
-    <section type="Installs" name="*" attribute="Installs" required="no"/>
+    <section type="Installations" name="*" attribute="Installations" required="no"/>
 
     <!-- Logging Configuration -->
     <import package="ZConfig.components.logger"/>
