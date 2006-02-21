@@ -43,6 +43,7 @@ def usage():
     print "    -r <action>    Execute <action>"
     print "\nSupported actions:"
     print "    release        Build all defined releases"
+    print "    packages       Build all defined packages"
 
 def main():
     conf_file = None
@@ -86,6 +87,9 @@ def main():
     if (action == "release"):
         rbr = ReleaseBuildRunner(config)
         rbr.run()
+    if (action == "packages"):
+        psbr = PackageSetBuildRunner(config)
+        psbr.run()
     else:
         print "Unknown action \"%s\".\n" % (action)
         usage()
@@ -146,6 +150,57 @@ class ReleaseBuildRunner(object):
         d.addCallback(self._cbReleaseBuild)
         d.addErrback(self._ebReleaseBuild)
 
+class PackageSetBuildRunner(object):
+    """
+    Run a set of package set builds, printing
+    an error and stopping the reactor on failure.
+    """
+    def __init__(self, config):
+        self.logs = []
+        self.oe = utils.OrderedExecutor()
+
+        for psb in config.PackageSets.PackageSet:
+            # Create the build directory
+            try:
+                if (not os.path.exists(psb.buildroot)):
+                    os.makedirs(psb.buildroot)
+            except Exception, e:
+                print "Failed to create build root: %s" % (e)
+                sys.exit(1)
+
+            # Open the log file
+            logPath = os.path.join(psb.buildroot, 'build.log')
+            logFile = open(logPath, 'w')
+            self.logs.append(logFile)
+
+            # Add our builder to the list of callables
+            self.oe.appendCallable(psb.build, logFile)
+
+    def _cbPackageSetBuild(self, result):
+        print "Package Set Build Complete"
+
+        # Close all the log files
+        for logFile in self.logs:
+            logFile.close()
+
+        reactor.stop()
+
+    def _ebPackageSetBuild(self, failure):
+        failure.trap(builder.PackageSetBuildError)
+        print "Package Set Build Failed: %s" % (failure.value)
+        print "For more information, refer to the build.log"
+
+        # Close all the log files
+        for logFile in self.logs:
+            logFile.close()
+
+        reactor.stop()
+
+    def run(self):
+        # Run!
+        d = self.oe.run()
+        d.addCallback(self._cbPackageSetBuild)
+        d.addErrback(self._ebPackageSetBuild)
 
 if __name__ == "__main__":
     main()

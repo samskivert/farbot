@@ -87,3 +87,8 @@ class ConfigParsingTestCase(unittest.TestCase):
         """ Load a standard release configuration """
         config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
         self.assertEquals(config.Releases.Release[0].buildroot, os.path.join(BUILDROOT, '6.0'))
+
+    def test_packages(self):
+        """ Load a standard packageset configuration """
+        config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
+        self.assertEquals(config.PackageSets.PackageSet[0].Package[0].port, 'databases/mysql50-server')

@@ -30,19 +30,21 @@
 """ Builder Unit Tests """
 
 import os
+import ZConfig
 
 from twisted.trial import unittest
 from twisted.internet import reactor, defer
 
-from farb import builder
+import farb
+from farb import builder, config
 
 # Useful Constants
 from farb.test import DATA_DIR
+import test_config
 
 FREEBSD_REL_PATH = os.path.join(DATA_DIR, 'buildtest')
 MAKE_LOG = os.path.join(FREEBSD_REL_PATH, 'make.log')
 MAKE_OUT = os.path.join(FREEBSD_REL_PATH, 'make.out')
-
 
 BUILDROOT = os.path.join(DATA_DIR, 'buildtest')
 CHROOT = os.path.join(BUILDROOT, 'chroot')
@@ -188,4 +190,45 @@ class ReleaseBuilderTestCase(unittest.TestCase):
         self.builder.cvsroot = 'nonexistent'
         d = self.builder.build(self.log)
         d.addCallbacks(self._buildCVSSuccess, self._buildCVSError)
+        return d
+
+class PackageSetBuilderTestCase(unittest.TestCase):
+    def setUp(self):
+        # Load ZConfig schema
+        self.schema = ZConfig.loadSchema(farb.CONFIG_SCHEMA)
+        test_config.rewrite_config(test_config.RELEASE_CONFIG_FILE_IN, test_config.RELEASE_CONFIG_FILE, test_config.CONFIG_SUBS)
+        config, handler = ZConfig.loadConfig(self.schema, test_config.RELEASE_CONFIG_FILE)
+        self.builder = builder.PackageSetBuilder(config.PackageSets.PackageSet[0])
+        self.log = open(MAKE_LOG, 'w+')
+
+    def tearDown(self):
+        os.unlink(test_config.RELEASE_CONFIG_FILE)
+        self.log.close()
+        if (os.path.exists(MAKE_LOG)):
+            os.unlink(MAKE_LOG)
+        if (os.path.exists(MAKE_OUT)):
+            os.unlink(MAKE_OUT)
+
+    def _buildResult(self, result):
+        o = open(MAKE_OUT, 'r')
+        self.assertEquals(o.read(), 'ReleaseBuilder: 6.0-RELEASE-p4 %s %s %s no no yes\n' % (CHROOT, CVSROOT, CVSTAG))
+        o.close()
+        self.assertEquals(result, 0)
+
+    def test_build(self):
+        d = self.builder.build(self.log)
+        d.addCallback(self._buildResult)
+        return d
+
+    def _buildSuccess(self, result):
+        self.fail("This call should not have succeeded")
+
+    def _buildError(self, failure):
+        failure.trap(builder.PackageSetBuildError)
+
+    def test_buildFailure(self):
+        # Reach into our builder and force an implosion
+        self.builder.makeTarget = 'error'
+        d = self.builder.build(self.log)
+        d.addCallbacks(self._buildSuccess, self._buildError)
         return d
