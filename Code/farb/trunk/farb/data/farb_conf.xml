@@ -61,7 +61,7 @@
     </sectiontype>
 
     <sectiontype name="Installations">
-        <multisection type="Installation" name="+" attribute="Install" required="yes"/>
+        <multisection type="Installation" name="+" attribute="Installation" required="yes"/>
     </sectiontype>
     <section type="Installations" name="*" attribute="Installations" required="no"/>
 
