@@ -57,18 +57,25 @@ def releases_handler(section):
 
 def verifyPackages(config):
     """
-    Verify a given installation has only unique packages defined.
+    Verify a given installation has only unique ports defined
+    for each release.
+    @param config: ZConfig object containing farb configuration
+    Returns a dictionary mapping ports to releases.
     """
 
-    # Validate release sections and instantiate
-    # ReleaseBuilders.
+    # dictionary mapping ports to releases
+    release_ports = {}
     for inst in config.Installations.Installation:
-        used_packages = []
+        if (not release_ports.has_key(inst.release)):
+           release_ports[inst.release] = [] 
         for pset_name in inst.packageset:
             for pset in config.PackageSets.PackageSet:
                 if (pset_name.lower() == pset.getSectionName()):
                     for p in pset.Package:
-                        if (used_packages.count(p.package) > 0):
-                            raise ZConfig.ConfigurationError("Packages may not be re-used in the same Installation sections. (Package: \"%s\")" % (p.package))
+                        # if this release in this installation in this packageset
+                        # has already listed this port then throw error
+                        if (release_ports[inst.release].count(p.port) > 0):
+                            raise ZConfig.ConfigurationError("Ports may not be re-used in the same Installation sections. (Port: \"%s\")" % (p.port))
                         else:
-                            used_packages.append(p.package)
+                            release_ports[inst.release].append(p.port)
+    return release_ports

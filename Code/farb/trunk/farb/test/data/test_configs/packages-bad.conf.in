@@ -48,6 +48,13 @@
 #
 <Installations>
 	<Installation Standard>
+		Release		6-STABLE
+		PackageSet      Database
+		<Disk ad0>
+			PartitionMap	Standard
+		</Disk>
+	</Installation>
+	<Installation NotUnique>
 		Release		6.0
 		PackageSet      Base
 		PackageSet      Database

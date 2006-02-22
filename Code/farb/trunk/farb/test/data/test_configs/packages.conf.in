@@ -51,6 +51,14 @@
 			PartitionMap	Standard
 		</Disk>
 	</Installation>
+	<Installation Other>
+		Release	        6-STABLE	
+		PackageSet      Base
+		PackageSet      Database
+		<Disk ad0>
+			PartitionMap	Standard
+		</Disk>
+	</Installation>
 </Installations>
 
 <Logging>

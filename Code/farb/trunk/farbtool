@@ -67,11 +67,13 @@ def main():
         usage()
         sys.exit(1)
 
+    # a dictionary mapping ports to releases
+    release_ports = {}
     # Load our configuration schema
     schema = ZConfig.loadSchema(farb.CONFIG_SCHEMA)
     try:
         farbconfig, handler = ZConfig.loadConfig(schema, conf_file)
-        config.verifyPackages(farbconfig)
+        release_ports = config.verifyPackages(farbconfig)
     except ZConfig.ConfigurationError, e:
         print "Configuration Error: %s" % e
         sys.exit(1)
