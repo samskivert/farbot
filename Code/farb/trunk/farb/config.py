@@ -57,28 +57,35 @@ def releases_handler(section):
 
 def verifyPackages(config):
     """
-    Verify a given installation has only unique ports defined
+    Verify a given installation has only unique packages defined
     for each release.
     @param config: ZConfig object containing farb configuration
-    Returns a dictionary mapping ports, with build options, to releases.
+    Returns a dictionary mapping releases to packages
     """
 
-    # dictionary mapping ports to releases
-    release_ports = {}
+    # dictionary mapping packages to releases
+    release_packages = {}
     for inst in config.Installations.Installation:
-        if (not release_ports.has_key(inst.release)):
-           release_ports[inst.release] = [] 
+        if (not release_packages.has_key(inst.release)):
+            # each release has a list of pacakge section values
+           release_packages[inst.release] = [] 
         for pset_name in inst.packageset:
             for pset in config.PackageSets.PackageSet:
                 if (pset_name.lower() == pset.getSectionName()):
                     for p in pset.Package:
-                        # dictionary mapping port to buildoptions
-                        package = {}
-                        package[p.port] = p.buildoption
                         # if this release in this installation in this packageset
                         # has already listed this port then throw error
-                        if (release_ports[inst.release].count(package) > 0):
+                        if (_hasPort(release_packages[inst.release], p.port)):
                             raise ZConfig.ConfigurationError("Ports may not be re-used in the same Installation sections. (Port: \"%s\")" % (p.port))
                         else:
-                            release_ports[inst.release].append(package)
-    return release_ports
+                            release_packages[inst.release].append(p)
+    return release_packages
+
+def _hasPort(release_packages, port):
+    """
+    Determine if a given port is in a list of package sectionvalues 
+    """
+    for p in release_packages:
+        if (p.port == port): 
+            return 1 
+    return 0
