@@ -46,6 +46,11 @@ CONFIG_DIR = os.path.join(DATA_DIR, 'test_configs')
 RELEASE_CONFIG_FILE = os.path.join(CONFIG_DIR, 'release.conf')
 RELEASE_CONFIG_FILE_IN = RELEASE_CONFIG_FILE + '.in'
 
+PACKAGES_CONFIG_FILE = os.path.join(CONFIG_DIR, 'packages.conf')
+PACKAGES_CONFIG_FILE_IN = PACKAGES_CONFIG_FILE + '.in'
+PACKAGES_BAD_CONFIG_FILE = os.path.join(CONFIG_DIR, 'packages-bad.conf')
+PACKAGES_BAD_CONFIG_FILE_IN = PACKAGES_BAD_CONFIG_FILE + '.in'
+
 CONFIG_SUBS = {
     '@CVSROOT@' : CVSROOT,
     '@BUILDROOT@' : BUILDROOT,
@@ -71,9 +76,13 @@ class ConfigParsingTestCase(unittest.TestCase):
         # Load ZConfig schema
         self.schema = ZConfig.loadSchema(farb.CONFIG_SCHEMA)
         rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, CONFIG_SUBS)
+        rewrite_config(PACKAGES_CONFIG_FILE_IN, PACKAGES_CONFIG_FILE, CONFIG_SUBS)
+        rewrite_config(PACKAGES_BAD_CONFIG_FILE_IN, PACKAGES_BAD_CONFIG_FILE, CONFIG_SUBS)
 
     def tearDown(self):
         os.unlink(RELEASE_CONFIG_FILE)
+        os.unlink(PACKAGES_CONFIG_FILE)
+        os.unlink(PACKAGES_BAD_CONFIG_FILE)
 
     def test_releases_cvstag(self):
         """ Test handling of duplicate CVS Tags """
@@ -87,3 +96,18 @@ class ConfigParsingTestCase(unittest.TestCase):
         """ Load a standard release configuration """
         config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
         self.assertEquals(config.Releases.Release[0].buildroot, os.path.join(BUILDROOT, '6.0'))
+        
+    def test_package_sets(self):
+        """ Load a standard package set configuration """
+        config, handler = ZConfig.loadConfig(self.schema, PACKAGES_CONFIG_FILE)
+        self.assertEquals(config.PackageSets.PackageSet[0].Package[0].port, 'security/sudo')
+
+    def test_packages_unique(self):
+        """ Test handling of duplicate packages in a good package set """
+        config, handler = ZConfig.loadConfig(self.schema, PACKAGES_CONFIG_FILE)
+        farb.config.verifyPackages(config)
+
+    def test_packages_uniqueFailure(self):
+        """ Test handling of duplicate packages in a bad package set """
+        config, handler = ZConfig.loadConfig(self.schema, PACKAGES_BAD_CONFIG_FILE)
+        self.assertRaises(ZConfig.ConfigurationError, farb.config.verifyPackages, config)

@@ -34,7 +34,7 @@ import ZConfig
 from twisted.internet import reactor
 
 import farb
-from farb import utils, builder
+from farb import utils, builder, config
 
 def usage():
     print "Usage: %s [-h] [-f config file] [-r action]" % sys.argv[0]
@@ -70,21 +70,22 @@ def main():
     # Load our configuration schema
     schema = ZConfig.loadSchema(farb.CONFIG_SCHEMA)
     try:
-        config, handler = ZConfig.loadConfig(schema, conf_file)
+        farbconfig, handler = ZConfig.loadConfig(schema, conf_file)
+        config.verifyPackages(farbconfig)
     except ZConfig.ConfigurationError, e:
         print "Configuration Error: %s" % e
         sys.exit(1)
 
     # Set up logging
     try:
-        config.Logging()
+        farbconfig.Logging()
     except Exception, e:
         print "Log initialization failed: %s" % e
         sys.exit(1)
 
     # Execute requested action
     if (action == "release"):
-        rbr = ReleaseBuildRunner(config)
+        rbr = ReleaseBuildRunner(farbconfig)
         rbr.run()
     else:
         print "Unknown action \"%s\".\n" % (action)

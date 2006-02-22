@@ -1,0 +1,66 @@
+#
+# Releases
+#
+<Releases>
+	# Release Build Working Directory
+	BuildRoot @BUILDROOT@
+	<Release 6.0>
+		# FreeBSD CVS Repository Mirror
+		CVSRoot	@CVSROOT@
+		# Release Tag
+		CVSTag	@TAG1@
+	</Release>
+
+	<Release 6-STABLE>
+		# FreeBSD CVS Repository Mirror
+		CVSRoot	@CVSROOT@
+		# Release Tag
+		CVSTag	@TAG2@
+	</Release>
+</Releases>
+
+#
+# Package Sets
+#
+<PackageSets>
+	<PackageSet Base>
+		<Package>
+			Port            security/sudo 
+			Package         sudo
+		</Package>
+	</PackageSet>
+	<PackageSet Database>
+		<Package>
+			Port            databases/mysql50-server
+			Package         mysql50-server
+			BuildOption     WITH_COLLATION=UTF8
+		</Package>
+		<Package>
+			Port            security/sudo 
+			Package         sudo
+		</Package>
+	</PackageSet>
+</PackageSets>
+
+
+#
+# Installation Types
+#
+<Installations>
+	<Installation Standard>
+		Release		6.0
+		PackageSet      Base
+		PackageSet      Database
+		<Disk ad0>
+			PartitionMap	Standard
+		</Disk>
+	</Installation>
+</Installations>
+
+<Logging>
+	<logfile>
+		# Log debug messages to stdout
+		Level debug
+		Path STDOUT
+	</logfile>
+</Logging>

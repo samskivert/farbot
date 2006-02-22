@@ -54,3 +54,21 @@ def releases_handler(section):
     section.Release = releases
 
     return section
+
+def verifyPackages(config):
+    """
+    Verify a given installation has only unique packages defined.
+    """
+
+    # Validate release sections and instantiate
+    # ReleaseBuilders.
+    for inst in config.Installations.Installation:
+        used_packages = []
+        for pset_name in inst.packageset:
+            for pset in config.PackageSets.PackageSet:
+                if (pset_name.lower() == pset.getSectionName().lower()):
+                    for p in pset.Package:
+                        if (used_packages.count(p.package) > 0):
+                            raise ZConfig.ConfigurationError("Packages may not be re-used in the same Installation sections. (Package: \"%s\")" % (p.package))
+                        else:
+                            used_packages.append(p.package)
