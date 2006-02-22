@@ -37,17 +37,18 @@ from twisted.internet import reactor, defer
 from farb import builder
 
 # Useful Constants
-from farb.test import DATA_DIR
+from farb.test import DATA_DIR, CMD_DIR
 
 FREEBSD_REL_PATH = os.path.join(DATA_DIR, 'buildtest')
 MAKE_LOG = os.path.join(FREEBSD_REL_PATH, 'make.log')
 MAKE_OUT = os.path.join(FREEBSD_REL_PATH, 'make.out')
 
-
 BUILDROOT = os.path.join(DATA_DIR, 'buildtest')
 CHROOT = os.path.join(BUILDROOT, 'chroot')
 CVSROOT = os.path.join(DATA_DIR, 'fakencvs')
 CVSTAG = 'RELENG_6_0'
+
+MDCONFIG_PATH = os.path.join(CMD_DIR, 'mdconfig.sh')
 
 # Reach in and tweak the FREEBSD_REL_PATH constant
 builder.FREEBSD_REL_PATH = FREEBSD_REL_PATH
@@ -140,6 +141,44 @@ class NCVSBuildnameProcessProtocolTestCase(unittest.TestCase):
         reactor.spawnProcess(pp, builder.CVS_PATH, [builder.CVS_PATH, 'die horribly'])
 
         return d
+
+class MDConfigProcessProtocolTestCase(unittest.TestCase):
+    def _mdResult(self, result):
+        self.assertEquals(result, 'md0')
+
+    def test_attach(self):
+        d = defer.Deferred()
+        pp = builder.MDConfigProcessProtocol(d)
+        d.addCallback(self._mdResult)
+
+        reactor.spawnProcess(pp, MDCONFIG_PATH, [MDCONFIG_PATH, '-a', '-t', 'vnode', '-f', '/nonexistent'])
+
+        return d
+
+    def _mdDetachResult(self, result):
+        pass
+
+    def test_detach(self):
+        d = defer.Deferred()
+        pp = builder.MDConfigProcessProtocol(d)
+        d.addCallback(self._mdDetachResult)
+
+        reactor.spawnProcess(pp, MDCONFIG_PATH, [MDCONFIG_PATH, '-d', '-u', 'md0'])
+
+        return d
+
+    def _mdFailure(self, failure):
+        self.assert_(isinstance(failure.value, builder.MDConfigCommandError))
+
+    def test_failureHandling(self):
+        d = defer.Deferred()
+        pp = builder.MDConfigProcessProtocol(d)
+        d.addErrback(self._mdFailure)
+
+        reactor.spawnProcess(pp, MDCONFIG_PATH, [MDCONFIG_PATH, 'die horribly'])
+
+        return d
+
 
 class ReleaseBuilderTestCase(unittest.TestCase):
     def setUp(self):

@@ -51,6 +51,9 @@ class CVSCommandError(farb.FarbError):
 class NCVSParseError(CVSCommandError):
     pass
 
+class MDConfigCommandError(farb.FarbError):
+    pass
+
 class MakeCommandError(farb.FarbError):
     pass
 
@@ -135,6 +138,32 @@ class NCVSBuildnameProcessProtocol(protocol.ProcessProtocol):
             return
 
         self.d.callback(self.fbsdRevision+ '-' + self.fbsdBranch)
+
+class MDConfigProcessProtocol(protocol.ProcessProtocol):
+    """
+    FreeBSD mdconfig(1) protocol.
+    Attach and detach vnode md(4) devices.
+    """
+    _buffer = ''
+
+    def __init__(self, deferred):
+        """
+        @param deferred: Deferred to call with process return code
+        """
+        self.d = deferred
+
+    def outReceived(self, data):
+        """
+        mdconfig(1) will output the md(4) device name
+        """
+        self._buffer = self._buffer.join(data)
+
+    def processEnded(self, status):
+        if (status.value.exitCode != 0):
+            self.d.errback(MDConfigCommandError('mdconfig returned %d' % status.value.exitCode))
+            return
+
+        self.d.callback(self._buffer.rstrip('\n'))
 
 
 class MakeCommand(object):

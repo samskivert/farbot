@@ -34,3 +34,4 @@ __all__ = ['test_builder', 'test_config', 'test_utils']
 # Useful Constants
 INSTALL_DIR = os.path.dirname(__file__)
 DATA_DIR = os.path.join(INSTALL_DIR, 'data')
+CMD_DIR = os.path.join(DATA_DIR, 'fake_cmds')
