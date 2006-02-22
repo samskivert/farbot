@@ -50,8 +50,9 @@ CVSTAG = 'RELENG_6_0'
 
 MDCONFIG_PATH = os.path.join(CMD_DIR, 'mdconfig.sh')
 
-# Reach in and tweak the FREEBSD_REL_PATH constant
+# Reach in and tweak various path constants
 builder.FREEBSD_REL_PATH = FREEBSD_REL_PATH
+builder.MDCONFIG_PATH = MDCONFIG_PATH
 
 class MakeProcessProtocolTestCase(unittest.TestCase):
     def setUp(self):
@@ -179,6 +180,26 @@ class MDConfigProcessProtocolTestCase(unittest.TestCase):
 
         return d
 
+class MDConfigCommandTestCase(unittest.TestCase):
+    def setUp(self):
+        self.mdc = builder.MDConfigCommand('/nonexistent')
+
+    def _cbAttachResult(self, result):
+        self.assertEquals(self.mdc.md, 'md0')
+
+    def test_attach(self):
+        d = self.mdc.attach()
+        d.addCallback(self._cbAttachResult)
+        return d
+
+    def _cbAttachDetachResult(self, result):
+        d = self.mdc.detach()
+        return d
+
+    def test_detach(self):
+        d = self.mdc.attach()
+        d.addCallback(self._cbAttachDetachResult)
+        return d
 
 class ReleaseBuilderTestCase(unittest.TestCase):
     def setUp(self):

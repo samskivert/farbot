@@ -38,6 +38,9 @@ MAKE_PATH = '/usr/bin/make'
 # cvs(1) path
 CVS_PATH = '/usr/bin/cvs'
 
+# mdconfig(8) path
+MDCONFIG_PATH = '/sbin/mdconfig'
+
 # Standard FreeBSD src location
 FREEBSD_REL_PATH = '/usr/src/release'
 
@@ -164,6 +167,50 @@ class MDConfigProcessProtocol(protocol.ProcessProtocol):
             return
 
         self.d.callback(self._buffer.rstrip('\n'))
+
+class MDConfigCommand(object):
+    """
+    mdconfig(8) command context
+    """
+    def __init__(self, file):
+        """
+        Create a new MDConfigCommand vnode instance
+        @param file: File to attach
+        """
+        self.file = file
+        self.md = None
+
+    def _cbAttached(self, result):
+        self.md = result
+
+    def attach(self):
+        """
+        Attach the file to an md(4) device
+        """
+        assert(self.md == None)
+
+        # Create command argv
+        argv = [MDCONFIG_PATH, '-a', '-t', 'vnode', '-f', self.file]
+        d = defer.Deferred()
+        protocol = MDConfigProcessProtocol(d)
+        reactor.spawnProcess(protocol, MDCONFIG_PATH, argv)
+        d.addCallback(self._cbAttached)
+
+        return d
+
+    def detach(self):
+        """
+        Attach the file to an md(4) device
+        """
+        assert(self.md)
+
+        # Create command argv
+        argv = [MDCONFIG_PATH, '-d', '-u', self.md]
+        d = defer.Deferred()
+        protocol = MDConfigProcessProtocol(d)
+        reactor.spawnProcess(protocol, MDCONFIG_PATH, argv)
+
+        return d
 
 
 class MakeCommand(object):
