@@ -60,7 +60,7 @@ def verifyPackages(config):
     Verify a given installation has only unique ports defined
     for each release.
     @param config: ZConfig object containing farb configuration
-    Returns a dictionary mapping ports to releases.
+    Returns a dictionary mapping ports, with build options, to releases.
     """
 
     # dictionary mapping ports to releases
@@ -72,10 +72,13 @@ def verifyPackages(config):
             for pset in config.PackageSets.PackageSet:
                 if (pset_name.lower() == pset.getSectionName()):
                     for p in pset.Package:
+                        # dictionary mapping port to buildoptions
+                        package = {}
+                        package[p.port] = p.buildoption
                         # if this release in this installation in this packageset
                         # has already listed this port then throw error
-                        if (release_ports[inst.release].count(p.port) > 0):
+                        if (release_ports[inst.release].count(package) > 0):
                             raise ZConfig.ConfigurationError("Ports may not be re-used in the same Installation sections. (Port: \"%s\")" % (p.port))
                         else:
-                            release_ports[inst.release].append(p.port)
+                            release_ports[inst.release].append(package)
     return release_ports
