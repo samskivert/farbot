@@ -66,7 +66,7 @@ def verifyPackages(config):
         used_packages = []
         for pset_name in inst.packageset:
             for pset in config.PackageSets.PackageSet:
-                if (pset_name.lower() == pset.getSectionName().lower()):
+                if (pset_name.lower() == pset.getSectionName()):
                     for p in pset.Package:
                         if (used_packages.count(p.package) > 0):
                             raise ZConfig.ConfigurationError("Packages may not be re-used in the same Installation sections. (Package: \"%s\")" % (p.package))
