@@ -123,7 +123,6 @@ class MakeCommandTestCase(unittest.TestCase):
 
     def _makeChrootResult(self, result):
         self.log.seek(0)
-        #self.assertEquals(CHROOT_PATH + ' /nonexistant ' + builder.MAKE_PATH + ' -C ' + BUILDROOT + ' makecommand\n', self.log.read())
         self.assertEquals(self.log.read(), '%s /nonexistant %s -C %s makecommand\n' % (CHROOT_PATH, builder.MAKE_PATH, BUILDROOT))
         self.assertEquals(result, 0)
 
