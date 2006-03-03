@@ -35,6 +35,9 @@ import farb
 # make(1) path
 MAKE_PATH = '/usr/bin/make'
 
+# chroot(8) path
+CHROOT_PATH = '/usr/sbin/chroot'
+
 # cvs(1) path
 CVS_PATH = '/usr/bin/cvs'
 
@@ -217,16 +220,18 @@ class MakeCommand(object):
     """
     make(1) command context
     """
-    def __init__(self, directory, target, options):
+    def __init__(self, directory, target, options, chrootdir=None):
         """
         Create a new MakeCommand instance
         @param directory: Directory in which to run make(1)
         @param target: Makefile target
         @param options: Dictionary of Makefile options
+        @param chrootdir: Optional chroot directory
         """
         self.directory = directory
         self.target = target
         self.options = options
+        self.chrootdir = chrootdir
 
     def make(self, log):
         """
@@ -235,13 +240,19 @@ class MakeCommand(object):
         """
 
         # Create command argv
-        argv = [MAKE_PATH, '-C', self.directory, self.target]
-        for option, value in self.options.items():
-            argv.append("%s=%s" % (option, value))
-
         d = defer.Deferred()
         protocol = MakeProcessProtocol(d, log)
-        reactor.spawnProcess(protocol, MAKE_PATH, argv)
+        argv = [MAKE_PATH, '-C', self.directory, self.target]
+        if self.chrootdir:
+            runCmd = CHROOT_PATH
+            argv.insert(0, self.chrootdir)
+            argv.insert(0, CHROOT_PATH)
+        else:
+            runCmd = MAKE_PATH
+
+        for option, value in self.options.items():
+            argv.append("%s=%s" % (option, value))
+        reactor.spawnProcess(protocol, runCmd, argv)
 
         return d
 

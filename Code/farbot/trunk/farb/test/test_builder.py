@@ -49,10 +49,12 @@ CVSROOT = os.path.join(DATA_DIR, 'fakencvs')
 CVSTAG = 'RELENG_6_0'
 
 MDCONFIG_PATH = os.path.join(CMD_DIR, 'mdconfig.sh')
+CHROOT_PATH = os.path.join(CMD_DIR, 'chroot.sh')
 
 # Reach in and tweak various path constants
 builder.FREEBSD_REL_PATH = FREEBSD_REL_PATH
 builder.MDCONFIG_PATH = MDCONFIG_PATH
+builder.CHROOT_PATH = CHROOT_PATH
 
 class MakeProcessProtocolTestCase(unittest.TestCase):
     def setUp(self):
@@ -116,6 +118,27 @@ class MakeCommandTestCase(unittest.TestCase):
         d = mc.make(self.log)
         d.addCallback(self._makeResult)
 
+        return d
+
+class MakeChrootCommandTestCase(unittest.TestCase):
+    def setUp(self):
+        self.log = open(MAKE_LOG, 'w+')
+
+    def tearDown(self):
+        self.log.close()
+        os.unlink(MAKE_LOG)
+
+    def _makeResult(self, result):
+        self.log.flush()
+        o = open(MAKE_LOG, 'r')
+        self.assertEquals(CHROOT_PATH + ' /nonexistant ' + builder.MAKE_PATH + ' -C ' + BUILDROOT + ' makecommand\n', o.read())
+        o.close()
+        self.assertEquals(result, 0)
+
+    def test_make(self):
+        mc = builder.MakeCommand(BUILDROOT, 'makecommand', {}, '/nonexistant') 
+        d = mc.make(self.log) 
+        d.addCallback(self._makeResult)
         return d
 
 class NCVSBuildnameProcessProtocolTestCase(unittest.TestCase):
