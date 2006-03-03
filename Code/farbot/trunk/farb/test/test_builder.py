@@ -40,8 +40,8 @@ from farb import builder
 from farb.test import DATA_DIR, CMD_DIR
 
 FREEBSD_REL_PATH = os.path.join(DATA_DIR, 'buildtest')
-MAKE_LOG = os.path.join(FREEBSD_REL_PATH, 'make.log')
-MAKE_OUT = os.path.join(FREEBSD_REL_PATH, 'make.out')
+PROCESS_LOG = os.path.join(FREEBSD_REL_PATH, 'process.log')
+PROCESS_OUT = os.path.join(FREEBSD_REL_PATH, 'process.out')
 
 BUILDROOT = os.path.join(DATA_DIR, 'buildtest')
 CHROOT = os.path.join(BUILDROOT, 'chroot')
@@ -58,15 +58,15 @@ builder.CHROOT_PATH = CHROOT_PATH
 
 class MakeProcessProtocolTestCase(unittest.TestCase):
     def setUp(self):
-        self.log = open(MAKE_LOG, 'w+')
+        self.log = open(PROCESS_LOG, 'w+')
 
     def tearDown(self):
         self.log.close()
-        os.unlink(MAKE_LOG)
-        os.unlink(MAKE_OUT)
+        os.unlink(PROCESS_LOG)
+        os.unlink(PROCESS_OUT)
 
     def _makeResult(self, result):
-        o = open(MAKE_OUT, 'r')
+        o = open(PROCESS_OUT, 'r')
         self.assertEquals('MakeProcessProtocol\n', o.read())
         o.close()
         self.assertEquals(result, 0)
@@ -95,16 +95,16 @@ class MakeProcessProtocolTestCase(unittest.TestCase):
 
 class MakeCommandTestCase(unittest.TestCase):
     def setUp(self):
-        self.log = open(MAKE_LOG, 'w+')
+        self.log = open(PROCESS_LOG, 'w+')
 
     def tearDown(self):
         self.log.close()
-        if (os.path.exists(MAKE_OUT)):
-            os.unlink(MAKE_OUT)
-        os.unlink(MAKE_LOG)
+        if (os.path.exists(PROCESS_OUT)):
+            os.unlink(PROCESS_OUT)
+        os.unlink(PROCESS_LOG)
 
     def _makeResult(self, result):
-        o = open(MAKE_OUT, 'r')
+        o = open(PROCESS_OUT, 'r')
         self.assertEquals('MakeCommand 1 2\n', o.read())
         o.close()
         self.assertEquals(result, 0)
@@ -219,17 +219,17 @@ class MDConfigCommandTestCase(unittest.TestCase):
 class ReleaseBuilderTestCase(unittest.TestCase):
     def setUp(self):
         self.builder = builder.ReleaseBuilder(CVSROOT, CVSTAG, BUILDROOT, makecds=True)
-        self.log = open(MAKE_LOG, 'w+')
+        self.log = open(PROCESS_LOG, 'w+')
 
     def tearDown(self):
         self.log.close()
-        if (os.path.exists(MAKE_LOG)):
-            os.unlink(MAKE_LOG)
-        if (os.path.exists(MAKE_OUT)):
-            os.unlink(MAKE_OUT)
+        if (os.path.exists(PROCESS_LOG)):
+            os.unlink(PROCESS_LOG)
+        if (os.path.exists(PROCESS_OUT)):
+            os.unlink(PROCESS_OUT)
 
     def _buildResult(self, result):
-        o = open(MAKE_OUT, 'r')
+        o = open(PROCESS_OUT, 'r')
         self.assertEquals(o.read(), 'ReleaseBuilder: 6.0-RELEASE-p4 %s %s %s no no yes\n' % (CHROOT, CVSROOT, CVSTAG))
         o.close()
         self.assertEquals(result, 0)
