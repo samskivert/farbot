@@ -2,7 +2,7 @@
 # The do nothing makefile
 #
 
-OUTPUT=make.out
+OUTPUT=process.out
 
 
 all:
