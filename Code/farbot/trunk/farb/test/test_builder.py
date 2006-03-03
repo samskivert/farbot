@@ -99,8 +99,9 @@ class MakeCommandTestCase(unittest.TestCase):
 
     def tearDown(self):
         self.log.close()
+        if (os.path.exists(MAKE_OUT)):
+            os.unlink(MAKE_OUT)
         os.unlink(MAKE_LOG)
-        os.unlink(MAKE_OUT)
 
     def _makeResult(self, result):
         o = open(MAKE_OUT, 'r')
@@ -120,26 +121,17 @@ class MakeCommandTestCase(unittest.TestCase):
 
         return d
 
-class MakeChrootCommandTestCase(unittest.TestCase):
-    def setUp(self):
-        self.log = open(MAKE_LOG, 'w+')
-
-    def tearDown(self):
-        self.log.close()
-        os.unlink(MAKE_LOG)
-
-    def _makeResult(self, result):
-        self.log.flush()
-        o = open(MAKE_LOG, 'r')
-        self.assertEquals(CHROOT_PATH + ' /nonexistant ' + builder.MAKE_PATH + ' -C ' + BUILDROOT + ' makecommand\n', o.read())
-        o.close()
+    def _makeChrootResult(self, result):
+        self.log.seek(0)
+        self.assertEquals(CHROOT_PATH + ' /nonexistant ' + builder.MAKE_PATH + ' -C ' + BUILDROOT + ' makecommand\n', self.log.read())
         self.assertEquals(result, 0)
 
-    def test_make(self):
+    def test_makeChroot(self):
         mc = builder.MakeCommand(BUILDROOT, 'makecommand', {}, '/nonexistant') 
         d = mc.make(self.log) 
-        d.addCallback(self._makeResult)
+        d.addCallback(self._makeChrootResult)
         return d
+
 
 class NCVSBuildnameProcessProtocolTestCase(unittest.TestCase):
     def _cvsResult(self, result):
