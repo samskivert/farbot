@@ -51,22 +51,25 @@ FREEBSD_REL_PATH = '/usr/src/release'
 NEWVERS_PATH = 'src/sys/conf/newvers.sh'
 
 # Exceptions
-class CVSCommandError(farb.FarbError):
+class CommandError(farb.FarbError):
+    pass
+
+class CVSCommandError(CommandError):
     pass
 
 class NCVSParseError(CVSCommandError):
     pass
 
-class MDConfigCommandError(farb.FarbError):
+class MDConfigCommandError(CommandError):
     pass
 
-class MakeCommandError(farb.FarbError):
+class MakeCommandError(CommandError):
     pass
 
 class ReleaseBuildError(farb.FarbError):
     pass
 
-class MakeProcessProtocol(protocol.ProcessProtocol):
+class LoggingProcessProtocol(protocol.ProcessProtocol):
     """
     make(1) process protocol
     """
@@ -92,7 +95,7 @@ class MakeProcessProtocol(protocol.ProcessProtocol):
         if (status.value.exitCode == 0):
             self.d.callback(status.value.exitCode)
         else:
-            self.d.errback(MakeCommandError(status.value.exitCode))
+            self.d.errback(CommandError(status.value.exitCode))
 
 
 class NCVSBuildnameProcessProtocol(protocol.ProcessProtocol):
@@ -233,6 +236,11 @@ class MakeCommand(object):
         self.options = options
         self.chrootdir = chrootdir
 
+    def _ebMake(self, failure):
+        # Provide a more specific exception type
+        failure.trap(CommandError)
+        raise MakeCommandError, failure.value
+
     def make(self, log):
         """
         Run make(1)
@@ -241,7 +249,8 @@ class MakeCommand(object):
 
         # Create command argv
         d = defer.Deferred()
-        protocol = MakeProcessProtocol(d, log)
+        d.addErrback(self._ebMake)
+        protocol = LoggingProcessProtocol(d, log)
         argv = [MAKE_PATH, '-C', self.directory, self.target]
         if self.chrootdir:
             runCmd = CHROOT_PATH

@@ -50,47 +50,47 @@ CVSTAG = 'RELENG_6_0'
 
 MDCONFIG_PATH = os.path.join(CMD_DIR, 'mdconfig.sh')
 CHROOT_PATH = os.path.join(CMD_DIR, 'chroot.sh')
+ECHO_PATH = '/bin/echo'
+SH_PATH = '/bin/sh'
 
 # Reach in and tweak various path constants
 builder.FREEBSD_REL_PATH = FREEBSD_REL_PATH
 builder.MDCONFIG_PATH = MDCONFIG_PATH
 builder.CHROOT_PATH = CHROOT_PATH
 
-class MakeProcessProtocolTestCase(unittest.TestCase):
+class LoggingProcessProtocolTestCase(unittest.TestCase):
     def setUp(self):
         self.log = open(PROCESS_LOG, 'w+')
 
     def tearDown(self):
         self.log.close()
         os.unlink(PROCESS_LOG)
-        os.unlink(PROCESS_OUT)
 
-    def _makeResult(self, result):
-        o = open(PROCESS_OUT, 'r')
-        self.assertEquals('MakeProcessProtocol\n', o.read())
-        o.close()
+    def _processResult(self, result):
+        self.log.seek(0)
+        self.assertEquals('hello\n', self.log.read())
         self.assertEquals(result, 0)
 
     def test_spawnProcess(self):
         d = defer.Deferred()
-        pp = builder.MakeProcessProtocol(d, self.log)
-        d.addCallback(self._makeResult)
+        pp = builder.LoggingProcessProtocol(d, self.log)
+        d.addCallback(self._processResult)
 
-        reactor.spawnProcess(pp, builder.MAKE_PATH, [builder.MAKE_PATH, '-C', BUILDROOT, 'protocol'])
+        reactor.spawnProcess(pp, ECHO_PATH, [ECHO_PATH, 'hello'])
         return d
 
-    def _makeSuccess(self, result):
+    def _processSuccess(self, result):
         self.fail("This call should not have succeeded")
 
-    def _makeError(self, result):
+    def _processError(self, result):
         self.assertNotEqual(result, 0)
 
-    def test_makeError(self):
+    def test_processError(self):
         d = defer.Deferred()
-        pp = builder.MakeProcessProtocol(d, self.log)
-        d.addCallbacks(self._makeSuccess, self._makeError)
+        pp = builder.LoggingProcessProtocol(d, self.log)
+        d.addCallbacks(self._processSuccess, self._processError)
 
-        reactor.spawnProcess(pp, builder.MAKE_PATH, [builder.MAKE_PATH, '-C', BUILDROOT, 'error'])
+        reactor.spawnProcess(pp, SH_PATH, [SH_PATH, '-c', 'exit 5'])
         return d
 
 class MakeCommandTestCase(unittest.TestCase):
