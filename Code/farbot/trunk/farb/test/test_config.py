@@ -101,6 +101,8 @@ class ConfigParsingTestCase(unittest.TestCase):
         """ Load a standard package set configuration """
         config, handler = ZConfig.loadConfig(self.schema, PACKAGES_CONFIG_FILE)
         self.assertEquals(config.PackageSets.PackageSet[0].Package[0].port, 'security/sudo')
+        self.assertEquals(config.PackageSets.PackageSet[1].Package[0].port, 'databases/mysql50-server')
+        self.assertEquals(config.PackageSets.PackageSet[1].Package[0].BuildOptions.Options['WITH_COLLATION'], 'UTF8')
 
     def test_release_packages(self):
         """ Test release_packages dictionary contains good values """

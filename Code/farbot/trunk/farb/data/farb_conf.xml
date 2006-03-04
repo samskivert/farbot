@@ -34,10 +34,14 @@
     <section type="Partitions" name="*" attribute="Partitions" required="no"/>
 
     <!-- Packaging Schema -->
+    <sectiontype name="BuildOptions" keytype="string">
+        <key name="+" datatype="string" attribute="Options" required="yes"/>
+    </sectiontype>
+    
     <sectiontype name="Package">
         <key name="Port" datatype="string" required="yes"/>
         <key name="Package" datatype="string" required="yes"/>
-        <multikey name="BuildOption" datatype="string" required="no"/>
+        <section type="BuildOptions" name="*" attribute="BuildOptions" required="no"/>
     </sectiontype>
 
     <sectiontype name="PackageSet">
