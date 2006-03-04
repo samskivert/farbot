@@ -47,6 +47,9 @@ MDCONFIG_PATH = '/sbin/mdconfig'
 # Standard FreeBSD src location
 FREEBSD_REL_PATH = '/usr/src/release'
 
+# Standard FreeBSD ports location
+FREEBSD_PORTS_PATH = '/usr/ports'
+
 # Relative path of newvers.sh file in the FreeBSD CVS repository
 NEWVERS_PATH = 'src/sys/conf/newvers.sh'
 
@@ -67,6 +70,9 @@ class MakeCommandError(CommandError):
     pass
 
 class ReleaseBuildError(farb.FarbError):
+    pass
+
+class PackageBuildError(farb.FarbError):
     pass
 
 class LoggingProcessProtocol(protocol.ProcessProtocol):
@@ -329,4 +335,44 @@ class ReleaseBuilder(object):
         d.addCallback(self._doBuild, log)
         d.addErrback(self._ebBuildError)
         reactor.spawnProcess(pp, CVS_PATH, [CVS_PATH, '-R', '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH])
+        return d
+
+class PackageBuilder(object):
+    makeTarget = 'package-recursive'
+
+    """
+    Build a FreeBSD Package 
+    """
+    def __init__(self, chroot, port, buildOptions=None):
+        """
+        Create a new PackageBuilder instance.
+
+        @param chroot: Release chroot directory
+        @param port: Port to build
+        @param buildOptions: Build options for the package
+        """
+        self.chroot = chroot
+        self.port = port
+        self.buildOptions = buildOptions
+        # XXX I don't think we want to construct this anymore
+        # self.chroot = os.path.join(self.buildroot, 'chroot')
+
+    def _ebBuildError(self, failure):
+        try:
+            failure.raiseException()
+        except MakeCommandError, e:
+            raise PackageBuildError, "An error occured building the port \"%s\" in \"%s\", make command returned: %s" % (self.port, self.chroot, e)
+
+    def build(self, log):
+        """
+        Build the package 
+        @param log: Open log file
+        @return Returns a deferred that will be called when make(1) completes
+        """
+
+        # Load up a deferred with the right call backs and return it
+        # ready to be spawned
+        makecmd = MakeCommand(os.path.join(FREEBSD_PORTS_PATH, self.port), self.makeTarget, self.buildOptions, self.chroot)
+        d = makecmd.make(log)
+        d.addErrback(self._ebBuildError)
         return d

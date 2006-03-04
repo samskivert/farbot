@@ -16,6 +16,9 @@ makecommand:
 release:
 	@echo ReleaseBuilder: ${BUILDNAME} ${CHROOTDIR} ${CVSROOT} ${RELEASETAG} ${NOPORTS} ${NODOC} ${MAKE_ISOS} >${OUTPUT}
 
+package-recursive:
+	@echo PackageBuilder: ${TEST1} ${TEST2} >${OUTPUT}
+
 error:
 	@echo Implosion >${OUTPUT}
 	Implode here

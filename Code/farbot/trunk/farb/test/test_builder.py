@@ -123,7 +123,9 @@ class MakeCommandTestCase(unittest.TestCase):
 
     def _makeChrootResult(self, result):
         self.log.seek(0)
-        self.assertEquals(self.log.read(), '%s /nonexistant %s -C %s makecommand\n' % (CHROOT_PATH, builder.MAKE_PATH, BUILDROOT))
+        # take just the first line as make tells us what directories it
+        # is entering and exiting on certain platforms
+        self.assertEquals(self.log.read().splitlines(1)[0], '%s /nonexistant %s -C %s makecommand\n' % (CHROOT_PATH, builder.MAKE_PATH, BUILDROOT))
         self.assertEquals(result, 0)
 
     def test_makeChroot(self):
@@ -263,4 +265,44 @@ class ReleaseBuilderTestCase(unittest.TestCase):
         self.builder.cvsroot = 'nonexistent'
         d = self.builder.build(self.log)
         d.addCallbacks(self._buildCVSSuccess, self._buildCVSError)
+        return d
+
+class PackageBuilderTestCase(unittest.TestCase):
+    def setUp(self):
+        buildOptions = {
+            'TEST1' : '1',
+            'TEST2' : '2'
+        }
+        self.builder = builder.PackageBuilder(CHROOT, BUILDROOT, buildOptions)
+        self.log = open(PROCESS_LOG, 'w+')
+
+    def tearDown(self):
+        self.log.close()
+        if (os.path.exists(PROCESS_LOG)):
+            os.unlink(PROCESS_LOG)
+        if (os.path.exists(PROCESS_OUT)):
+            os.unlink(PROCESS_OUT)
+
+    def _buildResult(self, result):
+        o = open(PROCESS_OUT, 'r')
+        self.assertEquals(o.read(), 'PackageBuilder: 1 2\n')
+        o.close()
+        self.assertEquals(result, 0)
+
+    def test_build(self):
+        d = self.builder.build(self.log)
+        d.addCallback(self._buildResult)
+        return d
+
+    def _buildSuccess(self, result):
+        self.fail("This call should not have succeeded")
+
+    def _buildError(self, failure):
+        failure.trap(builder.PackageBuildError)
+
+    def test_buildFailure(self):
+        # Reach into our builder and force an implosion
+        self.builder.makeTarget = 'error'
+        d = self.builder.build(self.log)
+        d.addCallbacks(self._buildSuccess, self._buildError)
         return d
