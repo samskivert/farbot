@@ -354,8 +354,6 @@ class PackageBuilder(object):
         self.chroot = chroot
         self.port = port
         self.buildOptions = buildOptions
-        # XXX I don't think we want to construct this anymore
-        # self.chroot = os.path.join(self.buildroot, 'chroot')
 
     def _ebBuildError(self, failure):
         try:
