@@ -106,19 +106,22 @@ class ReleaseBuildRunner(object):
         self.logs = []
         self.oe = utils.OrderedExecutor()
 
-        for rb in config.Releases.Release:
+        for release in config.Releases.Release:
             # Create the build directory
+            buildroot = os.path.join(config.Releases.buildroot, release.getSectionName())
             try:
-                if (not os.path.exists(rb.buildroot)):
-                    os.makedirs(rb.buildroot)
+                if (not os.path.exists(buildroot)):
+                    os.makedirs(buildroot)
             except Exception, e:
                 print "Failed to create build root: %s" % (e)
                 sys.exit(1)
 
             # Open the log file
-            logPath = os.path.join(rb.buildroot, 'build.log')
+            logPath = os.path.join(buildroot, 'build.log')
             logFile = open(logPath, 'w')
             self.logs.append(logFile)
+
+            rb = builder.ReleaseBuilder(release.cvsroot, release.cvstag, buildroot)
 
             # Add our builder to the list of callables
             self.oe.appendCallable(rb.build, logFile)

@@ -48,11 +48,6 @@ def releases_handler(section):
         else:
             tags.append(release.cvstag)
 
-        releases.append(builder.ReleaseBuilder(release.cvsroot, release.cvstag, os.path.join(section.buildroot, release.getSectionName())))
-
-    # Replace our list of release SectionValues
-    section.Release = releases
-
     return section
 
 def verifyPackages(config):
