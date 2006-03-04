@@ -87,7 +87,7 @@ def main():
 
     # Execute requested action
     if (action == "release"):
-        rbr = ReleaseBuildRunner(farbconfig)
+        rbr = ReleaseBuildRunner(farbconfig, release_packages)
         rbr.run()
     else:
         print "Unknown action \"%s\".\n" % (action)
@@ -102,7 +102,7 @@ class ReleaseBuildRunner(object):
     Run a set of release builds, printing
     an error and stopping the reactor on failure.
     """
-    def __init__(self, config):
+    def __init__(self, config, release_packages):
         self.logs = []
         self.oe = utils.OrderedExecutor()
 
@@ -125,6 +125,22 @@ class ReleaseBuildRunner(object):
 
             # Add our builder to the list of callables
             self.oe.appendCallable(rb.build, logFile)
+
+            releaseName = release.getSectionName()
+            packageList = release_packages.get(releaseName)
+            # if asked to build no packages go onto the next release 
+            if (not packageList):
+                continue
+
+            for package in packageList: 
+                logPath = os.path.join(buildroot, package.package+'.log')
+                logFile = open(logPath, 'w')
+                self.logs.append(logFile)
+                buildoptions = {}
+                if package.BuildOptions:
+                    buildoptions = package.BuildOptions.Options
+                pb = builder.PackageBuilder(os.path.join(buildroot, 'chroot'), package.port, buildoptions)
+                self.oe.appendCallable(pb.build, logFile)
 
     def _cbReleaseBuild(self, result):
         print "Release Build Complete"

@@ -61,19 +61,20 @@ def verifyPackages(config):
     # dictionary mapping packages to releases
     release_packages = {}
     for inst in config.Installations.Installation:
-        if (not release_packages.has_key(inst.release)):
+        releaseName = inst.release.lower()
+        if (not release_packages.has_key(releaseName)):
             # each release has a list of pacakge section values
-           release_packages[inst.release] = [] 
+           release_packages[releaseName] = [] 
         for pset_name in inst.packageset:
             for pset in config.PackageSets.PackageSet:
                 if (pset_name.lower() == pset.getSectionName()):
                     for p in pset.Package:
                         # if this release in this installation in this packageset
                         # has already listed this port then throw error
-                        if (_hasPort(release_packages[inst.release], p.port)):
+                        if (_hasPort(release_packages[releaseName], p.port)):
                             raise ZConfig.ConfigurationError("Ports may not be re-used in the same Installation sections. (Port: \"%s\")" % (p.port))
                         else:
-                            release_packages[inst.release].append(p)
+                            release_packages[releaseName].append(p)
     return release_packages
 
 def _hasPort(release_packages, port):

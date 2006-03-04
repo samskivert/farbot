@@ -108,7 +108,7 @@ class ConfigParsingTestCase(unittest.TestCase):
         """ Test release_packages dictionary contains good values """
         config, handler = ZConfig.loadConfig(self.schema, PACKAGES_CONFIG_FILE)
         release_packages = farb.config.verifyPackages(config)
-        self.assertEquals(release_packages['6-STABLE'][0].port, 'security/sudo')
+        self.assertEquals(release_packages['6-stable'][0].port, 'security/sudo')
 
     def test_packages_unique(self):
         """ Test handling of duplicate packages in a good package set """
