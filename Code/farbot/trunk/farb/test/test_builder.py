@@ -47,6 +47,7 @@ BUILDROOT = os.path.join(DATA_DIR, 'buildtest')
 CHROOT = os.path.join(BUILDROOT, 'chroot')
 CVSROOT = os.path.join(DATA_DIR, 'fakencvs')
 CVSTAG = 'RELENG_6_0'
+EXPORT_FILE = os.path.join(BUILDROOT, 'newvers.sh')
 
 MDCONFIG_PATH = os.path.join(CMD_DIR, 'mdconfig.sh')
 CHROOT_PATH = os.path.join(CMD_DIR, 'chroot.sh')
@@ -91,6 +92,26 @@ class LoggingProcessProtocolTestCase(unittest.TestCase):
         d.addCallbacks(self._processSuccess, self._processError)
 
         reactor.spawnProcess(pp, SH_PATH, [SH_PATH, '-c', 'exit 5'])
+        return d
+
+class CVSCommandTestCase(unittest.TestCase):
+    def setUp(self):
+        self.log = open(PROCESS_LOG, 'w+')
+
+    def tearDown(self):
+        self.log.close()
+        os.unlink(EXPORT_FILE)
+        os.unlink(PROCESS_LOG)
+
+    def _cvsResult(self, result):
+        self.assertEquals(os.path.exists(EXPORT_FILE), 1)
+        self.assertEquals(result, 0)
+
+    def test_cvs(self):
+        cvs = builder.CVSCommand(CVSROOT)
+        d = cvs.export(CVSTAG, builder.NEWVERS_PATH, BUILDROOT, self.log)
+        d.addCallback(self._cvsResult)
+
         return d
 
 class MakeCommandTestCase(unittest.TestCase):

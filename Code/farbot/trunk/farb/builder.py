@@ -224,6 +224,40 @@ class MDConfigCommand(object):
 
         return d
 
+class CVSCommand(object):
+    """
+    cvs(1) command context
+    """
+    def __init__(self, repository):
+        """
+        Create a new CVSCommand instance
+        @param repository: CVS repository to use 
+        """
+        self.repository = repository
+
+    def _ebCVS(self, failure):
+        # Provide a more specific exception type
+        failure.trap(CommandError)
+        raise CVSCommandError, failure.value
+
+    def export(self, release, module, destination, log):
+        """
+        Run cvs(1) export
+        @param release: release to checkout, ex. HEAD 
+        @param module: module to use, ex: ports 
+        @param destination: destination for the export 
+        @param log: Open log file
+        """
+
+        # Create command argv
+        d = defer.Deferred()
+        d.addErrback(self._ebCVS)
+        protocol = LoggingProcessProtocol(d, log)
+        argv = [CVS_PATH, '-R', '-d', self.repository, 'export', '-r', release, '-d', destination, module]
+
+        reactor.spawnProcess(protocol, CVS_PATH, argv)
+
+        return d
 
 class MakeCommand(object):
     """
