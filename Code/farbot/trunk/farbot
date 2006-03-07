@@ -123,8 +123,9 @@ class ReleaseBuildRunner(object):
 
             rb = builder.ReleaseBuilder(release.cvsroot, release.cvstag, buildroot)
 
-            # Add our builder to the list of callables
-            self.oe.appendCallable(rb.build, logFile)
+            # Add our builder to the OrderedExecutor
+            eu = utils.ExecutionUnit(None, rb.build, logFile)
+            self.oe.appendExecutionUnit(eu)
 
             releaseName = release.getSectionName()
             packageList = release_packages.get(releaseName)
@@ -140,7 +141,9 @@ class ReleaseBuildRunner(object):
                 if package.BuildOptions:
                     buildoptions = package.BuildOptions.Options
                 pb = builder.PackageBuilder(os.path.join(buildroot, 'chroot'), package.port, buildoptions)
-                self.oe.appendCallable(pb.build, logFile)
+                # Add our package builder to the OrderedExecutor
+                eu = utils.ExecutionUnit(None, pb.build, logFile)
+                self.oe.appendExecutionUnit(eu)
 
     def _cbReleaseBuild(self, result):
         print "Release Build Complete"

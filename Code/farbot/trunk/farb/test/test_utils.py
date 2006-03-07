@@ -39,6 +39,14 @@ from farb import utils
 # Useful Constants
 from farb.test import DATA_DIR
 
+class ExecutionUnitTestCase(unittest.TestCase):
+    def test_init(self):
+        ctx = "3, 2, 1 Contact!"
+        eu = utils.ExecutionUnit(ctx, self.test_init, 1, keyword='key')
+        self.assertEquals(eu.callable[0], self.test_init)
+        self.assertEquals(eu.callable[1], (1,))
+        self.assertEquals(eu.callable[2], {'keyword' : 'key'})
+
 class OrderedExecutorTestCase(unittest.TestCase):
     def setUp(self):
         self.oe = utils.OrderedExecutor()
@@ -55,10 +63,13 @@ class OrderedExecutorTestCase(unittest.TestCase):
     def _testExecution(self, result, expectedCount):
         self.assertEquals(self.callCount, expectedCount)
 
-    def test_appendCallable(self):
+    def test_appendExecutionUnit(self):
         # Run our test method twice
-        self.oe.appendCallable(self._callMeJoe, 1, 'Joe', keyword='key')
-        self.oe.appendCallable(self._callMeJoe, 2, 'Joe', keyword='key')
+        eu = utils.ExecutionUnit(1, self._callMeJoe, 1, 'Joe', keyword='key')
+        self.oe.appendExecutionUnit(eu)
+
+        eu = utils.ExecutionUnit(1, self._callMeJoe, 2, 'Joe', keyword='key')
+        self.oe.appendExecutionUnit(eu)
 
         d = self.oe.run()
         d.addCallback(self._testExecution, 2)

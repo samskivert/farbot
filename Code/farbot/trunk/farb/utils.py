@@ -29,26 +29,41 @@
 
 from twisted.internet import reactor, defer
 
+class ExecutionUnit(object):
+    """
+    An execution unit to be passed to an OrderedExecutor
+    """
+    def __init__(self, context, callable, *args, **kwargs):
+        """
+        Initialize an ExecutionUnit
+        @param context: User-specified context
+        @param callable: Callable function or method
+        @param *args: Arguments to callable
+        @param **kwargs: Keyword arguments to callable.
+        """
+        self.context = context
+        self.callable = (callable, args, kwargs)
+
 class OrderedExecutor(object):
     """
     Serialized execution of a list of deferred-returning callables
     according to the order in which they are added.
     """
     def __init__(self):
-        self.callables = []
+        self.eunits = []
 
-    def appendCallable(self, callable, *args, **kwargs):
+    def appendExecutionUnit(self, eunit):
         """
-        Append a callable to the end of the ordered list
+        Append an ExecutionUnit to the end of the ordered list
         """
-        self.callables.append((callable, args, kwargs))
+        self.eunits.append(eunit)
 
     def _callWorker(self):
         """
         Callable generator
         """
-        for callable in self.callables:
-            yield callable[0](*callable[1], **callable[2])
+        for eunit in self.eunits:
+            yield eunit.callable[0](*eunit.callable[1], **eunit.callable[2])
 
     def run(self):
         """
