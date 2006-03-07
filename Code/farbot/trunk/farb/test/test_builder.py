@@ -121,7 +121,7 @@ class CVSCommandTestCase(unittest.TestCase):
 class MountCommandTestCase(unittest.TestCase):
     def setUp(self):
         self.log = open(PROCESS_LOG, 'w+')
-        self.mc = builder.MountCommand()
+        self.mc = builder.MountCommand('/dev/md0', '/mnt/md0')
 
     def tearDown(self):
         self.log.close()
@@ -131,7 +131,7 @@ class MountCommandTestCase(unittest.TestCase):
         self.assertEquals(result, 0)
 
     def test_mount(self):
-        d = self.mc.mount('/dev/md0', '/mnt/md0', self.log)
+        d = self.mc.mount(self.log)
         d.addCallback(self._cbMountResult)
         return d
 
@@ -139,7 +139,7 @@ class MountCommandTestCase(unittest.TestCase):
         self.assertEquals(result, 0)
 
     def test_umount(self):
-        d = self.mc.umount('/mnt/md0', self.log)
+        d = self.mc.umount(self.log)
         d.addCallback(self._cbUmountResult)
         return d
 

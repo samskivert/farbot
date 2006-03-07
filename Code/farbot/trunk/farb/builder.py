@@ -272,21 +272,24 @@ class MountCommand(object):
     """
     mount(8)/umount(8) command context
     """
-    def __init__(self):
+    def __init__(self, device, mountpoint):
         """
         Create a new MountCommand instance
+        @param device: device to mount
+        @param mountpoint: mount point
         """
+        self.device = device
+        self.mountpoint = mountpoint
+
 
     def _ebMount(self, failure):
         # Provide a more specific exception type
         failure.trap(CommandError)
         raise MountCommandError, failure.value
 
-    def mount(self, device, mountpoint, log):
+    def mount(self, log):
         """
         Run mount(8)
-        @param device: device to mount
-        @param mountpoint: mount point
         @param log: Open log file
         """
 
@@ -294,16 +297,15 @@ class MountCommand(object):
         d = defer.Deferred()
         d.addErrback(self._ebMount)
         protocol = LoggingProcessProtocol(d, log)
-        argv = [MOUNT_PATH, device, mountpoint]
+        argv = [MOUNT_PATH, self.device, self.mountpoint]
 
         reactor.spawnProcess(protocol, MOUNT_PATH, argv)
 
         return d
 
-    def umount(self, mountpoint, log):
+    def umount(self, log):
         """
-        Run mount(8)
-        @param mountpoint: mount point
+        Run umount(8)
         @param log: Open log file
         """
 
@@ -311,7 +313,7 @@ class MountCommand(object):
         d = defer.Deferred()
         d.addErrback(self._ebMount)
         protocol = LoggingProcessProtocol(d, log)
-        argv = [UMOUNT_PATH, mountpoint]
+        argv = [UMOUNT_PATH, self.mountpoint]
 
         reactor.spawnProcess(protocol, UMOUNT_PATH, argv)
 
