@@ -32,13 +32,14 @@ import getopt, sys, os
 import ZConfig
 import shutil
 
-from twisted.internet import reactor
-from twisted.internet import threads
+from twisted.internet import reactor, defer, threads
 from twisted.python import threadable 
 threadable.init()
 
 import farb
 from farb import utils, builder, config
+
+INDEX_PREFIX='INDEX'
 
 def usage():
     print "Usage: %s [-h] [-f config file] [-r action]" % sys.argv[0]
@@ -126,6 +127,10 @@ class ReleaseBuildRunner(object):
             buildroot = os.path.join(config.Releases.buildroot, release.getSectionName())
             netinstallroot = os.path.join(config.Releases.netinstallroot, release.getSectionName())
             chroot = os.path.join(buildroot, 'chroot')
+            packagesdir = os.path.join(netinstallroot, 'packages')
+            portsdir = os.path.join(chroot, 'usr', 'ports')
+            portspackagesdir = os.path.join(chroot, 'usr', 'ports', 'packages')
+
             try:
                 if (not os.path.exists(buildroot)):
                     os.makedirs(buildroot)
@@ -147,8 +152,13 @@ class ReleaseBuildRunner(object):
 
             # checkout the ports tree into the chroot 
             cvs = builder.CVSCommand(release.cvsroot)
-            eu = utils.ExecutionUnit(None, cvs.export, 'HEAD', 'ports', os.path.join(chroot, 'usr', 'ports'), buildLog)
+            eu = utils.ExecutionUnit(None, cvs.export, 'HEAD', 'ports', portsdir, buildLog)
             self.oe.appendExecutionUnit(eu)
+
+            # make the packages directory 
+            if (not os.path.exists(portspackagesdir)):
+                eu = utils.ExecutionUnit(None, defer.execute, os.mkdir, portspackagesdir) 
+                self.oe.appendExecutionUnit(eu)
 
             # Add package builds to the OrderedExecutor
             releaseName = release.getSectionName()
@@ -186,8 +196,14 @@ class ReleaseBuildRunner(object):
             self.oe.appendExecutionUnit(eu)
 
             # copy the packages into the netinstall root
-            eu = utils.ExecutionUnit(None, threads.deferToThread, shutil.copytree, os.path.join(chroot, 'usr', 'ports', 'packages'), os.path.join(netinstallroot, 'packages'), 1)
+            eu = utils.ExecutionUnit(None, threads.deferToThread, shutil.copytree, os.path.join(portsdir, 'packages'), packagesdir, 1)
             self.oe.appendExecutionUnit(eu)
+
+            # copy the package INDEX files into the netinstall root
+            for dir in os.listdir(portsdir):
+                if (dir[:len(INDEX_PREFIX)] == INDEX_PREFIX):
+                    eu = utils.ExecutionUnit(None, threads.deferToThread, shutil.copy2, os.path.join(portsdir, dir), packagesdir)
+                    self.oe.appendExecutionUnit(eu)
 
     def _closeLogs(self):
         # Close all the log files
