@@ -118,7 +118,7 @@ class ReleaseBuildRunner(object):
 
             # Open the log file
             logPath = os.path.join(buildroot, 'build.log')
-            logFile = open(logPath, 'w')
+            logFile = open(logPath, 'w', 0)
             self.logs.append(logFile)
 
             rb = builder.ReleaseBuilder(release.cvsroot, release.cvstag, buildroot)
@@ -135,7 +135,7 @@ class ReleaseBuildRunner(object):
 
             for package in packageList: 
                 logPath = os.path.join(buildroot, package.package+'.log')
-                logFile = open(logPath, 'w')
+                logFile = open(logPath, 'w', 0)
                 self.logs.append(logFile)
                 buildoptions = {}
                 if package.BuildOptions:
