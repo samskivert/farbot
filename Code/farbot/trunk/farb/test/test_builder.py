@@ -51,6 +51,8 @@ EXPORT_FILE = os.path.join(BUILDROOT, 'newvers.sh')
 
 MDCONFIG_PATH = os.path.join(CMD_DIR, 'mdconfig.sh')
 CHROOT_PATH = os.path.join(CMD_DIR, 'chroot.sh')
+MOUNT_PATH = os.path.join(CMD_DIR, 'mount.sh')
+UMOUNT_PATH = os.path.join(CMD_DIR, 'umount.sh')
 ECHO_PATH = '/bin/echo'
 SH_PATH = '/bin/sh'
 
@@ -58,6 +60,8 @@ SH_PATH = '/bin/sh'
 builder.FREEBSD_REL_PATH = FREEBSD_REL_PATH
 builder.MDCONFIG_PATH = MDCONFIG_PATH
 builder.CHROOT_PATH = CHROOT_PATH
+builder.MOUNT_PATH = MOUNT_PATH
+builder.UMOUNT_PATH = UMOUNT_PATH
 
 class LoggingProcessProtocolTestCase(unittest.TestCase):
     def setUp(self):
@@ -112,6 +116,31 @@ class CVSCommandTestCase(unittest.TestCase):
         d = cvs.export(CVSTAG, builder.NEWVERS_PATH, BUILDROOT, self.log)
         d.addCallback(self._cvsResult)
 
+        return d
+
+class MountCommandTestCase(unittest.TestCase):
+    def setUp(self):
+        self.log = open(PROCESS_LOG, 'w+')
+        self.mc = builder.MountCommand()
+
+    def tearDown(self):
+        self.log.close()
+        os.unlink(PROCESS_LOG)
+
+    def _cbMountResult(self, result):
+        self.assertEquals(result, 0)
+
+    def test_mount(self):
+        d = self.mc.mount('/dev/md0', '/mnt/md0', self.log)
+        d.addCallback(self._cbMountResult)
+        return d
+
+    def _cbUmountResult(self, result):
+        self.assertEquals(result, 0)
+
+    def test_umount(self):
+        d = self.mc.umount('/mnt/md0', self.log)
+        d.addCallback(self._cbUmountResult)
         return d
 
 class MakeCommandTestCase(unittest.TestCase):

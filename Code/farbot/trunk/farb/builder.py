@@ -44,6 +44,12 @@ CVS_PATH = '/usr/bin/cvs'
 # mdconfig(8) path
 MDCONFIG_PATH = '/sbin/mdconfig'
 
+# mount(8) path
+MOUNT_PATH = '/bin/mount'
+
+# umount(8) path
+UMOUNT_PATH = '/bin/umount'
+
 # Standard FreeBSD src location
 FREEBSD_REL_PATH = '/usr/src/release'
 
@@ -58,6 +64,9 @@ class CommandError(farb.FarbError):
     pass
 
 class CVSCommandError(CommandError):
+    pass
+
+class MountCommandError(CommandError):
     pass
 
 class NCVSParseError(CVSCommandError):
@@ -256,6 +265,55 @@ class CVSCommand(object):
         argv = [CVS_PATH, '-R', '-d', self.repository, 'export', '-r', release, '-d', destination, module]
 
         reactor.spawnProcess(protocol, CVS_PATH, argv)
+
+        return d
+
+class MountCommand(object):
+    """
+    mount(8)/umount(8) command context
+    """
+    def __init__(self):
+        """
+        Create a new MountCommand instance
+        """
+
+    def _ebMount(self, failure):
+        # Provide a more specific exception type
+        failure.trap(CommandError)
+        raise MountCommandError, failure.value
+
+    def mount(self, device, mountpoint, log):
+        """
+        Run mount(8)
+        @param device: device to mount
+        @param mountpoint: mount point
+        @param log: Open log file
+        """
+
+        # Create command argv
+        d = defer.Deferred()
+        d.addErrback(self._ebMount)
+        protocol = LoggingProcessProtocol(d, log)
+        argv = [MOUNT_PATH, device, mountpoint]
+
+        reactor.spawnProcess(protocol, MOUNT_PATH, argv)
+
+        return d
+
+    def umount(self, mountpoint, log):
+        """
+        Run mount(8)
+        @param mountpoint: mount point
+        @param log: Open log file
+        """
+
+        # Create command argv
+        d = defer.Deferred()
+        d.addErrback(self._ebMount)
+        protocol = LoggingProcessProtocol(d, log)
+        argv = [UMOUNT_PATH, mountpoint]
+
+        reactor.spawnProcess(protocol, UMOUNT_PATH, argv)
 
         return d
 
