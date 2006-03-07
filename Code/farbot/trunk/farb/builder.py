@@ -339,6 +339,9 @@ class ReleaseBuilder(object):
 
 class PackageBuilder(object):
     makeTarget = 'package-recursive'
+    defaultMakeOptions = {
+        'PACKAGE_BUILDING' : 'yes'
+    }
 
     """
     Build a FreeBSD Package 
@@ -370,7 +373,9 @@ class PackageBuilder(object):
 
         # Load up a deferred with the right call backs and return it
         # ready to be spawned
-        makecmd = MakeCommand(os.path.join(FREEBSD_PORTS_PATH, self.port), self.makeTarget, self.buildOptions, self.chroot)
+        makeOptions = self.defaultMakeOptions.copy()
+        makeOptions.update(self.buildOptions)
+        makecmd = MakeCommand(os.path.join(FREEBSD_PORTS_PATH, self.port), self.makeTarget, makeOptions, self.chroot)
         d = makecmd.make(log)
         d.addErrback(self._ebBuildError)
         return d
