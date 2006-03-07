@@ -120,6 +120,7 @@ class ReleaseBuildRunner(object):
         for release in config.Releases.Release:
             # Create the build directory
             buildroot = os.path.join(config.Releases.buildroot, release.getSectionName())
+            chroot = os.path.join(buildroot, 'chroot')
             try:
                 if (not os.path.exists(buildroot)):
                     os.makedirs(buildroot)
@@ -139,6 +140,11 @@ class ReleaseBuildRunner(object):
             eu = utils.ExecutionUnit(bctx, rb.build, logFile)
             self.oe.appendExecutionUnit(eu)
 
+            # checkout the ports tree into the chroot 
+            cvs = builder.CVSCommand(release.cvsroot)
+            eu = utils.ExecutionUnit(None, cvs.export, 'HEAD', 'ports', os.path.join(chroot, 'usr', 'ports'), logFile)
+            self.oe.appendExecutionUnit(eu)
+
             # Add package builds to the OrderedExecutor
             releaseName = release.getSectionName()
             packageList = release_packages.get(releaseName)
@@ -154,7 +160,7 @@ class ReleaseBuildRunner(object):
                 buildoptions = {}
                 if package.BuildOptions:
                     buildoptions = package.BuildOptions.Options
-                pb = builder.PackageBuilder(os.path.join(buildroot, 'chroot'), package.port, buildoptions)
+                pb = builder.PackageBuilder(chroot, package.port, buildoptions)
                 # Add our package builder to the OrderedExecutor
                 bctx = BuildContext("%s package build" % package.package, logPath)
                 eu = utils.ExecutionUnit(bctx, pb.build, logFile)
