@@ -139,13 +139,15 @@ class ReleaseBuildRunner(object):
             eu = utils.ExecutionUnit(bctx, rb.build, logFile)
             self.oe.appendExecutionUnit(eu)
 
+            # Add package builds to the OrderedExecutor
             releaseName = release.getSectionName()
             packageList = release_packages.get(releaseName)
             # if asked to build no packages go onto the next release 
             if (not packageList):
                 continue
 
-            for package in packageList: 
+            for package in packageList:
+                # Open a per-package log file
                 logPath = os.path.join(buildroot, package.package+'.log')
                 logFile = open(logPath, 'w', 0)
                 self.logs.append(logFile)
