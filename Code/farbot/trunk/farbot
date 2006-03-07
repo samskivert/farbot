@@ -145,24 +145,30 @@ class ReleaseBuildRunner(object):
                 eu = utils.ExecutionUnit(None, pb.build, logFile)
                 self.oe.appendExecutionUnit(eu)
 
-    def _cbReleaseBuild(self, result):
-        print "Release Build Complete"
-
+    def _closeLogs(self):
         # Close all the log files
         for logFile in self.logs:
             logFile.close()
+
+    def _cbReleaseBuild(self, result):
+        print "Release Build Complete"
+        self._closeLogs()
 
         reactor.stop()
 
     def _ebReleaseBuild(self, failure):
-        failure.trap(builder.ReleaseBuildError)
-        print "Release Build Failed: %s" % (failure.value)
-        print "For more information, refer to the build.log"
+        try:
+            failure.raiseException()
+        except builder.ReleaseBuildError, e:
+            print "Release Build Failed: %s" % (e)
+            print "For more information, refer to the build.log"
+        except builder.PackageBuildError, e:
+            print "Package Build Failed: %s" % (e)
+            print "For more information, refer to the package build logs"
+        except Exception, e:
+            print "Unhandled Release Build Error: %s" % (e)
 
-        # Close all the log files
-        for logFile in self.logs:
-            logFile.close()
-
+        self._closeLogs()
         reactor.stop()
 
     def run(self):
