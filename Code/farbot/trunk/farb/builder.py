@@ -263,7 +263,7 @@ class MakeCommand(object):
     """
     make(1) command context
     """
-    def __init__(self, directory, targets, options, chrootdir=None):
+    def __init__(self, directory, targets, options={}, chrootdir=None):
         """
         Create a new MakeCommand instance
         @param directory: Directory in which to run make(1)
