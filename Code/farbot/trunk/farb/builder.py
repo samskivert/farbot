@@ -45,10 +45,10 @@ CVS_PATH = '/usr/bin/cvs'
 MDCONFIG_PATH = '/sbin/mdconfig'
 
 # mount(8) path
-MOUNT_PATH = '/bin/mount'
+MOUNT_PATH = '/sbin/mount'
 
 # umount(8) path
-UMOUNT_PATH = '/bin/umount'
+UMOUNT_PATH = '/sbin/umount'
 
 # Standard FreeBSD src location
 FREEBSD_REL_PATH = '/usr/src/release'
