@@ -229,16 +229,16 @@ class MakeCommand(object):
     """
     make(1) command context
     """
-    def __init__(self, directory, target, options, chrootdir=None):
+    def __init__(self, directory, targets, options, chrootdir=None):
         """
         Create a new MakeCommand instance
         @param directory: Directory in which to run make(1)
-        @param target: Makefile target
+        @param targets: Makefile targets
         @param options: Dictionary of Makefile options
         @param chrootdir: Optional chroot directory
         """
         self.directory = directory
-        self.target = target
+        self.targets = targets
         self.options = options
         self.chrootdir = chrootdir
 
@@ -257,13 +257,16 @@ class MakeCommand(object):
         d = defer.Deferred()
         d.addErrback(self._ebMake)
         protocol = LoggingProcessProtocol(d, log)
-        argv = [MAKE_PATH, '-C', self.directory, self.target]
+        argv = [MAKE_PATH, '-C', self.directory]
         if self.chrootdir:
             runCmd = CHROOT_PATH
             argv.insert(0, self.chrootdir)
             argv.insert(0, CHROOT_PATH)
         else:
             runCmd = MAKE_PATH
+
+        for target in self.targets:
+            argv.append(target)
 
         for option, value in self.options.items():
             argv.append("%s=%s" % (option, value))
@@ -273,7 +276,7 @@ class MakeCommand(object):
 
 
 class ReleaseBuilder(object):
-    makeTarget = 'release'
+    makeTarget = ('release',)
     defaultMakeOptions = {
         'NOPORTS' : 'no',
         'NODOC' : 'no'
@@ -338,7 +341,7 @@ class ReleaseBuilder(object):
         return d
 
 class PackageBuilder(object):
-    makeTarget = 'package-recursive'
+    makeTarget = ('clean', 'package-recursive')
     defaultMakeOptions = {
         'PACKAGE_BUILDING' : 'yes'
     }

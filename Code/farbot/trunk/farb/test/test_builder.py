@@ -115,7 +115,25 @@ class MakeCommandTestCase(unittest.TestCase):
             'TEST2' : '2'
         }
 
-        mc = builder.MakeCommand(BUILDROOT, 'makecommand', makeOptions)
+        mc = builder.MakeCommand(BUILDROOT, ('makecommand',), makeOptions)
+        d = mc.make(self.log)
+        d.addCallback(self._makeResult)
+
+        return d
+
+    def _makeMultipleResult(self, result):
+        o = open(PROCESS_OUT, 'r')
+        self.assertEquals('MakeCommand 1 2\nMakeCommand 1 2\n', o.read())
+        o.close()
+        self.assertEquals(result, 0)
+
+    def test_makeMultiple(self):
+        makeOptions = {
+            'TEST1' : '1',
+            'TEST2' : '2'
+        }
+
+        mc = builder.MakeCommand(BUILDROOT, ('makecommand','makecommand'), makeOptions)
         d = mc.make(self.log)
         d.addCallback(self._makeResult)
 
@@ -129,7 +147,7 @@ class MakeCommandTestCase(unittest.TestCase):
         self.assertEquals(result, 0)
 
     def test_makeChroot(self):
-        mc = builder.MakeCommand(BUILDROOT, 'makecommand', {}, '/nonexistant') 
+        mc = builder.MakeCommand(BUILDROOT, ('makecommand',), {}, '/nonexistant') 
         d = mc.make(self.log) 
         d.addCallback(self._makeChrootResult)
         return d
@@ -249,7 +267,7 @@ class ReleaseBuilderTestCase(unittest.TestCase):
 
     def test_buildFailure(self):
         # Reach into our builder and force an implosion
-        self.builder.makeTarget = 'error'
+        self.builder.makeTarget = ('error',)
         d = self.builder.build(self.log)
         d.addCallbacks(self._buildSuccess, self._buildError)
         return d
@@ -302,7 +320,7 @@ class PackageBuilderTestCase(unittest.TestCase):
 
     def test_buildFailure(self):
         # Reach into our builder and force an implosion
-        self.builder.makeTarget = 'error'
+        self.builder.makeTarget = ('error',)
         d = self.builder.build(self.log)
         d.addCallbacks(self._buildSuccess, self._buildError)
         return d

@@ -13,6 +13,8 @@ protocol:
 makecommand:
 	@echo MakeCommand ${TEST1} ${TEST2} >${OUTPUT}
 
+clean:
+
 release:
 	@echo ReleaseBuilder: ${BUILDNAME} ${CHROOTDIR} ${CVSROOT} ${RELEASETAG} ${NOPORTS} ${NODOC} ${MAKE_ISOS} >${OUTPUT}
 
