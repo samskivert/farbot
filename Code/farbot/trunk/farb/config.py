@@ -62,8 +62,8 @@ def verifyPackages(config):
     release_packages = {}
     for inst in config.Installations.Installation:
         releaseName = inst.release.lower()
+        # if release has no packages set a decent default
         if (not release_packages.has_key(releaseName)):
-            # each release has a list of pacakge section values
            release_packages[releaseName] = [] 
         for pset_name in inst.packageset:
             for pset in config.PackageSets.PackageSet:

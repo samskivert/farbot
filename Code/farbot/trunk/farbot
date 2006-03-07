@@ -122,88 +122,91 @@ class ReleaseBuildRunner(object):
         self.logs = []
         self.oe = utils.OrderedExecutor()
 
-        for release in config.Releases.Release:
-            # Create the build directory
-            buildroot = os.path.join(config.Releases.buildroot, release.getSectionName())
-            netinstallroot = os.path.join(config.Releases.netinstallroot, release.getSectionName())
-            chroot = os.path.join(buildroot, 'chroot')
-            packagesdir = os.path.join(netinstallroot, 'packages')
-            portsdir = os.path.join(chroot, 'usr', 'ports')
-            portspackagesdir = os.path.join(portsdir, 'packages')
+        for inst in config.Installations.Installation:
+            releaseName = inst.release.lower()
+            for release in config.Releases.Release:
+                if (releaseName.lower() == release.getSectionName()):
+                # Create the build directory
+                    buildroot = os.path.join(config.Releases.buildroot, release.getSectionName())
+                    netinstallroot = os.path.join(config.Releases.netinstallroot, release.getSectionName())
+                    chroot = os.path.join(buildroot, 'chroot')
+                    packagesdir = os.path.join(netinstallroot, 'packages')
+                    portsdir = os.path.join(chroot, 'usr', 'ports')
+                    portspackagesdir = os.path.join(portsdir, 'packages')
 
-            try:
-                if (not os.path.exists(buildroot)):
-                    os.makedirs(buildroot)
-            except Exception, e:
-                print "Failed to create build root: %s" % (e)
-                sys.exit(1)
+                    try:
+                        if (not os.path.exists(buildroot)):
+                            os.makedirs(buildroot)
+                    except Exception, e:
+                        print "Failed to create build root: %s" % (e)
+                        sys.exit(1)
 
-            # Open the log file
-            logPath = os.path.join(buildroot, 'build.log')
-            buildLog = open(logPath, 'w', 0)
-            self.logs.append(buildLog)
+                    # Open the log file
+                    logPath = os.path.join(buildroot, 'build.log')
+                    buildLog = open(logPath, 'w', 0)
+                    self.logs.append(buildLog)
 
-            rb = builder.ReleaseBuilder(release.cvsroot, release.cvstag, buildroot)
+                    rb = builder.ReleaseBuilder(release.cvsroot, release.cvstag, buildroot)
 
-            # Add our builder to the OrderedExecutor
-            bctx = BuildContext("%s release build" % release.getSectionName(), logPath)
-            eu = utils.ExecutionUnit(bctx, rb.build, buildLog)
-            self.oe.appendExecutionUnit(eu)
-
-            # checkout the ports tree into the chroot 
-            cvs = builder.CVSCommand(release.cvsroot)
-            eu = utils.ExecutionUnit(None, cvs.export, 'HEAD', 'ports', portsdir, buildLog)
-            self.oe.appendExecutionUnit(eu)
-
-            # make the packages directory 
-            if (not os.path.exists(portspackagesdir)):
-                eu = utils.ExecutionUnit(None, defer.execute, os.mkdir, portspackagesdir) 
-                self.oe.appendExecutionUnit(eu)
-
-            # Add package builds to the OrderedExecutor
-            releaseName = release.getSectionName()
-            packageList = release_packages.get(releaseName)
-            # if asked to build no packages go onto the next release 
-            if (not packageList):
-                continue
-
-            for package in packageList:
-                # Open a per-package log file
-                logPath = os.path.join(buildroot, package.package+'.log')
-                packageLog = open(logPath, 'w', 0)
-                self.logs.append(packageLog)
-                buildoptions = {}
-                if package.BuildOptions:
-                    buildoptions = package.BuildOptions.Options
-                pb = builder.PackageBuilder(chroot, package.port, buildoptions)
-                # Add our package builder to the OrderedExecutor
-                bctx = BuildContext("%s package build" % package.package, logPath)
-                eu = utils.ExecutionUnit(bctx, pb.build, packageLog)
-                self.oe.appendExecutionUnit(eu)
-
-            # grab the current index
-            index = builder.MakeCommand('/usr/ports', ['fetchindex'], chrootdir=chroot)
-            eu = utils.ExecutionUnit(None, index.make, buildLog)
-            self.oe.appendExecutionUnit(eu)
-
-            # clean the netinstall release directory
-            if (os.path.exists(netinstallroot)):
-                eu = utils.ExecutionUnit(None, threads.deferToThread, shutil.rmtree, netinstallroot) 
-                self.oe.appendExecutionUnit(eu)
-
-            # copy the release into the netinstall root
-            eu = utils.ExecutionUnit(None, threads.deferToThread, shutil.copytree, os.path.join(chroot, 'R', 'ftp'), netinstallroot, 1)
-            self.oe.appendExecutionUnit(eu)
-
-            # copy the packages into the netinstall root
-            eu = utils.ExecutionUnit(None, threads.deferToThread, shutil.copytree, os.path.join(portsdir, 'packages'), packagesdir, 1)
-            self.oe.appendExecutionUnit(eu)
-
-            # copy the package INDEX files into the netinstall root
-            for dir in os.listdir(portsdir):
-                if (dir[:len(INDEX_PREFIX)] == INDEX_PREFIX):
-                    eu = utils.ExecutionUnit(None, threads.deferToThread, shutil.copy2, os.path.join(portsdir, dir), packagesdir)
+                    # Add our builder to the OrderedExecutor
+                    bctx = BuildContext("%s release build" % release.getSectionName(), logPath)
+                    eu = utils.ExecutionUnit(bctx, rb.build, buildLog)
                     self.oe.appendExecutionUnit(eu)
+
+                    # checkout the ports tree into the chroot 
+                    cvs = builder.CVSCommand(release.cvsroot)
+                    eu = utils.ExecutionUnit(None, cvs.export, 'HEAD', 'ports', portsdir, buildLog)
+                    self.oe.appendExecutionUnit(eu)
+
+                    # make the packages directory 
+                    if (not os.path.exists(portspackagesdir)):
+                        eu = utils.ExecutionUnit(None, defer.execute, os.mkdir, portspackagesdir) 
+                        self.oe.appendExecutionUnit(eu)
+
+                    # Add package builds to the OrderedExecutor
+                    releaseName = release.getSectionName()
+                    packageList = release_packages.get(releaseName)
+                    # if asked to build no packages go onto the next release 
+                    if (not packageList):
+                        continue
+
+                    for package in packageList:
+                        # Open a per-package log file
+                        logPath = os.path.join(buildroot, package.package+'.log')
+                        packageLog = open(logPath, 'w', 0)
+                        self.logs.append(packageLog)
+                        buildoptions = {}
+                        if package.BuildOptions:
+                            buildoptions = package.BuildOptions.Options
+                        pb = builder.PackageBuilder(chroot, package.port, buildoptions)
+                        # Add our package builder to the OrderedExecutor
+                        bctx = BuildContext("%s package build" % package.package, logPath)
+                        eu = utils.ExecutionUnit(bctx, pb.build, packageLog)
+                        self.oe.appendExecutionUnit(eu)
+
+                    # grab the current index
+                    index = builder.MakeCommand('/usr/ports', ['fetchindex'], chrootdir=chroot)
+                    eu = utils.ExecutionUnit(None, index.make, buildLog)
+                    self.oe.appendExecutionUnit(eu)
+
+                    # clean the netinstall release directory
+                    if (os.path.exists(netinstallroot)):
+                        eu = utils.ExecutionUnit(None, threads.deferToThread, shutil.rmtree, netinstallroot) 
+                        self.oe.appendExecutionUnit(eu)
+
+                    # copy the release into the netinstall root
+                    eu = utils.ExecutionUnit(None, threads.deferToThread, shutil.copytree, os.path.join(chroot, 'R', 'ftp'), netinstallroot, 1)
+                    self.oe.appendExecutionUnit(eu)
+
+                    # copy the packages into the netinstall root
+                    eu = utils.ExecutionUnit(None, threads.deferToThread, shutil.copytree, os.path.join(portsdir, 'packages'), packagesdir, 1)
+                    self.oe.appendExecutionUnit(eu)
+
+                    # copy the package INDEX files into the netinstall root
+                    for dir in os.listdir(portsdir):
+                        if (dir[:len(INDEX_PREFIX)] == INDEX_PREFIX):
+                            eu = utils.ExecutionUnit(None, threads.deferToThread, shutil.copy2, os.path.join(portsdir, dir), packagesdir)
+                            self.oe.appendExecutionUnit(eu)
 
     def _closeLogs(self):
         # Close all the log files
