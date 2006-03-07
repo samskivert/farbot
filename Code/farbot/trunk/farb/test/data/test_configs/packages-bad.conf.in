@@ -4,6 +4,9 @@
 <Releases>
 	# Release Build Working Directory
 	BuildRoot @BUILDROOT@
+
+	# NetInstall/NFS Root Directory 
+	NetInstallRoot @BUILDROOT@
 	<Release 6.0>
 		# FreeBSD CVS Repository Mirror
 		CVSRoot	@CVSROOT@
