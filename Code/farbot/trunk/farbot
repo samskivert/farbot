@@ -129,7 +129,7 @@ class ReleaseBuildRunner(object):
             chroot = os.path.join(buildroot, 'chroot')
             packagesdir = os.path.join(netinstallroot, 'packages')
             portsdir = os.path.join(chroot, 'usr', 'ports')
-            portspackagesdir = os.path.join(chroot, 'usr', 'ports', 'packages')
+            portspackagesdir = os.path.join(portsdir, 'packages')
 
             try:
                 if (not os.path.exists(buildroot)):
