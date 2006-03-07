@@ -29,6 +29,11 @@
 
 from twisted.internet import reactor, defer
 
+class ExecutionFailureContext(object):
+    def __init__(self, context, failure):
+        self.executionContext = context
+        self.originalFailure = failure 
+
 class ExecutionUnit(object):
     """
     An execution unit to be passed to an OrderedExecutor
@@ -58,12 +63,15 @@ class OrderedExecutor(object):
         """
         self.eunits.append(eunit)
 
-    def _callWorker(self):
+    def _nextWorker(self):
         """
         Callable generator
         """
         for eunit in self.eunits:
-            yield eunit.callable[0](*eunit.callable[1], **eunit.callable[2])
+            yield eunit
+
+    def _handleFailure(self, failure, context, d):
+        d.errback(ExecutionFailureContext(context, failure))
 
     def run(self):
         """
@@ -72,19 +80,21 @@ class OrderedExecutor(object):
         or an error has occured.
         """
         d = defer.Deferred()
-        work = iter(self._callWorker())
+        work = iter(self._nextWorker())
 
         # In our nested callback, iterate over callables returned by our
         # generator
         def cb(result):
             try:
-                new = work.next()
+                eunit = work.next()
+                new = eunit.callable[0](*eunit.callable[1], **eunit.callable[2])
             except StopIteration:
                 # Iteration complete
                 d.callback(None)
             else:
                 # Add our nested callback to the new deferred
-                new.addCallbacks(cb, d.errback)
+                new.addCallback(cb)
+                new.addErrback(self._handleFailure, eunit.context, d)
 
         # Kick-off the looping deferred calls
         try:

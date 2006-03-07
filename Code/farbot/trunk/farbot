@@ -96,6 +96,17 @@ def main():
 
     reactor.run()
 
+class BuildContext(object):
+    """
+    Context associated with release and packaging builds.
+    """
+    def __init__(self, description, logPath):
+        """
+        @param description: Description of the build
+        @param logPath: Path to log file, if any.
+        """
+        self.description = description
+        self.logPath = logPath
 
 class ReleaseBuildRunner(object):
     """
@@ -124,7 +135,8 @@ class ReleaseBuildRunner(object):
             rb = builder.ReleaseBuilder(release.cvsroot, release.cvstag, buildroot)
 
             # Add our builder to the OrderedExecutor
-            eu = utils.ExecutionUnit(None, rb.build, logFile)
+            bctx = BuildContext("%s release build" % release.getSectionName(), logPath)
+            eu = utils.ExecutionUnit(bctx, rb.build, logFile)
             self.oe.appendExecutionUnit(eu)
 
             releaseName = release.getSectionName()
@@ -142,7 +154,8 @@ class ReleaseBuildRunner(object):
                     buildoptions = package.BuildOptions.Options
                 pb = builder.PackageBuilder(os.path.join(buildroot, 'chroot'), package.port, buildoptions)
                 # Add our package builder to the OrderedExecutor
-                eu = utils.ExecutionUnit(None, pb.build, logFile)
+                bctx = BuildContext("%s package build" % package.package, logPath)
+                eu = utils.ExecutionUnit(bctx, pb.build, logFile)
                 self.oe.appendExecutionUnit(eu)
 
     def _closeLogs(self):
@@ -158,13 +171,15 @@ class ReleaseBuildRunner(object):
 
     def _ebReleaseBuild(self, failure):
         try:
-            failure.raiseException()
+            # Grab the BuildContext and raise the original exception
+            bctx = failure.value.executionContext
+            failure.value.originalFailure.raiseException()
         except builder.ReleaseBuildError, e:
-            print "Release Build Failed: %s" % (e)
-            print "For more information, refer to the build.log"
+            print "%s failed: %s" % (bctx.description, e)
+            print "For more information, refer to the release build log: %s" % (bctx.logPath)
         except builder.PackageBuildError, e:
-            print "Package Build Failed: %s" % (e)
-            print "For more information, refer to the package build logs"
+            print "%s failed: %s" % (bctx.description, e)
+            print "For more information, refer to the package build log: %s" % (bctx.logPath)
         except Exception, e:
             print "Unhandled Release Build Error: %s" % (e)
 
