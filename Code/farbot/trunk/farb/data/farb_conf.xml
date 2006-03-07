@@ -12,7 +12,7 @@
 
     <sectiontype name="Releases" datatype=".releases_handler">
         <key name="BuildRoot" datatype="existing-directory" required="yes"/>
-        <key name="NetinstallRoot" datatype="existing-directory" required="yes"/>
+        <key name="NetInstallRoot" datatype="existing-directory" required="yes"/>
         <multisection type="Release" name="+" attribute="Release" required="yes"/>
     </sectiontype>
     <section type="Releases" name="*" attribute="Releases" required="yes"/>
