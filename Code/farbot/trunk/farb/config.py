@@ -62,7 +62,8 @@ def verifyPackages(config):
     release_packages = {}
     for inst in config.Installations.Installation:
         releaseName = inst.release.lower()
-        # if release has no packages set a decent default
+        # insert a blank list when a new release is seen
+        # so that .append() below will work
         if (not release_packages.has_key(releaseName)):
            release_packages[releaseName] = [] 
         for pset_name in inst.packageset:
