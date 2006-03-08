@@ -5,8 +5,12 @@
 	# Release Build Working Directory
 	BuildRoot @BUILDROOT@
 
-	# NetInstall/NFS Root Directory 
-	NetInstallRoot @BUILDROOT@
+	# Net Install/NFS Directory 
+	InstallRoot @BUILDROOT@
+
+	# Host for NFS Server (Probably this machine)
+	NFSHost	10.0.50.1
+
 	<Release 6.0>
 		# FreeBSD CVS Repository Mirror
 		CVSRoot	@CVSROOT@
@@ -50,6 +54,7 @@
 <Installations>
 	<Installation Standard>
 		Release		6.0
+		NetworkDevice	em0
 		PackageSet      Base
 		PackageSet      Database
 		<Disk ad0>
@@ -58,6 +63,7 @@
 	</Installation>
 	<Installation Other>
 		Release	        6-STABLE	
+		NetworkDevice	em0
 		PackageSet      Base
 		PackageSet      Database
 		<Disk ad0>

@@ -12,7 +12,8 @@
 
     <sectiontype name="Releases" datatype=".releases_handler">
         <key name="BuildRoot" datatype="existing-directory" required="yes"/>
-        <key name="NetInstallRoot" datatype="existing-directory" required="yes"/>
+        <key name="InstallRoot" datatype="existing-directory" required="yes"/>
+        <key name="NFSHost" datatype="ipaddr-or-hostname" required="yes"/>
         <multisection type="Release" name="+" attribute="Release" required="yes"/>
     </sectiontype>
     <section type="Releases" name="*" attribute="Releases" required="yes"/>
@@ -61,6 +62,9 @@
 
     <sectiontype name="Installation">
         <key name="Release" datatype="string" required="yes"/>
+        <key name="Hostname" datatype="dotted-name" required="no" default="install"/>
+        <key name="Domain" datatype="dotted-name" required="no" default="example.com"/>
+        <key name="NetworkDevice" datatype="string" required="yes"/>
         <multikey name="PackageSet" datatype="string" required="no"/>
         <multisection type="Disk" name="+" attribute="Disk" required="yes"/>
     </sectiontype>
