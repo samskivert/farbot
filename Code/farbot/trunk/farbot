@@ -37,7 +37,7 @@ from twisted.python import threadable
 threadable.init()
 
 import farb
-from farb import utils, builder, config
+from farb import utils, builder, config, sysinstall
 
 INDEX_PREFIX='INDEX'
 
@@ -130,12 +130,12 @@ class ReleaseBuildRunner(object):
                 if (releaseName.lower() == release.getSectionName()):
                     # Useful paths
                     buildroot = os.path.join(config.Releases.buildroot, release.getSectionName())
-                    netinstallroot = os.path.join(config.Releases.netinstallroot, release.getSectionName())
+                    installroot = os.path.join(config.Releases.installroot, release.getSectionName())
                     chroot = os.path.join(buildroot, 'chroot')
 
                     ports_dir = os.path.join(chroot, 'usr', 'ports')
                     package_dir = os.path.join(ports_dir, 'packages')
-                    install_package_dir = os.path.join(netinstallroot, 'packages')
+                    install_package_dir = os.path.join(installroot, 'packages')
 
                     # Create the build directory
                     try:
@@ -194,12 +194,12 @@ class ReleaseBuildRunner(object):
                         self.oe.appendExecutionUnit(eu)
 
                     # Clean the netinstall release directory
-                    if (os.path.exists(netinstallroot)):
-                        eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.rmtree, netinstallroot) 
+                    if (os.path.exists(installroot)):
+                        eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.rmtree, installroot) 
                         self.oe.appendExecutionUnit(eu)
 
                     # Copy the newly minted release into the netinstall root
-                    eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.copytree, os.path.join(chroot, 'R', 'ftp'), netinstallroot, 1)
+                    eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.copytree, os.path.join(chroot, 'R', 'ftp'), installroot, 1)
                     self.oe.appendExecutionUnit(eu)
 
                     # If we built any packages, do some final bit pushing
