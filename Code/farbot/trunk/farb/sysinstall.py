@@ -147,6 +147,7 @@ class InstallationConfig(ConfigSection):
         'nonInteractive',
         'noWarn'
     )
+
     # Defaults
     debug = 'YES'
     nonInteractive = 'YES'
