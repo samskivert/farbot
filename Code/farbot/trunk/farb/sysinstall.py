@@ -227,6 +227,7 @@ class DiskPartitionConfig(ConfigSection):
     def serialize(self, output):
         self._serializeOptions(output)
         self._serializeCommands(output)
+        self.diskLabelConfig.serialize(output)
 
 
 class InstallationConfig(ConfigSection):
@@ -259,6 +260,12 @@ class InstallationConfig(ConfigSection):
         # Distribution sets
         self.distSetConfig = DistSetConfig(section, config)
 
+        # Disks (Partitions and Labels)
+        self.diskPartitionConfigs = []
+        for disk in section.Disk:
+            diskPartitionConfig = DiskPartitionConfig(disk, config)
+            self.diskPartitionConfigs.append(diskPartitionConfig)
+
     def serialize(self, output):
         # Global configuration options
         self._serializeOptions(output)
@@ -268,3 +275,7 @@ class InstallationConfig(ConfigSection):
 
         # Select distribution sets
         self.distSetConfig.serialize(output)
+
+        # Disk formatting
+        for disk in self.diskPartitionConfigs:
+            disk.serialize(output)

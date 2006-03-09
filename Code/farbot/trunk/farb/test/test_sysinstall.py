@@ -178,6 +178,11 @@ class DiskPartitionConfigTestCase(ConfigTestCase, unittest.TestCase):
                 dsc.bootManager
         )
         dsc.serialize(output)
+        # Ensure that the partitionmap was serialized, and then cut it off.
+        # ... this stuff is such a pain to test robustly.
+        self.assert_(output.tell() > len(expectedOutput))
+        output.truncate(len(expectedOutput))
+
         self.assertEquals(output.getvalue(), expectedOutput)
 
 class InstallationConfigTestCase(ConfigTestCase, unittest.TestCase):
