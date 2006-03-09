@@ -117,6 +117,53 @@ class DistSetConfigTestCase(ConfigTestCase, unittest.TestCase):
         self.assertEquals(output.getvalue(), expectedOutput)
 
 
+class DiskLabelConfigTestCase(ConfigTestCase, unittest.TestCase):
+    def test_init(self):
+        """
+        Initialize a DiskLabelConfig (Handles FreeBSD partitions)
+        """
+        dlc = sysinstall.DiskLabelConfig(self.config.Partitions.PartitionMap[0], 'ad0s1')
+
+    def test_serialize(self):
+        """
+        Serialize a DiskPartitionConfig
+        """
+        output = StringIO()
+        dlc = sysinstall.DiskLabelConfig(self.config.Partitions.PartitionMap[0], 'ad0s1')
+        # Do some basic validation of the serialized output
+        expectedOutput = 'ad0s1-1=%s\nad0s1-2=%s\nad0s1-3=%s\nad0s1-4=%s\nad0s1-5=%s\ndiskLabelEditor\n' % (
+                getattr(dlc, 'ad0s1-1'),
+                getattr(dlc, 'ad0s1-2'),
+                getattr(dlc, 'ad0s1-3'),
+                getattr(dlc, 'ad0s1-4'),
+                getattr(dlc, 'ad0s1-5'),
+        )
+        dlc.serialize(output)
+        self.assertEquals(output.getvalue(), expectedOutput)
+
+class DiskPartitionConfigTestCase(ConfigTestCase, unittest.TestCase):
+    def test_init(self):
+        """
+        Initialize a DiskPartitionConfig (Handles BIOS partitions)
+        """
+        dpc = sysinstall.DiskPartitionConfig(self.instSection.Disk[0], self.config)
+        self.assertEquals(dpc.disk, 'ad0')
+
+    def test_serialize(self):
+        """
+        Serialize a DiskPartitionConfig
+        """
+        output = StringIO()
+        dsc = sysinstall.DiskPartitionConfig(self.instSection.Disk[0], self.config)
+        # Do some basic validation of the serialized output
+        expectedOutput = 'disk=%s\npartition=%s\nbootManager=%s\ndiskPartitionEditor\n' % (
+                dsc.disk,
+                dsc.partition,
+                dsc.bootManager
+        )
+        dsc.serialize(output)
+        self.assertEquals(output.getvalue(), expectedOutput)
+
 class InstallationConfigTestCase(ConfigTestCase, unittest.TestCase):
     def setUp(self):
         ConfigTestCase.setUp(self)

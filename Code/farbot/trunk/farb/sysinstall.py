@@ -137,6 +137,98 @@ class DistSetConfig(ConfigSection):
         self._serializeCommands(output)
 
 
+class DiskLabelConfig(ConfigSection):
+    """
+    install.cfg(8) FreeBSD labels (partition) configuration section.
+    """
+    # Section option names are generated
+
+    # Section commands
+    sectionCommands = (
+        'diskLabelEditor',
+    )
+
+    def __init__(self, section, diskDevice):
+        """
+        Initialize a disk label configuration for a given
+        partition map and device.
+        @param section: ZConfig PartitionMap section
+        @param diskDevice: Device to label (eg ad0s1)
+        """
+        # Section option names are generated
+        self.sectionOptions = []
+        self.diskDevice = diskDevice
+
+        # Grab our partition map
+        for part in section.Partition:
+            # Build device + slice + partition number, and append it to
+            # sectionOptions
+            slice = self.diskDevice + '-' + part.getSectionName()
+            self.sectionOptions.append(slice)
+
+            # Convert bytes to 512 byte blocks as required by sysinstall
+            if (part.size == 0):
+                size = 0
+            else:
+                size = part.size / 512
+            
+            if (part.type == 'ufs'):
+                # UFS
+                setattr(self, slice, "%s %d %s %d" % (part.type, size, part.mount, int(part.softupdates)))
+            elif (not part.mount):
+                # Swap.
+                setattr(self, slice, "%s %d none" % (part.type, size))
+            else:
+                # Everything else.
+                setattr(self, slice, "%s %d %s" % (part.type, size, part.mount))
+
+        # Ensure that partitions are in order (1 ... 9)
+        self.sectionOptions.sort()
+
+    def serialize(self, output):
+        self._serializeOptions(output)
+        self._serializeCommands(output)
+
+
+class DiskPartitionConfig(ConfigSection):
+    """
+    install.cfg(8) BIOS partition configuration section.
+    """
+    # Section option names
+    sectionOptions = (
+        'disk',         # Disk to partition
+        'partition',    # Partitioning method
+        'bootManager',  # Boot manage to install
+    )
+    # We hardcode the use of the entire disk
+    partition = 'all'
+    # Hardcode the use of the boot manager, too
+    bootManager = 'standard'
+
+    # Section commands
+    sectionCommands = (
+        'diskPartitionEditor',
+    )
+
+    def __init__(self, section, config):
+        """
+        Initialize a disk partition configuration for a given
+        disk section.
+        @param section: ZConfig Disk section
+        @param config: ZConfig Farbot Config
+        """
+        self.disk = section.getSectionName()
+
+        # Grab our partition map
+        for map in config.Partitions.PartitionMap:
+            if (section.partitionmap.lower() == map.getSectionName()):
+                pass
+
+    def serialize(self, output):
+        self._serializeOptions(output)
+        self._serializeCommands(output)
+
+
 class InstallationConfig(ConfigSection):
     """
     InstallationConfig instances represent a
