@@ -100,8 +100,7 @@ class NetworkConfigTestCase(ConfigTestCase, unittest.TestCase):
 class InstallationConfigTestCase(ConfigTestCase, unittest.TestCase):
     def setUp(self):
         ConfigTestCase.setUp(self)
-        self.netConfig = sysinstall.NetworkConfig(self.instSection, self.config)
-        self.inst = sysinstall.InstallationConfig(self.instSection.getSectionName(), self.netConfig)
+        self.inst = sysinstall.InstallationConfig(self.instSection, self.config)
 
     def test_init(self):
         """

@@ -120,14 +120,16 @@ class InstallationConfig(ConfigSection):
     nonInteractive = 'YES'
     noWarn = 'YES'
 
-    def __init__(self, name, networkConfig):
+    def __init__(self, section, config):
         """
         Initialize a new installation configuration.
-        @param name: Installation name
-        @param networkConfig: NetworkConfig instance for this installation
+        @param section: ZConfig Installation section
+        @param config: ZConfig Farbot Config
         """
-        self.name = name
-        self.networkConfig = networkConfig
+        self.name = section.getSectionName()
+
+        # Network configuration
+        self.networkConfig = NetworkConfig(section, config)
 
     def serialize(self, output):
         # Global configuration options
