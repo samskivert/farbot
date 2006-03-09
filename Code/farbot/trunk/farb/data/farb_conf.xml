@@ -19,7 +19,7 @@
     <section type="Releases" name="*" attribute="Releases" required="yes"/>
 
     <!-- Partitioning Schema -->
-    <sectiontype name="Partition">
+    <sectiontype name="Partition" datatype=".partition_handler">
         <key name="Type" datatype="string" required="yes"/>
         <key name="Size" datatype="byte-size" required="yes"/>
         <key name="Mount" datatype="string" required="no"/>

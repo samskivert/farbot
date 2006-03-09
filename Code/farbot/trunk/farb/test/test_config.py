@@ -55,7 +55,8 @@ CONFIG_SUBS = {
     '@CVSROOT@' : CVSROOT,
     '@BUILDROOT@' : BUILDROOT,
     '@TAG1@' : 'RELENG_6_0',
-    '@TAG2@' : 'RELENG_6'
+    '@TAG2@' : 'RELENG_6',
+    '@SWAPSU@' : 'False'
 }
 
 def rewrite_config(inpath, outpath, variables):
@@ -96,7 +97,28 @@ class ConfigParsingTestCase(unittest.TestCase):
         """ Load a standard release configuration """
         config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
         self.assertEquals(config.Releases.Release[0].cvstag, 'RELENG_6_0')
-        
+
+    def test_partition_softupdates(self):
+        """ Verify that SoftUpdates flags are tweaked appropriately """
+        bs = CONFIG_SUBS.copy()
+        bs['@SWAPSU@'] = 'True'
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, bs)
+
+        config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
+        for part in config.Partitions.PartitionMap[0].Partition:
+            if (part.type == 'swap'):
+                self.assertEquals(part.softupdates, False)
+            elif (part.mount == '/usr'):
+                self.assertEquals(part.softupdates, True)
+
+    def test_partition_softupdates(self):
+        """ Verify that partition sizes are converted correctly """
+        config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
+        for part in config.Partitions.PartitionMap[0].Partition:
+            if (part.type == 'swap'):
+                # The swap partition should be 4GB, or 8,388,608 512-byte blocks
+                self.assertEquals(part.size, 8388608)
+
     def test_package_sets(self):
         """ Load a standard package set configuration """
         config, handler = ZConfig.loadConfig(self.schema, PACKAGES_CONFIG_FILE)

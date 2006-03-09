@@ -41,6 +41,7 @@
 		<Partition 2>
 			Size		4GB
 			Type		swap
+			SoftUpdates	@SWAPSU@
 		</Partition>
 
 		<Partition 3>

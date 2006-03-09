@@ -50,6 +50,27 @@ def releases_handler(section):
 
     return section
 
+def partition_handler(section):
+    """
+    Validate a partition map, performing appropriate datatype conversions
+    where necessary.
+    """
+
+    # Validate known file systems
+    if (section.type != 'ufs'):
+        if (section.softupdates):
+            # Only UFS supports softupdates. We'll fix this foible
+            section.softupdates = False
+
+    # If no mount point is specified, set string to "none"
+    if (not section.mount):
+        section.mount = 'none'
+
+    # Convert bytes to 512 byte blocks
+    section.size = section.size / 512
+
+    return section
+
 def verifyPackages(config):
     """
     Verify a given installation has only unique packages defined

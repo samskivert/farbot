@@ -166,21 +166,11 @@ class DiskLabelConfig(ConfigSection):
             slice = self.diskDevice + '-' + part.getSectionName()
             self.sectionOptions.append(slice)
 
-            # Convert bytes to 512 byte blocks as required by sysinstall
-            if (part.size == 0):
-                size = 0
+            # Partition settings
+            if (part.softupdates):
+                setattr(self, slice, "%s %d %s 1" % (part.type, part.size, part.mount))
             else:
-                size = part.size / 512
-            
-            if (part.type == 'ufs'):
-                # UFS
-                setattr(self, slice, "%s %d %s %d" % (part.type, size, part.mount, int(part.softupdates)))
-            elif (not part.mount):
-                # Swap.
-                setattr(self, slice, "%s %d none" % (part.type, size))
-            else:
-                # Everything else.
-                setattr(self, slice, "%s %d %s" % (part.type, size, part.mount))
+                setattr(self, slice, "%s %d %s" % (part.type, part.size, part.mount))
 
         # Ensure that partitions are in order (1 ... 9)
         self.sectionOptions.sort()
