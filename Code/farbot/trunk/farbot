@@ -78,6 +78,7 @@ def main():
     schema = ZConfig.loadSchema(farb.CONFIG_SCHEMA)
     try:
         farbconfig, handler = ZConfig.loadConfig(schema, conf_file)
+        config.verifyReferences(farbconfig)
         release_packages = config.verifyPackages(farbconfig)
     except ZConfig.ConfigurationError, e:
         print "Configuration Error: %s" % e

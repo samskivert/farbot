@@ -71,6 +71,33 @@ def partition_handler(section):
 
     return section
 
+def verifyReferences(config):
+    """
+    Verify referential integrity between sections
+    """
+    for inst in config.Installations.Installation:
+        # Verify that Disk's defined PartitionMaps exist
+        for disk in inst.Disk:
+            foundPartitionMap = False
+            for map in config.Partitions.PartitionMap:
+                if (disk.partitionmap.lower() == map.getSectionName()):
+                    foundPartitionMap = True
+                    break
+            if (not foundPartitionMap):
+                raise ZConfig.ConfigurationError, "Can't find partition map \"%s\" for disk \"%s\" in \"%s\" installation." % (disk.partitionmap, disk.getSectionName(), inst.getSectionName())
+
+        # Verify that Installation's defined PackageSets exist
+        for pkgsetName in inst.packageset:
+            foundPackageSet = False
+            for pkgset in config.PackageSets.PackageSet:
+                if (pkgsetName.lower() == pkgset.getSectionName()):
+                    foundPackageSet = True
+                    break
+
+            if (not foundPackageSet):
+                raise ZConfig.ConfigurationError, "Can't find package set \"%s\" for \"%s\" installation." % (pkgsetName, inst.getSectionName())
+
+
 def verifyPackages(config):
     """
     Verify a given installation has only unique packages defined

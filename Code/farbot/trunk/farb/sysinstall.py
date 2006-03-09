@@ -29,9 +29,6 @@
 
 import os
 
-class ConfigError(Exception):
-    pass
-
 
 class ConfigSection(object):
     """
@@ -220,9 +217,7 @@ class DiskPartitionConfig(ConfigSection):
             if (section.partitionmap.lower() == map.getSectionName()):
                 # Set up the disk labels. Always s1!
                 self.diskLabelConfig = DiskLabelConfig(map, self.disk + 's1')
-
-        if (not self.diskLabelConfig):
-            raise ConfigError, "Can't find partition map \"%s\" for disk \"%s\"" % (section.partitionmap, self.disk)
+                break
 
     def serialize(self, output):
         self._serializeOptions(output)
@@ -308,8 +303,6 @@ class InstallationConfig(ConfigSection):
                 if (psetName.lower() == pset.getSectionName()):
                     foundPset = True
                     break
-            if (not foundPset):
-                raise ConfigError, 'Could not find PackageSet "%s"' % (psetName)
 
             for package in pset.Package:
                 pkgc = PackageConfig(package)
