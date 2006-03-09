@@ -105,6 +105,38 @@ class NetworkConfig(ConfigSection):
         self._serializeOptions(output)
         self._serializeCommands(output)
 
+
+class DistSetConfig(ConfigSection):
+    """
+    install.cfg(8) distribution set configuration section.
+    """
+    # Section option names
+    sectionOptions = (
+        'dists',        # Install these distribution sets
+    )
+    # Distribution sets are currently hardcoded
+    dists = 'base doc games manpages catpages proflibs dict info'
+
+    # Section commands
+    sectionCommands = (
+        'distSetCustom',
+    )
+
+    def __init__(self, section, config):
+        """
+        Initialize distribution set configuration for a given
+        installation.
+        @param section: ZConfig Installation section
+        @param config: ZConfig Farbot Config
+        """
+        # Do nothing, distribution sets are currently hardwired
+        pass
+
+    def serialize(self, output):
+        self._serializeOptions(output)
+        self._serializeCommands(output)
+
+
 class InstallationConfig(ConfigSection):
     """
     InstallationConfig instances represent a
@@ -131,9 +163,15 @@ class InstallationConfig(ConfigSection):
         # Network configuration
         self.networkConfig = NetworkConfig(section, config)
 
+        # Distribution sets
+        self.distSetConfig = DistSetConfig(section, config)
+
     def serialize(self, output):
         # Global configuration options
         self._serializeOptions(output)
 
         # Network configuration
         self.networkConfig.serialize(output)
+
+        # Select distribution sets
+        self.distSetConfig.serialize(output)

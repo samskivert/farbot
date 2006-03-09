@@ -97,6 +97,26 @@ class NetworkConfigTestCase(ConfigTestCase, unittest.TestCase):
         nc.serialize(output)
         self.assertEquals(output.getvalue(), expectedOutput)
 
+class DistSetConfigTestCase(ConfigTestCase, unittest.TestCase):
+    def test_init(self):
+        """
+        Initialize a DistSetConfig
+        """
+        dsc = sysinstall.DistSetConfig(self.instSection, self.config)
+
+    def test_serialize(self):
+        """
+        Serialize a DistSetConfig
+        """
+        output = StringIO()
+        instSect = self.instSection
+        dsc = sysinstall.DistSetConfig(self.instSection, self.config)
+        # Do some basic validation of the serialized output
+        expectedOutput = 'dists=%s\ndistSetCustom\n' % (dsc.dists)
+        dsc.serialize(output)
+        self.assertEquals(output.getvalue(), expectedOutput)
+
+
 class InstallationConfigTestCase(ConfigTestCase, unittest.TestCase):
     def setUp(self):
         ConfigTestCase.setUp(self)
