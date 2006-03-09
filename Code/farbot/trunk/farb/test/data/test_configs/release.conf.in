@@ -26,6 +26,79 @@
 	</Release>
 </Releases>
 
+#
+# Partition Maps
+#
+<Partitions>
+	<PartitionMap Standard>
+		<Partition 1>
+			Mount		/
+			Size		512MB
+			Type		ufs
+			SoftUpdates	no
+		</Partition>
+
+		<Partition 2>
+			Size		4GB
+			Type		swap
+		</Partition>
+
+		<Partition 3>
+			Mount		/var
+			Size		10GB
+			Type		ufs
+		</Partition>
+
+		<Partition 4>
+			Mount		/tmp
+			Size		1GB
+			Type		ufs
+		</Partition>
+
+		<Partition 5>
+			# All remaining space
+			Mount		/usr
+			Size		0GB
+			Type		ufs
+		</Partition>
+	</PartitionMap>
+</Partitions>
+
+#
+# Package Sets
+#
+<PackageSets>
+	<PackageSet Base>
+		<Package>
+			Port            security/sudo 
+			Package         sudo
+		</Package>
+	</PackageSet>
+	<PackageSet Database>
+		<Package>
+			Port            databases/mysql50-server
+			Package         mysql50-server
+			<BuildOptions>
+				WITH_COLLATION  latin1_general_ci
+			</BuildOptions>
+		</Package>
+	</PackageSet>
+</PackageSets>
+
+#
+# Installations
+#
+<Installations>
+	<Installation Test>
+		Release		6.0
+		PackageSet	Base
+		NetworkDevice	em0
+		<Disk ad0>
+			PartitionMap Standard
+		</Disk>
+	</Installation>
+</Installations>
+
 <Logging>
 	<logfile>
 		# Log debug messages to stdout

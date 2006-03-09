@@ -29,7 +29,7 @@
 
 import os
 
-__all__ = ['test_builder', 'test_config', 'test_utils']
+__all__ = ['test_builder', 'test_config', 'test_sysinstall', 'test_utils']
 
 # Useful Constants
 INSTALL_DIR = os.path.dirname(__file__)

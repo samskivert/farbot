@@ -29,7 +29,7 @@
 
 import os
 
-__all__ = ['builder', 'config', 'utils', 'test']
+__all__ = ['builder', 'config', 'utils', 'sysinstall', 'test']
 
 # General Info
 __version__ = '0.1'
