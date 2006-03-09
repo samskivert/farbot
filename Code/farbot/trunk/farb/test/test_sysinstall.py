@@ -213,6 +213,22 @@ class InstallationConfigTestCase(ConfigTestCase, unittest.TestCase):
         """
         self.assertEquals(self.inst.name, self.instSection.getSectionName())
 
+    def test_missingPackageSet(self):
+        """
+        Intialize an InstallationConfig with a missing PackageSet
+        """
+        # Break referential integrity
+        subs = CONFIG_SUBS.copy()
+        subs['@PSET@'] = 'DoesNotExist'
+
+        # Rewrite and reload config
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
+        self.instSection = self.config.Installations.Installation[0]
+
+        # Kaboom?
+        self.assertRaises(sysinstall.ConfigError, sysinstall.InstallationConfig, self.instSection, self.config)
+
     def test_serialize(self):
         """
         Serialize an InstallationConfig

@@ -92,7 +92,8 @@
 <Installations>
 	<Installation Test>
 		Release		6.0
-		PackageSet	Base
+		PackageSet	@PSET@
+		PackageSet	Database
 		NetworkDevice	em0
 		<Disk ad0>
 			PartitionMap @PMAP@

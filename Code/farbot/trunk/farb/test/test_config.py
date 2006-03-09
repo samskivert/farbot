@@ -57,7 +57,8 @@ CONFIG_SUBS = {
     '@TAG1@' : 'RELENG_6_0',
     '@TAG2@' : 'RELENG_6',
     '@SWAPSU@' : 'False',
-    '@PMAP@' : 'Standard'
+    '@PMAP@' : 'Standard',
+    '@PSET@' : 'Base'
 }
 
 def rewrite_config(inpath, outpath, variables):

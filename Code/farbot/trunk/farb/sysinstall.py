@@ -294,6 +294,21 @@ class InstallationConfig(ConfigSection):
             diskPartitionConfig = DiskPartitionConfig(disk, config)
             self.diskPartitionConfigs.append(diskPartitionConfig)
 
+        # Packages
+        self.packageConfigs = []
+        for psetName in section.packageset:
+            foundPset = False
+            for pset in config.PackageSets.PackageSet:
+                if (psetName.lower() == pset.getSectionName()):
+                    foundPset = True
+                    break
+            if (not foundPset):
+                raise ConfigError, 'Could not find PackageSet "%s"' % (psetName)
+
+            for package in pset.Package:
+                pkgc = PackageConfig(package)
+                self.packageConfigs.append(pkgc)
+
     def serialize(self, output):
         # Global configuration options
         self._serializeOptions(output)
@@ -307,3 +322,7 @@ class InstallationConfig(ConfigSection):
         # Disk formatting
         for disk in self.diskPartitionConfigs:
             disk.serialize(output)
+
+        # Packages
+        for pkgc in self.packageConfigs:
+            pkgc.serialize(output)
