@@ -77,7 +77,7 @@ class NetworkConfig(ConfigSection):
         'tryDHCP'       # DHCP an address
     )
     # Default option values
-    tryDHCP = 'yes'
+    tryDHCP = 'YES'
 
     # Section commands
     sectionCommands = (
@@ -105,7 +105,7 @@ class NetworkConfig(ConfigSection):
         self._serializeOptions(output)
         self._serializeCommands(output)
 
-class InstallationConfig(object):
+class InstallationConfig(ConfigSection):
     """
     InstallationConfig instances represent a
     complete install.cfg file for sysinstall(8)
@@ -113,13 +113,25 @@ class InstallationConfig(object):
     sectionOptions = (
         'debug',
         'nonInteractive',
-        'noWarn',
-        'tryDHCP'
+        'noWarn'
     )
+    # Defaults
+    debug = 'YES'
+    nonInteractive = 'YES'
+    noWarn = 'YES'
 
-    def __init__(self, name):
+    def __init__(self, name, networkConfig):
         """
         Initialize a new installation configuration.
         @param name: Installation name
+        @param networkConfig: NetworkConfig instance for this installation
         """
         self.name = name
+        self.networkConfig = networkConfig
+
+    def serialize(self, output):
+        # Global configuration options
+        self._serializeOptions(output)
+
+        # Network configuration
+        self.networkConfig.serialize(output)

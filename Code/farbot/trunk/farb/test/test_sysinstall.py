@@ -88,7 +88,7 @@ class NetworkConfigTestCase(ConfigTestCase, unittest.TestCase):
         instSect = self.instSection
         nc = sysinstall.NetworkConfig(self.instSection, self.config)
         # Do some basic validation of the serialized output
-        expectedOutput = 'hostname=%s\ndomainname=%s\nnetdev=%s\nnfs=%s\ntryDHCP=yes\nmediaSetNFS\n' % (
+        expectedOutput = 'hostname=%s\ndomainname=%s\nnetdev=%s\nnfs=%s\ntryDHCP=YES\nmediaSetNFS\n' % (
                 instSect.hostname,
                 instSect.domain,
                 instSect.networkdevice,
@@ -98,9 +98,22 @@ class NetworkConfigTestCase(ConfigTestCase, unittest.TestCase):
         self.assertEquals(output.getvalue(), expectedOutput)
 
 class InstallationConfigTestCase(ConfigTestCase, unittest.TestCase):
+    def setUp(self):
+        ConfigTestCase.setUp(self)
+        self.netConfig = sysinstall.NetworkConfig(self.instSection, self.config)
+        self.inst = sysinstall.InstallationConfig(self.instSection.getSectionName(), self.netConfig)
+
     def test_init(self):
         """
         Initialize an InstallationConfig
         """
-        inst = sysinstall.InstallationConfig(self.instSection.getSectionName())
-        self.assertEquals(inst.name, self.instSection.getSectionName())
+        self.assertEquals(self.inst.name, self.instSection.getSectionName())
+
+    def test_serialize(self):
+        """
+        Serialize an InstallationConfig
+        """
+        output = StringIO()
+        self.inst.serialize(output)
+        # No sane way to test this. Let's just see if it output anything.
+        self.assert_(output.tell())
