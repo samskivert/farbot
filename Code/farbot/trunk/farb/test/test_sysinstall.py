@@ -185,6 +185,23 @@ class DiskPartitionConfigTestCase(ConfigTestCase, unittest.TestCase):
 
         self.assertEquals(output.getvalue(), expectedOutput)
 
+class PackageConfigTestCase(ConfigTestCase, unittest.TestCase):
+    def test_init(self):
+        """
+        Initialize a PackageConfig
+        """
+        # Grab the first package from the first package set
+        package = self.config.PackageSets.PackageSet[0].Package[0]
+        pkgc = sysinstall.PackageConfig(package)
+        self.assertEquals(pkgc.package, self.config.PackageSets.PackageSet[0].Package[0].package)
+
+    def test_serialize(self):
+        output = StringIO()
+        package = self.config.PackageSets.PackageSet[0].Package[0]
+        pkgc = sysinstall.PackageConfig(package)
+        pkgc.serialize(output)
+        self.assertEquals(output.getvalue(), 'package=%s\npackageAdd\n' % (package.package))
+
 class InstallationConfigTestCase(ConfigTestCase, unittest.TestCase):
     def setUp(self):
         ConfigTestCase.setUp(self)

@@ -230,6 +230,34 @@ class DiskPartitionConfig(ConfigSection):
         self.diskLabelConfig.serialize(output)
 
 
+class PackageConfig(ConfigSection):
+    """
+    install.cfg(8) package install configuration section.
+    """
+    # Section option names
+    sectionOptions = (
+        'package',  # Package name
+    )
+
+    # Section commands
+    sectionCommands = (
+        'packageAdd',
+    )
+
+    def __init__(self, section):
+        """
+        Initialize package install configuration for a given
+        installation.
+        @param section: ZConfig Package section
+        """
+        self.package = section.package
+
+    def serialize(self, output):
+        self._serializeOptions(output)
+        self._serializeCommands(output)
+
+
+
 class InstallationConfig(ConfigSection):
     """
     InstallationConfig instances represent a
