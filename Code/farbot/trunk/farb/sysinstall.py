@@ -263,6 +263,7 @@ class InstallationConfig(ConfigSection):
     InstallationConfig instances represent a
     complete install.cfg file for sysinstall(8)
     """
+    # Section option names
     sectionOptions = (
         'debug',
         'nonInteractive',
@@ -273,6 +274,11 @@ class InstallationConfig(ConfigSection):
     debug = 'YES'
     nonInteractive = 'YES'
     noWarn = 'YES'
+
+    # Section commands
+    sectionCommands = (
+        'shutdown',
+    )
 
     def __init__(self, section, config):
         """
@@ -326,3 +332,6 @@ class InstallationConfig(ConfigSection):
         # Packages
         for pkgc in self.packageConfigs:
             pkgc.serialize(output)
+
+        # Global commands
+        self._serializeCommands(output)

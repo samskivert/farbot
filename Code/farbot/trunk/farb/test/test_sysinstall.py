@@ -237,3 +237,4 @@ class InstallationConfigTestCase(ConfigTestCase, unittest.TestCase):
         self.inst.serialize(output)
         # No sane way to test this. Let's just see if it output anything.
         self.assert_(output.tell())
+        print output.getvalue()
