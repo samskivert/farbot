@@ -56,7 +56,8 @@ CONFIG_SUBS = {
     '@BUILDROOT@' : BUILDROOT,
     '@TAG1@' : 'RELENG_6_0',
     '@TAG2@' : 'RELENG_6',
-    '@SWAPSU@' : 'False'
+    '@SWAPSU@' : 'False',
+    '@PMAP@' : 'Standard'
 }
 
 def rewrite_config(inpath, outpath, variables):

@@ -29,6 +29,10 @@
 
 import os
 
+class ConfigError(Exception):
+    pass
+
+
 class ConfigSection(object):
     """
     Abstract class implementing re-usable functions for install.cfg(8)
@@ -210,9 +214,15 @@ class DiskPartitionConfig(ConfigSection):
         self.disk = section.getSectionName()
 
         # Grab our partition map
+        # If it doesn't exist, complain loudly
+        self.diskLabelConfig = None
         for map in config.Partitions.PartitionMap:
             if (section.partitionmap.lower() == map.getSectionName()):
-                pass
+                # Set up the disk labels. Always s1!
+                self.diskLabelConfig = DiskLabelConfig(map, self.disk + 's1')
+
+        if (not self.diskLabelConfig):
+            raise ConfigError, "Can't find partition map \"%s\" for disk \"%s\"" % (section.partitionmap, self.disk)
 
     def serialize(self, output):
         self._serializeOptions(output)

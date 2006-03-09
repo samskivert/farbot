@@ -95,7 +95,7 @@
 		PackageSet	Base
 		NetworkDevice	em0
 		<Disk ad0>
-			PartitionMap Standard
+			PartitionMap @PMAP@
 		</Disk>
 	</Installation>
 </Installations>

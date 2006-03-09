@@ -149,6 +149,22 @@ class DiskPartitionConfigTestCase(ConfigTestCase, unittest.TestCase):
         dpc = sysinstall.DiskPartitionConfig(self.instSection.Disk[0], self.config)
         self.assertEquals(dpc.disk, 'ad0')
 
+    def test_missingPartitionMap(self):
+        """
+        Intialize a DiskPartitionConfig with a missing PartitionMap
+        """
+        # Break referential integrity
+        subs = CONFIG_SUBS.copy()
+        subs['@PMAP@'] = 'DoesNotExist'
+
+        # Rewrite and reload config
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
+        self.instSection = self.config.Installations.Installation[0]
+
+        # Kaboom?
+        self.assertRaises(sysinstall.ConfigError, sysinstall.DiskPartitionConfig, self.instSection.Disk[0], self.config)
+
     def test_serialize(self):
         """
         Serialize a DiskPartitionConfig
