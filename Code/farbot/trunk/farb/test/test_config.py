@@ -101,6 +101,8 @@ class ConfigParsingTestCase(unittest.TestCase):
         release = config.Releases.Release[0]
         buildroot = os.path.join(config.Releases.buildroot, release.getSectionName())
         chroot = os.path.join(buildroot, 'chroot')
+        portsdir = os.path.join(buildroot, 'usr', 'ports')
+        packagedir = os.path.join(portsdir, 'packages')
         self.assertEquals(release.cvstag, 'RELENG_6_0')
         self.assertEquals(release.packages, None)
         self.assertEquals(release.buildroot, buildroot)

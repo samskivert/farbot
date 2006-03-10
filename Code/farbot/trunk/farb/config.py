@@ -52,6 +52,10 @@ def releases_handler(section):
         release.buildroot = os.path.join(section.buildroot, release.getSectionName())
         # And the chroot
         release.chroot = os.path.join(release.buildroot, 'chroot')
+        # And the ports tree
+        release.portsdir = os.path.join(release.chroot, 'usr', 'ports')
+        # And the package dir ...
+        release.packagedir = os.path.join(release.portsdir, 'packages')
 
     return section
 
@@ -143,9 +147,11 @@ def verifyPackages(config):
     # Now add the package lists to the releases
     for release in config.Releases.Release:
         releaseName = release.getSectionName()
-        # Don't add an empty list, leave release.packages set to None
-        if (len(release_packages[releaseName])):
-            release.packages = release_packages[releaseName]
+        # Do any installations reference this release?
+        if (release_packages.has_key(releaseName)):
+            # Don't add an empty list, leave release.packages set to None
+            if (len(release_packages[releaseName])):
+                release.packages = release_packages[releaseName]
 
 def _hasPackage(release_packages, releaseName, newpkg):
     """
