@@ -98,6 +98,11 @@ class ConfigParsingTestCase(unittest.TestCase):
     def test_releases(self):
         """ Load a standard release configuration """
         config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
+        # Releases tftproot
+        tftproot = os.path.join(config.Releases.installroot, 'tftproot')
+        self.assertEquals(config.Releases.tftproot, tftproot)
+
+        # Per-release settings
         release = config.Releases.Release[0]
         buildroot = os.path.join(config.Releases.buildroot, release.getSectionName())
         chroot = os.path.join(buildroot, 'chroot')
@@ -106,6 +111,7 @@ class ConfigParsingTestCase(unittest.TestCase):
         self.assertEquals(release.cvstag, 'RELENG_6_0')
         self.assertEquals(release.packages, None)
         self.assertEquals(release.buildroot, buildroot)
+        self.assertEquals(release.chroot, chroot)
         self.assertEquals(release.chroot, chroot)
 
     def test_partition_softupdates(self):

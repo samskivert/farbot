@@ -40,6 +40,9 @@ def releases_handler(section):
     tags = []
     releases = []
 
+    # Global tftproot
+    section.tftproot = os.path.join(section.installroot, 'tftproot')
+
     # Validate release sections and instantiate
     # ReleaseBuilders.
     for release in section.Release:
