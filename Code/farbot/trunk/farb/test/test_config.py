@@ -112,7 +112,6 @@ class ConfigParsingTestCase(unittest.TestCase):
         self.assertEquals(release.packages, None)
         self.assertEquals(release.buildroot, buildroot)
         self.assertEquals(release.chroot, chroot)
-        self.assertEquals(release.chroot, chroot)
 
     def test_partition_softupdates(self):
         """ Verify that SoftUpdates flags are tweaked appropriately """
