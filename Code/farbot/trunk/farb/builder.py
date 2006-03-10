@@ -458,7 +458,7 @@ class PackageBuilder(object):
         try:
             failure.raiseException()
         except MakeCommandError, e:
-            raise PackageBuildError, "An error occured building the port \"%s\" in \"%s\", make command returned: %s" % (self.port, self.chroot, e)
+            raise PackageBuildError, "An error occured building the port \"%s\", make command returned: %s" % (self.port, e)
 
     def build(self, log):
         """
