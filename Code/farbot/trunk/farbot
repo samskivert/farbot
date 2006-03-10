@@ -37,70 +37,97 @@ from twisted.python import threadable
 threadable.init()
 
 import farb
-from farb import utils, builder, config, sysinstall
+from farb import utils, builder, config
 
 INDEX_PREFIX='INDEX'
 
-def usage():
-    print "Usage: %s [-h] [-f config file] [-r action]" % sys.argv[0]
-    print "    -h             Print usage (this message)"
-    print "    -f <config>    Use configuration file"
-    print "    -r <action>    Execute <action>"
-    print "\nSupported actions:"
-    print "    release        Build all defined releases"
+class Main(object):
+    """
+    Implements FarBot's Main Runloop
+    """
+    def usage(self):
+        print "Usage: %s [-h] [-f config file] [-r action]" % sys.argv[0]
+        print "    -h             Print usage (this message)"
+        print "    -f <config>    Use configuration file"
+        print "    -r <action>    Execute <action>"
+        print "\nSupported actions:"
+        print "    release        Build all defined releases"
+        print "    package        Build all defined packages (requires a release build)"
 
-def main():
-    conf_file = None
-    action = None
+    def _ebReleaseBuild(self, failure):
+        # Just print the failure and exit
+        print failure.value
+        reactor.stop()
 
-    try:
-        opts,args = getopt.getopt(sys.argv[1:], "hf:r:")
-    except getopt.GetoptError:
-        usage()
-        sys.exit(2)
+    def _cbReleaseBuild(self, result):
+        print "Release build completed."
+        reactor.stop()
 
-    for opt,arg in opts:
-        if opt == "-h":
-            usage()
-            sys.exit()
-        if opt == "-f":
-            conf_file = arg
-        if opt == "-r":
-            action = arg
+    def _ebPackageBuild(self, failure):
+        # Just print the failure and exit
+        print failure.value
+        reactor.stop()
 
-    if (conf_file == None or action == None):
-        usage()
-        sys.exit(1)
+    def _cbPackageBuild(self, result):
+        print "Package build completed."
+        reactor.stop()
 
-    # a dictionary mapping packages to releases
-    release_packages = {}
-    # Load our configuration schema
-    schema = ZConfig.loadSchema(farb.CONFIG_SCHEMA)
-    try:
-        farbconfig, handler = ZConfig.loadConfig(schema, conf_file)
-        config.verifyReferences(farbconfig)
-        release_packages = config.verifyPackages(farbconfig)
-    except ZConfig.ConfigurationError, e:
-        print "Configuration Error: %s" % e
-        sys.exit(1)
+    def main(self):
+        conf_file = None
+        action = None
 
-    # Set up logging
-    try:
-        farbconfig.Logging()
-    except Exception, e:
-        print "Log initialization failed: %s" % e
-        sys.exit(1)
+        try:
+            opts,args = getopt.getopt(sys.argv[1:], "hf:r:")
+        except getopt.GetoptError:
+            self.usage()
+            sys.exit(2)
 
-    # Execute requested action
-    if (action == "release"):
-        rbr = ReleaseBuildRunner(farbconfig, release_packages)
-        rbr.run()
-    else:
-        print "Unknown action \"%s\".\n" % (action)
-        usage()
-        sys.exit(1)
+        for opt,arg in opts:
+            if opt == "-h":
+                self.usage()
+                sys.exit()
+            if opt == "-f":
+                conf_file = arg
+            if opt == "-r":
+                action = arg
 
-    reactor.run()
+        if (conf_file == None or action == None):
+            self.usage()
+            sys.exit(1)
+
+        # Load our configuration schema
+        schema = ZConfig.loadSchema(farb.CONFIG_SCHEMA)
+        try:
+            farbconfig, handler = ZConfig.loadConfig(schema, conf_file)
+            config.verifyReferences(farbconfig)
+            config.verifyPackages(farbconfig)
+        except ZConfig.ConfigurationError, e:
+            print "Configuration Error: %s" % e
+            sys.exit(1)
+
+        # Set up logging
+        try:
+            farbconfig.Logging()
+        except Exception, e:
+            print "Log initialization failed: %s" % e
+            sys.exit(1)
+
+        # Execute requested action
+        if (action == "release"):
+            rbr = ReleaseBuildRunner(farbconfig)
+            d = rbr.run()
+            d.addCallbacks(self._cbReleaseBuild, self._ebReleaseBuild)
+        elif (action == "package"):
+            pbr = PackageBuildRunner(farbconfig)
+            d = pbr.run()
+            d.addCallbacks(self._cbPackageBuild, self._ebPackageBuild)
+        else:
+            print "Unknown action \"%s\".\n" % (action)
+            self.usage()
+            sys.exit(1)
+
+        reactor.run()
+        sys.exit(0)
 
 class BuildContext(object):
     """
@@ -114,156 +141,164 @@ class BuildContext(object):
         self.description = description
         self.logPath = logPath
 
+
 class ReleaseBuildRunner(object):
     """
-    Run a set of release builds, printing
-    an error and stopping the reactor on failure.
+    Run a set of release builds
     """
-    def __init__(self, config, release_packages):
+    def __init__(self, config):
         self.logs = []
         self.oe = utils.OrderedExecutor()
 
-        # Iterate through installations, instantiating release builds
-        for inst in config.Installations.Installation:
-            releaseName = inst.release.lower()
-            for release in config.Releases.Release:
-                if (releaseName.lower() == release.getSectionName()):
-                    # Useful paths
-                    buildroot = os.path.join(config.Releases.buildroot, release.getSectionName())
-                    installroot = os.path.join(config.Releases.installroot, release.getSectionName())
-                    chroot = os.path.join(buildroot, 'chroot')
+        # Iterate through all releases, starting a release build for all
+        # releases referenced by an Installation.
+        for release in config.Releases.Release:
+            # Check all installations for a reference to this release
+            for install in config.Installations.Installation:
+                releaseFound = False
+                if (release.getSectionName() == install.release.lower()):
+                    releaseFound = True
+                    break
+            if (not releaseFound):
+                # Skip the release, it's not used by any installation
+                break
 
-                    ports_dir = os.path.join(chroot, 'usr', 'ports')
-                    package_dir = os.path.join(ports_dir, 'packages')
-                    install_package_dir = os.path.join(installroot, 'packages')
+            # Create the build directory
+            try:
+                if (not os.path.exists(release.buildroot)):
+                    os.makedirs(release.buildroot)
+            except Exception, e:
+                print "Failed to create build root: %s" % (e)
+                sys.exit(1)
 
-                    # Create the build directory
-                    try:
-                        if (not os.path.exists(buildroot)):
-                            os.makedirs(buildroot)
-                    except Exception, e:
-                        print "Failed to create build root: %s" % (e)
-                        sys.exit(1)
+            # Instantiate our builder
+            releaseBuilder = builder.ReleaseBuilder(release.cvsroot, release.cvstag, release.chroot)
 
-                    # Open the log file
-                    logPath = os.path.join(buildroot, 'build.log')
-                    buildLog = open(logPath, 'w', 0)
-                    self.logs.append(buildLog)
+            # Open the build log file
+            logPath = os.path.join(release.buildroot, 'build.log')
+            buildLog = open(logPath, 'w', 0)
+            self.logs.append(buildLog)
 
-                    rb = builder.ReleaseBuilder(release.cvsroot, release.cvstag, buildroot)
-
-                    # Add our release builder to the OrderedExecutor
-                    bctx = BuildContext("%s release build" % release.getSectionName(), logPath)
-                    eu = utils.ExecutionUnit(bctx, rb.build, buildLog)
-                    self.oe.appendExecutionUnit(eu)
-
-                    # Build packages for the release
-                    packageList = release_packages.get(release.getSectionName())
-                    if (packageList):
-                        # Checkout the ports tree into the chroot 
-                        cvs = builder.CVSCommand(release.cvsroot)
-                        cvs_bctx = BuildContext("%s release cvs export of \"%s\"" % (release.getSectionName(), ports_dir), logPath)
-                        eu = utils.ExecutionUnit(cvs_bctx, cvs.export, 'HEAD', 'ports', ports_dir, buildLog)
-                        self.oe.appendExecutionUnit(eu)
-
-                        # Make the packages directory 
-                        eu = utils.ExecutionUnit(bctx, defer.execute, os.mkdir, package_dir) 
-                        self.oe.appendExecutionUnit(eu)
-
-                        # Fire off a builder for each package
-                        for package in packageList:
-                            # Open a per-package log file
-                            logPath = os.path.join(buildroot, package.package + '.log')
-                            packageLog = open(logPath, 'w', 0)
-                            self.logs.append(packageLog)
-
-                            # Grab the package build options
-                            buildoptions = {}
-                            if package.BuildOptions:
-                                buildoptions = package.BuildOptions.Options
-
-                            # Add a package builder to the OrderedExecutor
-                            pb = builder.PackageBuilder(chroot, package.port, buildoptions)
-                            pctx = BuildContext("%s package build" % package.package, logPath)
-                            eu = utils.ExecutionUnit(bctx, pb.build, packageLog)
-                            self.oe.appendExecutionUnit(eu)
-
-                        # Download the current port index
-                        index = builder.MakeCommand(builder.FREEBSD_PORTS_PATH, ['fetchindex'], chrootdir=chroot)
-                        eu = utils.ExecutionUnit(bctx, index.make, buildLog)
-                        self.oe.appendExecutionUnit(eu)
-
-                    # Clean the netinstall release directory
-                    if (os.path.exists(installroot)):
-                        eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.rmtree, installroot) 
-                        self.oe.appendExecutionUnit(eu)
-
-                    # Copy the newly minted release into the netinstall root
-                    eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.copytree, os.path.join(chroot, 'R', 'ftp'), installroot, 1)
-                    self.oe.appendExecutionUnit(eu)
-
-                    # If we built any packages, do some final bit pushing
-                    if (packageList):
-                        # Copy the packages into the netinstall root
-                        eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.copytree, package_dir, install_package_dir, 1)
-                        self.oe.appendExecutionUnit(eu)
-
-                        # Copy the package INDEX files into the netinstall root
-                        eu = utils.ExecutionUnit(bctx, self._copyPackageIndexes, ports_dir, install_package_dir)
-                        self.oe.appendExecutionUnit(eu)
-
-    def _copyPackageIndexes(self, source, dest):
-        """
-        Copy any INDEX* files from source to dest
-        @param source: Source directory containing port INDEX* files
-        @param dest: Destination directory
-        """
-        # Copy the package INDEX files into the netinstall root
-        for file in os.listdir(source):
-            # Find all INDEX* files.
-            if (file[:len(INDEX_PREFIX)] == INDEX_PREFIX):
-                # Copy them over
-                shutil.copy2(os.path.join(source, file), dest)
-
-        return defer.succeed(None)
+            # Add our release builder to the OrderedExecutor
+            bctx = BuildContext("%s release build" % release.getSectionName(), logPath)
+            eu = utils.ExecutionUnit(bctx, releaseBuilder.build, buildLog)
+            self.oe.appendExecutionUnit(eu)
 
     def _closeLogs(self):
-        # Close all the log files
         for logFile in self.logs:
             logFile.close()
 
-    def _cbReleaseBuild(self, result):
-        print "Release Build Complete"
+    def _ebReleaseBuild(self, failure):
+        # Close our log files
         self._closeLogs()
 
-        reactor.stop()
-
-    def _ebReleaseBuild(self, failure):
-        try:
-            # Grab the BuildContext and raise the original exception
+        # Decipher the BuildContext and raise a normal exception, with the message formatted for printing
+        try:            
             bctx = failure.value.executionContext
             failure.value.originalFailure.raiseException()
         except builder.ReleaseBuildError, e:
-            print "%s failed: %s" % (bctx.description, e)
-            print "For more information, refer to the release build log: %s" % (bctx.logPath)
-        except builder.PackageBuildError, e:
-            print "%s failed: %s" % (bctx.description, e)
-            print "For more information, refer to the package build log: %s" % (bctx.logPath)
+            raise builder.ReleaseBuildError, "%s failed: %s.\nFor more information, refer to the release build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except builder.CVSCommandError, e:
-            print "%s failed, cvs returned: %s" % (bctx.description, e)
-            print "For more information, refer to the build log: %s" % (bctx.logPath)
+            raise builder.ReleaseBuildError, "%s failed, cvs\nreturned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except Exception, e:
-            print "Unhandled Release Build Error: %s" % (e)
+            raise builder.ReleaseBuildError, "Unhandled release build error: %s" % (e)
 
+    def _cbReleaseBuild(self, result):
+        # Close our log files
         self._closeLogs()
-        reactor.stop()
 
     def run(self):
         # Run!
         d = self.oe.run()
-        d.addCallback(self._cbReleaseBuild)
-        d.addErrback(self._ebReleaseBuild)
+        d.addCallbacks(self._cbReleaseBuild, self._ebReleaseBuild)
+        return d
+
+
+class PackageBuildRunner(object):
+    """
+    Run a set of package builds
+    """
+    def __init__(self, config):
+        self.logs = []
+        self.oe = utils.OrderedExecutor()
+
+        # Iterate through all releases, starting a package build for all
+        # listed packages
+        for release in config.Releases.Release:
+            # Grab the list of packages provided by verifyPackages()
+            if (not release.packages):
+                continue
+
+            # Open a packaging log file
+            packagingLogPath = os.path.join(release.buildroot, 'packaging.log')
+            packagingLog = open(packagingLogPath, 'w', 0)
+            self.logs.append(packagingLog)
+
+            # Checkout the ports tree into the chroot 
+            cvs = builder.CVSCommand(release.cvsroot)
+            pctx = BuildContext("%s release cvs export of \"%s\"" % (release.getSectionName(), release.portsdir), packagingLogPath)
+            eu = utils.ExecutionUnit(pctx, cvs.export, 'HEAD', 'ports', release.portsdir, packagingLog)
+            self.oe.appendExecutionUnit(eu)
+
+            # Make the packages directory 
+            pctx = BuildContext("creating \"%s\" directory" % (release.packagedir), packagingLogPath)
+            eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, release.packagedir)
+            self.oe.appendExecutionUnit(eu)
+
+            # Download the current port index
+            pctx = BuildContext("fetching current port index", packagingLogPath)
+            index = builder.MakeCommand(builder.FREEBSD_PORTS_PATH, ['fetchindex'], chrootdir=release.chroot)
+            eu = utils.ExecutionUnit(pctx, index.make, packagingLog)
+            self.oe.appendExecutionUnit(eu)
+
+            # Fire off a builder for each package
+            for package in release.packages:
+                # Open a per-package log file
+                logPath = os.path.join(release.buildroot, package.package + '.log')
+                packageLog = open(logPath, 'w', 0)
+                self.logs.append(packageLog)
+
+                # Grab the package build options
+                buildoptions = {}
+                if package.BuildOptions:
+                    buildoptions = package.BuildOptions.Options
+
+                # Add a package builder to the OrderedExecutor
+                pb = builder.PackageBuilder(release.chroot, package.port, buildoptions)
+                pctx = BuildContext("Package build for release \"%s\"" % release.getSectionName(), logPath)
+                eu = utils.ExecutionUnit(pctx, pb.build, packageLog)
+                self.oe.appendExecutionUnit(eu)
+
+    def _closeLogs(self):
+        for logFile in self.logs:
+            logFile.close()
+
+    def _ebPackageBuild(self, failure):
+        # Close our log files
+        self._closeLogs()
+
+        # Decipher the BuildContext and raise a normal exception, with the message formatted for printing
+        try:            
+            bctx = failure.value.executionContext
+            failure.value.originalFailure.raiseException()
+        except builder.PackageBuildError, e:
+            raise builder.ReleaseBuildError, "%s failed: %s.\nFor more information, refer to the package build log \"%s\"" % (bctx.description, e, bctx.logPath)
+        except builder.CVSCommandError, e:
+            raise builder.ReleaseBuildError, "%s failed: cvs\nreturned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
+        except Exception, e:
+            raise builder.ReleaseBuildError, "Unhandled package build error: %s" % (e)
+
+    def _cbPackageBuild(self, result):
+        # Close our log files
+        self._closeLogs()
+
+    def run(self):
+        # Run!
+        d = self.oe.run()
+        d.addCallbacks(self._cbPackageBuild, self._ebPackageBuild)
+        return d
 
 
 if __name__ == "__main__":
-    main()
+    main = Main()
+    main.main()
