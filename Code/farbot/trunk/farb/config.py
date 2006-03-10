@@ -50,6 +50,12 @@ def releases_handler(section):
 
     return section
 
+def release_handler(section):
+    # Add an NULL packages attribute
+    section.packages = None
+
+    return section
+
 def partition_handler(section):
     """
     Validate a partition map, performing appropriate datatype conversions
@@ -101,36 +107,48 @@ def verifyReferences(config):
 def verifyPackages(config):
     """
     Verify a given installation has only unique packages defined
-    for each release.
+    for each release. Build a list of packages to be built for each
+    release.
     @param config: ZConfig object containing farb configuration
-    Returns a dictionary mapping releases to packages
     """
 
     # dictionary mapping packages to releases
     release_packages = {}
-    for inst in config.Installations.Installation:
-        releaseName = inst.release.lower()
-        # insert a blank list when a new release is seen
-        # so that .append() below will work
-        if (not release_packages.has_key(releaseName)):
-           release_packages[releaseName] = [] 
-        for pset_name in inst.packageset:
-            for pset in config.PackageSets.PackageSet:
-                if (pset_name.lower() == pset.getSectionName()):
-                    for p in pset.Package:
-                        # if this release in this installation in this packageset
-                        # has already listed this port then throw error
-                        if (_hasPort(release_packages[releaseName], p.port)):
-                            raise ZConfig.ConfigurationError("Ports may not be re-used in the same Installation sections. (Port: \"%s\")" % (p.port))
-                        else:
-                            release_packages[releaseName].append(p)
-    return release_packages
 
-def _hasPort(release_packages, port):
+    # Iterate over installations, finding all packages in all package sets,
+    # and then attaching that list to the release section.
+    #
+    # Additionally, verify that packages only appear *once* in 
+    # all package sets used in a specified release.
+    for install in config.Installations.Installation:
+        releaseName = install.release.lower()
+        release_packages[releaseName] = []
+        for pkgsetName in install.packageset:
+            for pkgset in config.PackageSets.PackageSet:
+                if (pkgsetName.lower() == pkgset.getSectionName()):
+                    for pkg in pkgset.Package:
+                        # If if this package has already been listed
+                        # by another packageset, in another installation,
+                        # using the same release, throw an error
+                        if (_hasPackage(release_packages, releaseName, pkg)):
+                            raise ZConfig.ConfigurationError("Packages may not be listed in more than one package set within the same release. (Port: \"%s\", Package Set: \"%s\", Release: \"%s\")" % (pkg.port, pkgsetName, install.release))
+                        else:
+                            release_packages[releaseName].append(pkg)
+
+    # Now add the package lists to the releases
+    for release in config.Releases.Release:
+        releaseName = release.getSectionName()
+        # Don't add an empty list, leave release.packages set to None
+        if (len(release_packages[releaseName])):
+            release.packages = release_packages[releaseName]
+
+def _hasPackage(release_packages, releaseName, newpkg):
     """
-    Determine if a given port is in a list of package sectionvalues 
+    Determine if a given package has already been added
+    to the packages dictionary for a specified release.
     """
-    for p in release_packages:
-        if (p.port == port): 
-            return 1 
-    return 0
+    for pkg in release_packages[releaseName]:
+        if (pkg.port == newpkg.port): 
+            return True
+
+    return False

@@ -4,7 +4,7 @@
 -->
 <schema prefix="farb.config">
     <!-- Release Configuration -->
-    <sectiontype name="Release">
+    <sectiontype name="Release" datatype=".release_handler">
         <key name="CVSRoot" datatype="existing-directory" required="yes"/>
         <key name="CVSTag" datatype="string" required="yes"/>
         <key name="InstallCDs" datatype="boolean" required="no" default="false"/>

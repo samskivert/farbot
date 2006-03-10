@@ -99,6 +99,7 @@ class ConfigParsingTestCase(unittest.TestCase):
         """ Load a standard release configuration """
         config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
         self.assertEquals(config.Releases.Release[0].cvstag, 'RELENG_6_0')
+        self.assertEquals(config.Releases.Release[0].packages, None)
 
     def test_partition_softupdates(self):
         """ Verify that SoftUpdates flags are tweaked appropriately """
@@ -129,10 +130,10 @@ class ConfigParsingTestCase(unittest.TestCase):
         self.assertEquals(config.PackageSets.PackageSet[1].Package[0].BuildOptions.Options['WITH_COLLATION'], 'UTF8')
 
     def test_release_packages(self):
-        """ Test release_packages dictionary contains good values """
+        """ Test that the release packages list contains good values """
         config, handler = ZConfig.loadConfig(self.schema, PACKAGES_CONFIG_FILE)
-        release_packages = farb.config.verifyPackages(config)
-        self.assertEquals(release_packages['6-stable'][0].port, 'security/sudo')
+        farb.config.verifyPackages(config)
+        self.assertEquals(config.Releases.Release[1].packages[0].port, 'security/sudo')
 
     def test_packages_unique(self):
         """ Test handling of duplicate packages in a good package set """
