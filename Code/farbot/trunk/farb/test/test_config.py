@@ -98,8 +98,13 @@ class ConfigParsingTestCase(unittest.TestCase):
     def test_releases(self):
         """ Load a standard release configuration """
         config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
-        self.assertEquals(config.Releases.Release[0].cvstag, 'RELENG_6_0')
-        self.assertEquals(config.Releases.Release[0].packages, None)
+        release = config.Releases.Release[0]
+        buildroot = os.path.join(config.Releases.buildroot, release.getSectionName())
+        chroot = os.path.join(buildroot, 'chroot')
+        self.assertEquals(release.cvstag, 'RELENG_6_0')
+        self.assertEquals(release.packages, None)
+        self.assertEquals(release.buildroot, buildroot)
+        self.assertEquals(release.chroot, chroot)
 
     def test_partition_softupdates(self):
         """ Verify that SoftUpdates flags are tweaked appropriately """

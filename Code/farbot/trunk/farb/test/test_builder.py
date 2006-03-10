@@ -288,7 +288,7 @@ class MDConfigCommandTestCase(unittest.TestCase):
 
 class ReleaseBuilderTestCase(unittest.TestCase):
     def setUp(self):
-        self.builder = builder.ReleaseBuilder(CVSROOT, CVSTAG, BUILDROOT, makecds=True)
+        self.builder = builder.ReleaseBuilder(CVSROOT, CVSTAG, CHROOT, makecds=True)
         self.log = open(PROCESS_LOG, 'w+')
 
     def tearDown(self):

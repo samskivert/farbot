@@ -48,6 +48,11 @@ def releases_handler(section):
         else:
             tags.append(release.cvstag)
 
+        # The buildroot directory is merely a combination of the buildroot + release name
+        release.buildroot = os.path.join(section.buildroot, release.getSectionName())
+        # And the chroot
+        release.chroot = os.path.join(release.buildroot, 'chroot')
+
     return section
 
 def release_handler(section):
