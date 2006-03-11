@@ -27,10 +27,14 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from twisted.internet import reactor, defer, protocol
-import os, re
+from twisted.internet import reactor, defer, protocol, threads
+from twisted.python import threadable
+threadable.init()
+
+import os, re, gzip, shutil
 
 import farb
+from farb import utils
 
 # make(1) path
 MAKE_PATH = '/usr/bin/make'
@@ -543,4 +547,81 @@ class PackageBuilder(object):
         makecmd = MakeCommand(os.path.join(FREEBSD_PORTS_PATH, self.port), self.makeTarget, makeOptions, self.chroot)
         d = makecmd.make(log)
         d.addErrback(self._ebBuildError)
+        return d
+
+class InstallationBuilder(object):
+    """
+    Complete a release installation
+
+    @param installName: A unique name for this install instance 
+    @param chroot: The chroot for this release
+    @param tftproot: The global tftproot for farbot 
+    @param installConfigFile: The complete path to this installation's install.cfg
+    """
+    def __init__(self, installName, chroot, tftproot, installConfigFile):
+        self.installName = installName
+        self.chroot = chroot
+        self.tftproot = tftproot
+        self.bootRoot = os.path.join(self.chroot, 'R/stage/trees/base/boot')
+        self.mfsCompressed = os.path.join(self.chroot, 'R/stage/mfsroot/mfsroot.gz')
+        self.mfsOutput = os.path.join(self.tftproot, self.installName+"-mfsroot")
+        self.mountPoint = os.path.join(self.chroot, "mnt", self.installName) 
+        self.installConfigSource = installConfigFile
+        self.installConfigDest = os.path.join(self.mountPoint, 'install.cfg')
+
+    def _ebInstallError(self, failure):
+    	# XXX should handle any known possible exception (eg, MountCommandError, MDCommandError)
+        try:
+            failure.raiseException()
+        except CVSCommandError, e:
+            raise ReleaseBuildError, "An error occured extracting the release name from \"%s\": %s" % (self.cvsroot, e)
+        except MakeCommandError, e:
+            raise ReleaseBuildError, "An error occured building the release, make command returned: %s" % (e)
+
+        
+    def _decompressMFSRoot(self):
+    	"""
+    	Synchronous decompression/writing of mfsroot file
+    	(Not worth making async, so run in a thread)
+    	"""
+    	compressedFile = gzip.GzipFile(self.mfsCompressed, 'rb')
+    	outputFile = open(self.mfsOutput, 'wb')
+    	while (True):
+    		data = compressedFile.read(1024)
+    		if (not data):
+    			break
+    		outputFile.write(data)
+        
+    def _cbMountMFSRoot(self, result):
+    	"""
+    	Once the MFS root has been decompressed,
+    	mount it
+    	"""
+    	mdconfig = MDConfigCommand(self.mfsOutput)
+    	# Create the mount point, if necessary
+    	if (not os.path.exists(self.mountPoint)):
+    		os.mkdir(self.mountPoint)
+    	self.mdmount = MDMountCommand(mdconfig, self.mountPoint)
+    	return self.mdmount.mount(self.log)
+
+    def build(self, log):
+        """
+        Build the MFSRoot
+        @param log: Open log file
+        @return Returns a deferred
+        """
+        self.log = log
+        d = defer.Deferred()
+
+        # Write the uncompressed mfsroot file
+        d = threads.deferToThread(self._decompressMFSRoot)
+        # Mount the mfsroot once it has been decompressed
+        d.addCallbacks(self._cbMountMFSRoot, self._ebInstallError)
+
+        # Copy the install.cfg to the attached md device
+        d.addCallback(lambda _: defer.execute(shutil.copy2, self.installConfigSource, self.installConfigDest))
+
+        # Unmount/detach md device
+        d.addCallback(lambda _: self.mdmount.umount(self.log))
+
         return d

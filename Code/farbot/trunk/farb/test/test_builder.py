@@ -46,8 +46,10 @@ PROCESS_OUT = os.path.join(FREEBSD_REL_PATH, 'process.out')
 BUILDROOT = os.path.join(DATA_DIR, 'buildtest')
 CHROOT = os.path.join(BUILDROOT, 'chroot')
 CVSROOT = os.path.join(DATA_DIR, 'fakencvs')
+TFTPROOT = os.path.join(DATA_DIR, 'test_tftproot')
 CVSTAG = 'RELENG_6_0'
 EXPORT_FILE = os.path.join(BUILDROOT, 'newvers.sh')
+INSTALL_CFG = os.path.join(DATA_DIR, 'test_configs', 'install.cfg')
 
 MDCONFIG_PATH = os.path.join(CMD_DIR, 'mdconfig.sh')
 CHROOT_PATH = os.path.join(CMD_DIR, 'chroot.sh')
@@ -408,4 +410,41 @@ class PackageBuilderTestCase(unittest.TestCase):
         self.builder.makeTarget = ('error',)
         d = self.builder.build(self.log)
         d.addCallbacks(self._buildSuccess, self._buildError)
+        return d
+        
+class InstallationBuilderTestCase(unittest.TestCase):
+    def setUp(self):
+        self.builder = builder.InstallationBuilder('testinstall', CHROOT, TFTPROOT, INSTALL_CFG)
+        self.log = open(PROCESS_LOG, 'w+')
+
+    def tearDown(self):
+        self.log.close()
+        if (os.path.exists(PROCESS_LOG)):
+            os.unlink(PROCESS_LOG)
+        if (os.path.exists(PROCESS_OUT)):
+            os.unlink(PROCESS_OUT)
+
+    def _buildResult(self, result):
+        # make sure the gunzip worked
+        testMFSRoot = os.path.join(TFTPROOT, 'testinstall-mfsroot')
+        testMountPoint = os.path.join(CHROOT, 'mnt/testinstall')
+        testInstallCfg = os.path.join(testMountPoint, 'install.cfg')
+        o = open(testMFSRoot, 'r')
+        self.assertEquals(o.read(), 'Uncompress worked.\n')
+        o.close()
+        # check to see if the mountpoint got made
+        self.assertEquals(os.path.exists(testMountPoint), 1)
+        # check to see if the install.cfg got copied to the mountPoint
+        self.assertEquals(os.path.exists(testInstallCfg), 1)
+    
+        # cleanup
+        os.unlink(testMFSRoot)
+        os.unlink(testInstallCfg)
+        os.rmdir(testMountPoint)
+
+        self.assertEquals(result, 0)
+
+    def test_build(self):
+        d = self.builder.build(self.log)
+        d.addCallback(self._buildResult)
         return d
