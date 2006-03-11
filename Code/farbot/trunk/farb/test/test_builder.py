@@ -110,7 +110,7 @@ class CVSCommandTestCase(unittest.TestCase):
         os.unlink(PROCESS_LOG)
 
     def _cvsResult(self, result):
-        self.assertEquals(os.path.exists(EXPORT_FILE), 1)
+        self.assert_(os.path.exists(EXPORT_FILE))
         self.assertEquals(result, 0)
 
     def test_cvs(self):
@@ -433,9 +433,9 @@ class InstallationBuilderTestCase(unittest.TestCase):
         self.assertEquals(o.read(), 'Uncompress worked.\n')
         o.close()
         # check to see if the mountpoint got made
-        self.assertEquals(os.path.exists(testMountPoint), 1)
+        self.assert_(os.path.exists(testMountPoint))
         # check to see if the install.cfg got copied to the mountPoint
-        self.assertEquals(os.path.exists(testInstallCfg), 1)
+        self.assert_(os.path.exists(testInstallCfg))
     
         # cleanup
         os.unlink(testMFSRoot)
