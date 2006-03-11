@@ -319,6 +319,75 @@ class MountCommand(object):
 
         return d
 
+class MDMountCommand(MountCommand):
+    """
+    mount(8)/umount(8) command context
+    """
+    def __init__(self, mdc, mountpoint):
+        """
+        Create a new MountCommand instance
+        @param mdc: MDConfigCommand instance
+        @param mountpoint: mount point
+        """
+        self.mdc = mdc
+        super(MDMountCommand, self).__init__(None, mountpoint)
+
+    def _ebUnmount(self, failure):
+        # Provide a more specific exception type
+        failure.trap(CommandError)
+        raise MountCommandError, failure.value
+
+    def _cbUnmount(self, result):
+        """
+        Device unmounted, detach it
+        """
+        d = self.mdc.detach()
+        d.addCallback(self._cbDetach, result)
+
+        return d
+
+    def _cbAttach(self, result, log):
+        """
+        Device attached, mount it
+        """
+        # build the device path
+        self.device = os.path.join('/dev/', self.mdc.md)
+        return super(MDMountCommand, self).mount(log)
+
+    def _cbDetach(self, result, mountExitCode):
+        # Return the mount(8) exit code
+        return mountExitCode
+
+    def mount(self, log):
+        """
+        Attach the device, run mount(8)
+        @param log: Open log file
+        """
+
+        # Attach the image. Let the caller
+        # handle MDConfigCommand exceptions
+        # directly
+        d = self.mdc.attach()
+        d.addCallback(self._cbAttach, log)
+
+        return d
+
+    def umount(self, log):
+        """
+        Run unmount(8), detach the image.
+        @param log: Open log file
+        """
+
+        # Unmount the image, detach it on success.
+        #
+        # Clean up the CommandError exception
+        # on failure.
+        d = super(MDMountCommand, self).umount(log)
+        d.addCallbacks(self._cbUnmount, self._ebUnmount)
+
+        return d
+
+
 class MakeCommand(object):
     """
     make(1) command context

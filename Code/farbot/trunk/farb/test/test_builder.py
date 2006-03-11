@@ -143,6 +143,41 @@ class MountCommandTestCase(unittest.TestCase):
         d.addCallback(self._cbUmountResult)
         return d
 
+class MDMountCommandTestCase(unittest.TestCase):
+    def setUp(self):
+        self.log = open(PROCESS_LOG, 'w+')
+        self.mdc = builder.MDConfigCommand('/nonexistent')
+        self.mc = builder.MDMountCommand(self.mdc, '/mnt/md0')
+
+    def tearDown(self):
+        self.log.close()
+        os.unlink(PROCESS_LOG)
+
+    def _cbMountResult(self, result):
+        self.assertEquals(result, 0)
+
+    def test_mount(self):
+        d = self.mc.mount(self.log)
+        d.addCallback(self._cbMountResult)
+        return d
+
+    def _cbUmountResult(self, result):
+        self.assertEquals(result, 0)
+
+    def _cbAttach(self, result):
+        # md device attached, try to 
+        # umount it
+        d = self.mc.umount(self.log)
+        d.addCallback(self._cbUmountResult)
+        return d
+
+    def test_umount(self):
+        # The mdconfig device needs to be attached
+        # before we can detach it.
+        d = self.mdc.attach()
+        d.addCallback(self._cbAttach)
+        return d
+
 class MakeCommandTestCase(unittest.TestCase):
     def setUp(self):
         self.log = open(PROCESS_LOG, 'w+')
