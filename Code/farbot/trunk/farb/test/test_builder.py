@@ -29,7 +29,7 @@
 
 """ Builder Unit Tests """
 
-import os
+import os, shutil
 
 from twisted.trial import unittest
 from twisted.internet import reactor, defer
@@ -414,36 +414,32 @@ class PackageBuilderTestCase(unittest.TestCase):
         
 class InstallBuilderTestCase(unittest.TestCase):
     def setUp(self):
-        self.builder = builder.InstallBuilder('testinstall', CHROOT, TFTPROOT, INSTALL_CFG)
         self.log = open(PROCESS_LOG, 'w+')
+        self.builder = builder.InstallBuilder('testinstall', CHROOT, TFTPROOT, INSTALL_CFG)
 
     def tearDown(self):
         self.log.close()
+
+        # Clean up process log
         if (os.path.exists(PROCESS_LOG)):
             os.unlink(PROCESS_LOG)
-        if (os.path.exists(PROCESS_OUT)):
-            os.unlink(PROCESS_OUT)
+
+        # Clean up builder output
+        if (os.path.exists(self.builder.mountPoint)):
+            shutil.rmtree(self.builder.mountPoint)
+        if (os.path.exists(self.builder.tftproot)):
+            shutil.rmtree(self.builder.tftproot)
 
     def _buildResult(self, result):
-        # make sure the gunzip worked
-        testInstallRoot = os.path.join(TFTPROOT, 'testinstall')
-        testMFSRoot = os.path.join(testInstallRoot, 'mfsroot')
-        testMountPoint = os.path.join(CHROOT, 'mnt', 'testinstall')
-        testInstallCfg = os.path.join(testMountPoint, 'install.cfg')
-        o = open(testMFSRoot, 'r')
+        # Make sure the gunzip worked
+        o = open(self.builder.mfsOutput, 'r')
         self.assertEquals(o.read(), 'Uncompress worked.\n')
         o.close()
-        # check to see if the mountpoint got made
-        self.assert_(os.path.exists(testMountPoint))
-        # check to see if the install.cfg got copied to the mountPoint
-        self.assert_(os.path.exists(testInstallCfg))
+        # Check to see if the mountpoint got made
+        self.assert_(os.path.exists(self.builder.mountPoint))
+        # Check to see if the install.cfg got copied to the mountPoint
+        self.assert_(os.path.exists(self.builder.installConfigDest))
     
-        # cleanup
-        os.unlink(testMFSRoot)
-        os.rmdir(testInstallRoot)
-        os.unlink(testInstallCfg)
-        os.rmdir(testMountPoint)
-        
         self.assertEquals(result, 0)
 
     def test_build(self):
@@ -452,15 +448,10 @@ class InstallBuilderTestCase(unittest.TestCase):
         return d
 
     def _copyKernelResult(self, result):
-        testInstallRoot = os.path.join(TFTPROOT, 'testinstall')
-        testInstallKernel = os.path.join(testInstallRoot, 'kernel', 'righthook.ko')
-        # check to see if a kernel module was copied
-        self.assert_(os.path.exists(testInstallKernel))
-        
-        # cleanup
-        os.unlink(testInstallKernel)
-        os.rmdir(os.path.join(testInstallRoot, 'kernel'))
-        os.rmdir(testInstallRoot)
+        kmod = os.path.join(self.builder.tftproot, 'kernel', 'righthook.ko')
+
+        # Check to see if the kernel module was copied
+        self.assert_(os.path.exists(kmod))
         
     def test_copyKernel(self):
         d = self.builder.copyKernel()

@@ -571,7 +571,7 @@ class InstallBuilder(object):
         # Contains shared release boot files
         self.bootRoot = os.path.join(self.chroot, 'R', 'stage', 'trees', 'base', 'boot')
         # Per-release source path for the kernel and modules
-        self.kernelSource = os.path.join(self.bootRoot, 'kernel')
+        self.kernel = os.path.join(self.bootRoot, 'kernel')
         # Shared release mfsroot
         self.mfsCompressed = os.path.join(self.chroot, 'R', 'stage', 'mfsroot', 'mfsroot.gz')
         
@@ -579,9 +579,9 @@ class InstallBuilder(object):
         # Destination Paths
         #
         # Installation-specific tftp/netinstallation root
-        self.tftprootInstall = os.path.join(self.tftproot, self.installName)
+        self.tftproot = os.path.join(self.tftproot, self.installName)
         # Path to installation-specific mfsroot
-        self.mfsOutput = os.path.join(self.tftprootInstall, "mfsroot")
+        self.mfsOutput = os.path.join(self.tftproot, "mfsroot")
         # Temporary mount point for the mfsroot image
         self.mountPoint = os.path.join(self.chroot, "mnt", self.installName) 
         # Write the install.cfg to the mfsroot mount point
@@ -603,8 +603,8 @@ class InstallBuilder(object):
     	(Not worth making async, so run in a thread)
     	"""
     	compressedFile = gzip.GzipFile(self.mfsCompressed, 'rb')
-    	if (not os.path.exists(self.tftprootInstall)):
-    	   os.mkdir(self.tftprootInstall)
+    	if (not os.path.exists(self.tftproot)):
+    	   os.mkdir(self.tftproot)
     	outputFile = open(self.mfsOutput, 'wb')
     	while (True):
     		data = compressedFile.read(1024)
@@ -649,10 +649,10 @@ class InstallBuilder(object):
         """
         Copy the kernel directory to the tftproot install specific directory
         """
-        if (not os.path.exists(self.tftprootInstall)):
-    	   os.mkdir(self.tftprootInstall)
+        if (not os.path.exists(self.tftproot)):
+    	   os.mkdir(self.tftproot)
     
-        shutil.copytree(self.kernelSource, os.path.join(self.tftprootInstall, 'kernel'))
+        shutil.copytree(self.kernel, os.path.join(self.tftproot, os.path.basename(self.kernel)), symlinks=True)
         
     def copyKernel(self):
         """
