@@ -435,7 +435,7 @@ class InstallBuilderTestCase(unittest.TestCase):
         o = open(self.builder.mfsOutput, 'r')
         self.assertEquals(o.read(), 'Uncompress worked.\n')
         o.close()
-        # Check to see if the mountpoint got made
+        # Check to see if the mountpoint was made
         self.assert_(os.path.exists(self.builder.mountPoint))
         # Check to see if the install.cfg got copied to the mountPoint
         self.assert_(os.path.exists(self.builder.installConfigDest))
