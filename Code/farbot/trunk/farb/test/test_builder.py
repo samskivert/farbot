@@ -428,7 +428,7 @@ class InstallBuilderTestCase(unittest.TestCase):
         # make sure the gunzip worked
         testInstallRoot = os.path.join(TFTPROOT, 'testinstall')
         testMFSRoot = os.path.join(testInstallRoot, 'mfsroot')
-        testMountPoint = os.path.join(CHROOT, 'mnt/testinstall')
+        testMountPoint = os.path.join(CHROOT, 'mnt', 'testinstall')
         testInstallCfg = os.path.join(testMountPoint, 'install.cfg')
         o = open(testMFSRoot, 'r')
         self.assertEquals(o.read(), 'Uncompress worked.\n')
@@ -443,10 +443,26 @@ class InstallBuilderTestCase(unittest.TestCase):
         os.rmdir(testInstallRoot)
         os.unlink(testInstallCfg)
         os.rmdir(testMountPoint)
-
+        
         self.assertEquals(result, 0)
 
     def test_build(self):
         d = self.builder.build(self.log)
         d.addCallback(self._buildResult)
+        return d
+
+    def _copyKernelResult(self, result):
+        testInstallRoot = os.path.join(TFTPROOT, 'testinstall')
+        testInstallKernel = os.path.join(testInstallRoot, 'kernel', 'righthook.ko')
+        # check to see if a kernel module was copied
+        self.assert_(os.path.exists(testInstallKernel))
+        
+        # cleanup
+        os.unlink(testInstallKernel)
+        os.rmdir(os.path.join(testInstallRoot, 'kernel'))
+        os.rmdir(testInstallRoot)
+        
+    def test_copyKernel(self):
+        d = self.builder.copyKernel()
+        d.addCallback(self._copyKernelResult)
         return d

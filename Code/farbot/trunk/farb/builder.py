@@ -558,16 +558,33 @@ class InstallBuilder(object):
     @param tftproot: The global tftproot for farbot 
     @param installConfigFile: The complete path to this installation's install.cfg
     """
-    def __init__(self, installName, chroot, tftproot, installConfigFile):
+    def __init__(self, installName, chroot, tftproot, installConfigPath):
         self.installName = installName
         self.chroot = chroot
         self.tftproot = tftproot
-        self.bootRoot = os.path.join(self.chroot, 'R/stage/trees/base/boot')
-        self.mfsCompressed = os.path.join(self.chroot, 'R/stage/mfsroot/mfsroot.gz')
+        self.installConfigSource = installConfigPath
+        
+        #
+        # Source Paths
+        #
+        
+        # Contains shared release boot files
+        self.bootRoot = os.path.join(self.chroot, 'R', 'stage', 'trees', 'base', 'boot')
+        # Per-release source path for the kernel and modules
+        self.kernelSource = os.path.join(self.bootRoot, 'kernel')
+        # Shared release mfsroot
+        self.mfsCompressed = os.path.join(self.chroot, 'R', 'stage', 'mfsroot', 'mfsroot.gz')
+        
+        #
+        # Destination Paths
+        #
+        # Installation-specific tftp/netinstallation root
         self.tftprootInstall = os.path.join(self.tftproot, self.installName)
+        # Path to installation-specific mfsroot
         self.mfsOutput = os.path.join(self.tftprootInstall, "mfsroot")
+        # Temporary mount point for the mfsroot image
         self.mountPoint = os.path.join(self.chroot, "mnt", self.installName) 
-        self.installConfigSource = installConfigFile
+        # Write the install.cfg to the mfsroot mount point
         self.installConfigDest = os.path.join(self.mountPoint, 'install.cfg')
 
     def _ebInstallError(self, failure):
@@ -614,7 +631,6 @@ class InstallBuilder(object):
         @return Returns a deferred
         """
         self.log = log
-        d = defer.Deferred()
 
         # Write the uncompressed mfsroot file
         d = threads.deferToThread(self._decompressMFSRoot)
@@ -627,4 +643,23 @@ class InstallBuilder(object):
         # Unmount/detach md device
         d.addCallback(lambda _: self.mdmount.umount(self.log))
 
+        return d
+        
+    def _doCopyKernel(self):
+        """
+        Copy the kernel directory to the tftproot install specific directory
+        """
+        if (not os.path.exists(self.tftprootInstall)):
+    	   os.mkdir(self.tftprootInstall)
+    
+        shutil.copytree(self.kernelSource, os.path.join(self.tftprootInstall, 'kernel'))
+        
+    def copyKernel(self):
+        """
+        Copy the release kernel into the tftproot
+        """
+        
+        d = threads.deferToThread(self._doCopyKernel)
+        d.addErrback(self._ebInstallError)
+        
         return d
