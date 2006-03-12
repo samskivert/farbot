@@ -549,7 +549,7 @@ class PackageBuilder(object):
         d.addErrback(self._ebBuildError)
         return d
 
-class InstallationBuilder(object):
+class InstallBuilder(object):
     """
     Complete a release installation
 
@@ -564,7 +564,8 @@ class InstallationBuilder(object):
         self.tftproot = tftproot
         self.bootRoot = os.path.join(self.chroot, 'R/stage/trees/base/boot')
         self.mfsCompressed = os.path.join(self.chroot, 'R/stage/mfsroot/mfsroot.gz')
-        self.mfsOutput = os.path.join(self.tftproot, self.installName+"-mfsroot")
+        self.tftprootInstall = os.path.join(self.tftproot, self.installName)
+        self.mfsOutput = os.path.join(self.tftprootInstall, "mfsroot")
         self.mountPoint = os.path.join(self.chroot, "mnt", self.installName) 
         self.installConfigSource = installConfigFile
         self.installConfigDest = os.path.join(self.mountPoint, 'install.cfg')
@@ -585,6 +586,8 @@ class InstallationBuilder(object):
     	(Not worth making async, so run in a thread)
     	"""
     	compressedFile = gzip.GzipFile(self.mfsCompressed, 'rb')
+    	if (not os.path.exists(self.tftprootInstall)):
+    	   os.mkdir(self.tftprootInstall)
     	outputFile = open(self.mfsOutput, 'wb')
     	while (True):
     		data = compressedFile.read(1024)

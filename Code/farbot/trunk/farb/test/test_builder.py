@@ -412,9 +412,9 @@ class PackageBuilderTestCase(unittest.TestCase):
         d.addCallbacks(self._buildSuccess, self._buildError)
         return d
         
-class InstallationBuilderTestCase(unittest.TestCase):
+class InstallBuilderTestCase(unittest.TestCase):
     def setUp(self):
-        self.builder = builder.InstallationBuilder('testinstall', CHROOT, TFTPROOT, INSTALL_CFG)
+        self.builder = builder.InstallBuilder('testinstall', CHROOT, TFTPROOT, INSTALL_CFG)
         self.log = open(PROCESS_LOG, 'w+')
 
     def tearDown(self):
@@ -426,7 +426,8 @@ class InstallationBuilderTestCase(unittest.TestCase):
 
     def _buildResult(self, result):
         # make sure the gunzip worked
-        testMFSRoot = os.path.join(TFTPROOT, 'testinstall-mfsroot')
+        testInstallRoot = os.path.join(TFTPROOT, 'testinstall')
+        testMFSRoot = os.path.join(testInstallRoot, 'mfsroot')
         testMountPoint = os.path.join(CHROOT, 'mnt/testinstall')
         testInstallCfg = os.path.join(testMountPoint, 'install.cfg')
         o = open(testMFSRoot, 'r')
@@ -439,6 +440,7 @@ class InstallationBuilderTestCase(unittest.TestCase):
     
         # cleanup
         os.unlink(testMFSRoot)
+        os.rmdir(testInstallRoot)
         os.unlink(testInstallCfg)
         os.rmdir(testMountPoint)
 
