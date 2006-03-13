@@ -295,20 +295,20 @@ class PackageBuildRunner(BuildRunner):
             eu = utils.ExecutionUnit(pctx, self._copyPackageIndexes, release.portsdir, release.packagedir)
             self.oe.appendExecutionUnit(eu)
 
-        def _copyPackageIndexes(self, source, dest):
-            """
-            Copy any INDEX* files from source to dest
-            @param source: Source directory containing port INDEX* files
-            @param dest: Destination directory
-            """
-            # Copy the package INDEX files into the netinstall root
-            for file in os.listdir(source):
-                # Find all INDEX* files.
-                if (file[:len(INDEX_PREFIX)] == INDEX_PREFIX):
-                    # Copy them over
-                    shutil.copy2(os.path.join(source, file), dest)
+    def _copyPackageIndexes(self, source, dest):
+        """
+        Copy any INDEX* files from source to dest
+        @param source: Source directory containing port INDEX* files
+        @param dest: Destination directory
+        """
+        # Copy the package INDEX files into the netinstall root
+        for file in os.listdir(source):
+            # Find all INDEX* files.
+            if (file[:len(INDEX_PREFIX)] == INDEX_PREFIX):
+                # Copy them over
+                shutil.copy2(os.path.join(source, file), dest)
 
-            return defer.succeed(None)
+        return defer.succeed(None)
 
     def _ebPackageBuild(self, failure):
         # Close our log files
