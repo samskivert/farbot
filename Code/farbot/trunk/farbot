@@ -439,6 +439,18 @@ class InstallBuildRunner(BuildRunner):
                     eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.copytree, release.packagedir, os.path.join(installroot, 'packages'), symlinks=True)
                     self.oe.appendExecutionUnit(eu)
 
+                # Copy in any local data
+                localdir = os.path.join(installroot, 'local')
+                eu = utils.ExecutionUnit(bctx, defer.execute, os.mkdir, localdir)
+                self.oe.appendExecutionUnit(eu)
+
+                for localdata in release.localdata:
+                    if (os.path.isdir(localdata)):
+                        eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.copytree, localdata, os.path.join(localdir, os.path.basename(localdata)), symlinks=True)
+                    else:
+                        eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.copy2, localdata, localdir)
+                    self.oe.appendExecutionUnit(eu)
+
 
     def _ebInstallBuild(self, failure):
         # Close our log files
@@ -451,7 +463,6 @@ class InstallBuildRunner(BuildRunner):
         except builder.InstallBuildError, e:
             raise builder.InstallBuildError, "%s failed: %s.\nFor more information, refer to the installation build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except Exception, e:
-            print failure.value.originalFailure
             raise builder.InstallBuildError, "Unhandled installation build error: %s" % (e)
 
     def _cbInstallBuild(self, result):

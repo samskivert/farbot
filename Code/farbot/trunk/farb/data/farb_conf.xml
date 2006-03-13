@@ -8,6 +8,7 @@
         <key name="CVSRoot" datatype="existing-directory" required="yes"/>
         <key name="CVSTag" datatype="string" required="yes"/>
         <key name="InstallCDs" datatype="boolean" required="no" default="false"/>
+        <multikey name="LocalData" datatype="existing-path" required="no"/>
     </sectiontype>
 
     <sectiontype name="Releases" datatype=".releases_handler">
