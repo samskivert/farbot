@@ -130,6 +130,10 @@ class MountCommandTestCase(unittest.TestCase):
         os.unlink(PROCESS_LOG)
 
     def _cbMountResult(self, result):
+        self.log.seek(0)
+        # take just the first line as make tells us what directories it
+        # is entering and exiting on certain platforms
+        self.assertEquals(self.log.read(), '/dev/md0\n/mnt/md0\n')
         self.assertEquals(result, 0)
 
     def test_mount(self):
@@ -143,6 +147,28 @@ class MountCommandTestCase(unittest.TestCase):
     def test_umount(self):
         d = self.mc.umount(self.log)
         d.addCallback(self._cbUmountResult)
+        return d
+
+class MountCommandTypeTestCase(unittest.TestCase):
+    def setUp(self):
+        self.log = open(PROCESS_LOG, 'w+')
+        self.mc = builder.MountCommand('devfs', '/dev', fstype='devfs')
+
+    def tearDown(self):
+        self.log.close()
+        os.unlink(PROCESS_LOG)
+
+    def _cbMountResult(self, result):
+        self.log.seek(0)
+        # take just the first line as make tells us what directories it
+        # is entering and exiting on certain platforms
+        self.assertEquals(self.log.read(), 'devfs\n/dev\ndevfs\n')
+ 
+        self.assertEquals(result, 0)
+
+    def test_mount(self):
+        d = self.mc.mount(self.log)
+        d.addCallback(self._cbMountResult)
         return d
 
 class MDMountCommandTestCase(unittest.TestCase):

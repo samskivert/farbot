@@ -289,14 +289,17 @@ class MountCommand(object):
     """
     mount(8)/umount(8) command context
     """
-    def __init__(self, device, mountpoint):
+    def __init__(self, device, mountpoint, fstype=None):
         """
         Create a new MountCommand instance
         @param device: device to mount
         @param mountpoint: mount point
+        @param fstype: File system type. If unspecified, mount(8) will
+        try to figure it out.
         """
         self.device = device
         self.mountpoint = mountpoint
+        self.fstype = fstype
 
 
     def _ebMount(self, failure):
@@ -314,7 +317,10 @@ class MountCommand(object):
         d = defer.Deferred()
         d.addErrback(self._ebMount)
         protocol = LoggingProcessProtocol(d, log)
-        argv = [MOUNT_PATH, self.device, self.mountpoint]
+        if (self.fstype):
+            argv = [MOUNT_PATH, '-t', self.fstype, self.device, self.mountpoint]
+        else:
+            argv = [MOUNT_PATH, self.device, self.mountpoint]
 
         reactor.spawnProcess(protocol, MOUNT_PATH, args=argv, env=ROOT_ENV)
 
