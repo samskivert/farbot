@@ -263,9 +263,10 @@ class PackageBuildRunner(BuildRunner):
             self.oe.appendExecutionUnit(eu)
 
             # Make the packages directory 
-            pctx = BuildContext("creating \"%s\" directory" % (release.packagedir), packagingLogPath)
-            eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, release.packagedir)
-            self.oe.appendExecutionUnit(eu)
+            if (not os.path.exists(release.packagedir)):
+                pctx = BuildContext("creating \"%s\" directory" % (release.packagedir), packagingLogPath)
+                eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, release.packagedir)
+                self.oe.appendExecutionUnit(eu)
 
             # Download the current port index
             pctx = BuildContext("fetching current port index", packagingLogPath)
