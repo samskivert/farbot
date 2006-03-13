@@ -243,6 +243,7 @@ class PackageBuildRunner(BuildRunner):
     def __init__(self, config):
         super(PackageBuildRunner, self).__init__()
         self.oe = utils.OrderedExecutor()
+        self.devmounts = {}
 
         # Iterate through all releases, starting a package build for all
         # listed packages
@@ -255,6 +256,13 @@ class PackageBuildRunner(BuildRunner):
             logPath = os.path.join(release.buildroot, 'packaging.log')
             buildLog = open(logPath, 'w', 0)
             self.logs.append(buildLog)
+
+            # Mount devfs in the chroot
+            pctx = BuildContext("Mount devfs in \"%s\"" % (release.chroot), logPath)
+            devfs = builder.MountCommand('devfs', os.path.join(release.chroot, 'dev'), fstype='devfs')
+            self.devmounts[devfs] = buildLog
+            eu = utils.ExecutionUnit(pctx, devfs.mount, buildLog)
+            self.oe.appendExecutionUnit(eu)
 
             # Checkout the ports tree into the chroot 
             cvs = builder.CVSCommand(release.cvsroot)
@@ -306,10 +314,16 @@ class PackageBuildRunner(BuildRunner):
 
         return defer.succeed(None)
 
-    def _ebPackageBuild(self, failure):
-        # Close our log files
-        self._closeLogs()
+    def _unmountDevFS(self):
+        # Unmount all devfs mounts
+        deferreds = []
+        for mount, log in self.devmounts.iteritems():
+            deferreds.append(mount.umount(log))
 
+        d = defer.DeferredList(deferreds)
+        return d
+
+    def _decipherException(self, result, failure):
         # Decipher the BuildContext and raise a normal exception, with the message formatted for printing
         try:            
             bctx = failure.value.executionContext
@@ -321,9 +335,24 @@ class PackageBuildRunner(BuildRunner):
         except Exception, e:
             raise builder.PackageBuildError, "Unhandled package build error: %s" % (e)
 
+    def _ebPackageBuild(self, failure):
+        # Close our log files
+        self._closeLogs()
+
+        # Close any devfs mounts
+        d = self._unmountDevFS()
+
+        # Decipher the exception
+        d.addCallback(self._decipherException, failure)
+
+        return d
+
     def _cbPackageBuild(self, result):
         # Close our log files
         self._closeLogs()
+
+        # Close any devfs mounts
+        return self._unmountDevFS()
 
     def run(self):
         # Run!
