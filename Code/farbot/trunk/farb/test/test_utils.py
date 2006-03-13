@@ -41,6 +41,9 @@ from farb.test import DATA_DIR
 
 class ExecutionUnitTestCase(unittest.TestCase):
     def test_init(self):
+        """
+        Test initializing an ExecutionUnit 
+        """
         ctx = "3, 2, 1 Contact!"
         eu = utils.ExecutionUnit(ctx, self.test_init, 1, keyword='key')
         self.assertEquals(eu.callable[0], self.test_init)

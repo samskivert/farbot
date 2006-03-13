@@ -65,14 +65,23 @@ class ConfigSectionTestCase(unittest.TestCase):
         self.cs.optionA = 'A'
 
     def test_serializeOptions(self):
+        """
+        Test ConfigSection serializing Options
+        """
         self.cs._serializeOptions(self.output)
         self.assertEquals(self.output.getvalue(), 'optionA=A\n')
 
     def test_serializeSectionCommands(self):
+        """
+        Test ConfigSection serializing Commands
+        """
         self.cs._serializeCommands(self.output)
         self.assertEquals(self.output.getvalue(), 'commandA\n')
 
     def test_serializeOtherCommands(self):
+        """
+        Test ConfigSection serializing OtherCommands
+        """
         self.cs._serializeCommands(self.output, commands=self.cs.otherCommands)
         self.assertEquals(self.output.getvalue(), 'commandB\n')
 
@@ -198,6 +207,9 @@ class PackageConfigTestCase(ConfigTestCase, unittest.TestCase):
         self.assertEquals(pkgc.package, self.config.PackageSets.PackageSet[0].Package[0].package)
 
     def test_serialize(self):
+        """
+        Serialize an PackageConfig 
+        """
         output = StringIO()
         package = self.config.PackageSets.PackageSet[0].Package[0]
         pkgc = sysinstall.PackageConfig(package)
@@ -215,6 +227,9 @@ class SystemCommandConfigTestCase(ConfigTestCase, unittest.TestCase):
         self.assertEquals(scc.cmd, '/dist/local/cleanup.sh everything')
 
     def test_serialize(self):
+        """
+        Serialize an SystemCommandConfig 
+        """
         output = StringIO()
         cmd = self.config.Installations.Installation[0].PostInstall.command[0]
         scc = sysinstall.SystemCommandConfig(cmd)
