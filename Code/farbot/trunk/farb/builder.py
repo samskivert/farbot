@@ -63,6 +63,15 @@ FREEBSD_PORTS_PATH = '/usr/ports'
 # Relative path of newvers.sh file in the FreeBSD CVS repository
 NEWVERS_PATH = 'src/sys/conf/newvers.sh'
 
+# Default Root Environment
+ROOT_ENV = {
+    'USER'      : 'root',
+    'GROUP'     : 'wheel',
+    'HOME'      : '/root',
+    'LOGNAME'   : 'root',
+    'PATH'      : '/sbin:/bin:/usr/sbin:/usr/bin:/usr/games:/usr/local/sbin:/usr/local/bin:/usr/X11R6/bin:/root/bin'
+}
+
 # Exceptions
 class CommandError(farb.FarbError):
     pass
@@ -221,7 +230,7 @@ class MDConfigCommand(object):
         argv = [MDCONFIG_PATH, '-a', '-t', 'vnode', '-f', self.file]
         d = defer.Deferred()
         protocol = MDConfigProcessProtocol(d)
-        reactor.spawnProcess(protocol, MDCONFIG_PATH, argv)
+        reactor.spawnProcess(protocol, MDCONFIG_PATH, args=argv, env=ROOT_ENV)
         d.addCallback(self._cbAttached)
 
         return d
@@ -236,7 +245,7 @@ class MDConfigCommand(object):
         argv = [MDCONFIG_PATH, '-d', '-u', self.md]
         d = defer.Deferred()
         protocol = MDConfigProcessProtocol(d)
-        reactor.spawnProcess(protocol, MDCONFIG_PATH, argv)
+        reactor.spawnProcess(protocol, MDCONFIG_PATH, args=argv, env=ROOT_ENV)
 
         return d
 
@@ -271,7 +280,7 @@ class CVSCommand(object):
         protocol = LoggingProcessProtocol(d, log)
         argv = [CVS_PATH, '-R', '-d', self.repository, 'export', '-r', release, '-d', destination, module]
 
-        reactor.spawnProcess(protocol, CVS_PATH, argv)
+        reactor.spawnProcess(protocol, CVS_PATH, args=argv, env=ROOT_ENV)
 
         return d
 
@@ -306,7 +315,7 @@ class MountCommand(object):
         protocol = LoggingProcessProtocol(d, log)
         argv = [MOUNT_PATH, self.device, self.mountpoint]
 
-        reactor.spawnProcess(protocol, MOUNT_PATH, argv)
+        reactor.spawnProcess(protocol, MOUNT_PATH, args=argv, env=ROOT_ENV)
 
         return d
 
@@ -322,7 +331,7 @@ class MountCommand(object):
         protocol = LoggingProcessProtocol(d, log)
         argv = [UMOUNT_PATH, self.mountpoint]
 
-        reactor.spawnProcess(protocol, UMOUNT_PATH, argv)
+        reactor.spawnProcess(protocol, UMOUNT_PATH, args=argv, env=ROOT_ENV)
 
         return d
 
@@ -440,7 +449,7 @@ class MakeCommand(object):
 
         for option, value in self.options.items():
             argv.append("%s=%s" % (option, value))
-        reactor.spawnProcess(protocol, runCmd, argv)
+        reactor.spawnProcess(protocol, runCmd, args=argv, env=ROOT_ENV)
 
         return d
 
@@ -506,7 +515,7 @@ class ReleaseBuilder(object):
         # Kick off the build once we get the release name from CVS
         d.addCallback(self._doBuild, log)
         d.addErrback(self._ebBuildError)
-        reactor.spawnProcess(pp, CVS_PATH, [CVS_PATH, '-R', '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH])
+        reactor.spawnProcess(pp, CVS_PATH, args=[CVS_PATH, '-R', '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH], env=ROOT_ENV)
         return d
 
 class PackageBuilder(object):
