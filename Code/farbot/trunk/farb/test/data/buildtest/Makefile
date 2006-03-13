@@ -13,6 +13,7 @@ protocol:
 makecommand:
 	@echo MakeCommand ${TEST1} ${TEST2} >${OUTPUT}
 
+deinstall:
 clean:
 
 release:

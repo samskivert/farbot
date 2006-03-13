@@ -526,11 +526,23 @@ class ReleaseBuilder(object):
         return d
 
 class PackageBuilder(object):
-    makeTarget = ('clean', 'package-recursive')
+    """
+    Build a package from a FreeBSD port
+    """
     defaultMakeOptions = {
         'PACKAGE_BUILDING' : 'yes',
         'BATCH' : 'yes'
     }
+
+    # Deinstall prior to building a package.
+    #
+    # This may result in a port being built twice (first as a dependency,
+    # and next explicitly), but it also ensures that the final version of the
+    # package is built with user-supplied configuration options.
+    # Caveat Emptor:
+    # There is the potential for failure -- user-supplied options may change
+    # the package name and the dependency chain will be broken.
+    makeTarget = ('deinstall', 'clean', 'package-recursive')
 
     """
     Build a FreeBSD Package 
