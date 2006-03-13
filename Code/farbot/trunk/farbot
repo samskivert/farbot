@@ -292,7 +292,7 @@ class PackageBuildRunner(BuildRunner):
                 self.oe.appendExecutionUnit(eu)
 
             # Copy the package INDEX files into the packages directory
-            eu = utils.ExecutionUnit(bctx, self._copyPackageIndexes, release.portsdir, release.packagedir)
+            eu = utils.ExecutionUnit(pctx, self._copyPackageIndexes, release.portsdir, release.packagedir)
             self.oe.appendExecutionUnit(eu)
 
         def _copyPackageIndexes(self, source, dest):
