@@ -270,7 +270,7 @@ class SystemCommandConfig(ConfigSection):
         """
         Initialize system command configuration for a given
         installation.
-        @param section: ZConfig Package section
+        @param section: ZConfig command key value
         """
         # Build command + options 
         self.cmd = cmd 
