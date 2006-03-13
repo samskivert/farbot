@@ -33,20 +33,17 @@
 	<PackageSet Base>
 		<Package>
 			Port            security/sudo 
-			Package         sudo
 		</Package>
 	</PackageSet>
 	<PackageSet Database>
 		<Package>
 			Port            databases/mysql50-server
-			Package         mysql50-server
 			<BuildOptions>
 				WITH_COLLATION	UTF8
 			</BuildOptions>
 		</Package>
 		<Package>
 			Port            security/sudo 
-			Package         sudo
 		</Package>
 	</PackageSet>
 </PackageSets>

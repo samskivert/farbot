@@ -146,6 +146,10 @@ class ConfigParsingTestCase(unittest.TestCase):
         config, handler = ZConfig.loadConfig(self.schema, PACKAGES_CONFIG_FILE)
         farb.config.verifyPackages(config)
         self.assertEquals(config.Releases.Release[1].packages[0].port, 'security/sudo')
+        # Test default handling
+        self.assertEquals(config.Releases.Release[1].packages[0].package, 'sudo')
+        # Test default override
+        self.assertEquals(config.Releases.Release[1].packages[1].package, 'overwrote')
 
     def test_packages_unique(self):
         """ Test handling of duplicate packages in a good package set """

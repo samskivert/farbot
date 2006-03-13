@@ -89,6 +89,15 @@ def partition_handler(section):
 
     return section
 
+def package_handler(section):
+    """
+    Provide a reasonable default for the package name
+    """
+    if (not section.package):
+        section.package = os.path.basename(section.port)
+
+    return section
+
 def verifyReferences(config):
     """
     Verify referential integrity between sections

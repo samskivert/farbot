@@ -40,9 +40,9 @@
         <key name="+" datatype="string" attribute="Options" required="yes"/>
     </sectiontype>
     
-    <sectiontype name="Package">
+    <sectiontype name="Package" datatype=".package_handler">
         <key name="Port" datatype="string" required="yes"/>
-        <key name="Package" datatype="string" required="yes"/>
+        <key name="Package" datatype="string" required="no"/>
         <section type="BuildOptions" name="*" attribute="BuildOptions" required="no"/>
     </sectiontype>
 

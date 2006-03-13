@@ -72,13 +72,11 @@
 	<PackageSet Base>
 		<Package>
 			Port            security/sudo 
-			Package         sudo
 		</Package>
 	</PackageSet>
 	<PackageSet Database>
 		<Package>
 			Port            databases/mysql50-server
-			Package         mysql50-server
 			<BuildOptions>
 				WITH_COLLATION  latin1_general_ci
 			</BuildOptions>
