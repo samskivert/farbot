@@ -530,8 +530,9 @@ class PackageBuilder(object):
     Build a package from a FreeBSD port
     """
     defaultMakeOptions = {
-        'PACKAGE_BUILDING' : 'yes',
-        'BATCH' : 'yes'
+        'PACKAGE_BUILDING'  : 'yes',
+        'BATCH'             : 'yes',
+        'NOCLEANDEPENDS'    : 'yes'
     }
 
     # Deinstall prior to building a package.
