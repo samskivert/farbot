@@ -16,6 +16,8 @@
 		CVSRoot	@CVSROOT@
 		# Release Tag
 		CVSTag	@TAG1@
+		LocalData /
+		LocalData /tmp
 	</Release>
 
 	<Release 6-STABLE>
