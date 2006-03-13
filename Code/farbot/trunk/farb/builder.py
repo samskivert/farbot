@@ -588,15 +588,14 @@ class InstallBuilder(object):
         self.installConfigDest = os.path.join(self.mountPoint, 'install.cfg')
 
     def _ebInstallError(self, failure):
-    	# XXX should handle any known possible exception (eg, MountCommandError, MDCommandError)
         try:
             failure.raiseException()
-        except CVSCommandError, e:
-            raise ReleaseBuildError, "An error occured extracting the release name from \"%s\": %s" % (self.cvsroot, e)
-        except MakeCommandError, e:
-            raise ReleaseBuildError, "An error occured building the release, make command returned: %s" % (e)
+        except MDCommandError, e:
+            raise ReleaseBuildError, "An error occured operating on the mfsroot \"%s\": %s" % (self.mfsOutput, e)
+        except MountCommandError, e:
+            raise ReleaseBuildError, "An error occured mounting \"%s\": %s" % (self.mfsOutput, e)
 
-        
+
     def _decompressMFSRoot(self):
     	"""
     	Synchronous decompression/writing of mfsroot file
