@@ -252,6 +252,34 @@ class PackageConfig(ConfigSection):
         self._serializeCommands(output)
 
 
+class SystemCommandConfig(ConfigSection):
+    """
+    install.cfg(8) system command configuration section.
+    """
+    # Section option names
+    sectionOptions = (
+        'command',  # Command name and arguments 
+    )
+
+    # Section commands
+    sectionCommands = (
+        'system',
+    )
+
+    def __init__(self, cmd):
+        """
+        Initialize system command configuration for a given
+        installation.
+        @param section: ZConfig Package section
+        """
+        # Build command + options 
+        self.cmd = cmd 
+        setattr(self, 'command', "%s" % (cmd))
+
+    def serialize(self, output):
+        self._serializeOptions(output)
+        self._serializeCommands(output)
+
 
 class InstallationConfig(ConfigSection):
     """
@@ -308,6 +336,12 @@ class InstallationConfig(ConfigSection):
                 pkgc = PackageConfig(package)
                 self.packageConfigs.append(pkgc)
 
+        # System Commands
+        self.systemCommandConfigs = []
+        for cmd in section.PostInstall.command:
+            systemCommandConfig = SystemCommandConfig(cmd)
+            self.systemCommandConfigs.append(systemCommandConfig)
+
     def serialize(self, output):
         # Global configuration options
         self._serializeOptions(output)
@@ -325,6 +359,10 @@ class InstallationConfig(ConfigSection):
         # Packages
         for pkgc in self.packageConfigs:
             pkgc.serialize(output)
+
+        # System Commands 
+        for scc in self.systemCommandConfigs:
+            scc.serialize(output)
 
         # Global commands
         self._serializeCommands(output)

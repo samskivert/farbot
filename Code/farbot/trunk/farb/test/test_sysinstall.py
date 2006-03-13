@@ -186,6 +186,23 @@ class PackageConfigTestCase(ConfigTestCase, unittest.TestCase):
         pkgc.serialize(output)
         self.assertEquals(output.getvalue(), 'package=%s\npackageAdd\n' % (package.package))
 
+class SystemCommandConfigTestCase(ConfigTestCase, unittest.TestCase):
+    def test_init(self):
+        """
+        Initialize a SystemCommandConfig
+        """
+        # Grab the first system command 
+        cmd = self.config.Installations.Installation[0].PostInstall.command[0]
+        scc = sysinstall.SystemCommandConfig(cmd)
+        self.assertEquals(scc.cmd, '/dist/local/cleanup.sh everything')
+
+    def test_serialize(self):
+        output = StringIO()
+        cmd = self.config.Installations.Installation[0].PostInstall.command[0]
+        scc = sysinstall.SystemCommandConfig(cmd)
+        scc.serialize(output)
+        self.assertEquals(output.getvalue(), 'command=/dist/local/cleanup.sh everything\nsystem\n')
+
 class InstallationConfigTestCase(ConfigTestCase, unittest.TestCase):
     def setUp(self):
         ConfigTestCase.setUp(self)

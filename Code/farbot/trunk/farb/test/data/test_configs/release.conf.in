@@ -98,6 +98,10 @@
 		<Disk ad0>
 			PartitionMap @PMAP@
 		</Disk>
+                <PostInstall>
+                        Command /dist/local/cleanup.sh everything    
+                        Command /dist/local/local.sh database
+                </PostInstall>
 	</Installation>
 </Installations>
 

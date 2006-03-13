@@ -60,6 +60,10 @@
         <key name="PartitionMap" datatype="string" required="yes"/>
     </sectiontype>
 
+    <sectiontype name="PostInstall">
+        <multikey name="Command" datatype="string" required="yes"/>
+    </sectiontype>
+
     <sectiontype name="Installation">
         <key name="Release" datatype="string" required="yes"/>
         <key name="Hostname" datatype="dotted-name" required="no" default="install"/>
@@ -67,6 +71,7 @@
         <key name="NetworkDevice" datatype="string" required="yes"/>
         <multikey name="PackageSet" datatype="string" required="no"/>
         <multisection type="Disk" name="+" attribute="Disk" required="yes"/>
+        <section type="PostInstall" name="*" attribute="PostInstall" required="no"/>
     </sectiontype>
 
     <sectiontype name="Installations">
