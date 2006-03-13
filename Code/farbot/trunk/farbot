@@ -53,6 +53,7 @@ class Main(object):
         print "\nSupported actions:"
         print "    release        Build all defined releases"
         print "    package        Build all defined packages (requires a release build)"
+        print "    install        Build the network installation root (requires package and release builds)"
 
     def _ebReleaseBuild(self, failure):
         # Just print the failure and exit
@@ -70,6 +71,15 @@ class Main(object):
 
     def _cbPackageBuild(self, result):
         print "Package build completed."
+        reactor.stop()
+
+    def _ebInstallBuild(self, failure):
+        # Just print the failure and exit
+        print failure.value
+        reactor.stop()
+
+    def _cbInstallBuild(self, result):
+        print "Network installation root created."
         reactor.stop()
 
     def main(self):
@@ -121,6 +131,10 @@ class Main(object):
             pbr = PackageBuildRunner(farbconfig)
             d = pbr.run()
             d.addCallbacks(self._cbPackageBuild, self._ebPackageBuild)
+        elif (action == "install"):
+            ibr = InstallationBuildRunner(farbconfig)
+            d = ibr.run()
+            d.addCallbacks(self._cbInstallBuild, self._ebInstallBuild)
         else:
             print "Unknown action \"%s\".\n" % (action)
             self.usage()
@@ -141,13 +155,25 @@ class BuildContext(object):
         self.description = description
         self.logPath = logPath
 
+class BuildRunner(object):
+    """
+    BuildRunner abstract superclass.
+    """
+    def __init__(self):
+        self.logs = []
+        
 
-class ReleaseBuildRunner(object):
+    def _closeLogs(self):
+        for logFile in self.logs:
+            logFile.close()
+
+
+class ReleaseBuildRunner(BuildRunner):
     """
     Run a set of release builds
     """
     def __init__(self, config):
-        self.logs = []
+        super(ReleaseBuildRunner).__init__(self)
         self.oe = utils.OrderedExecutor()
 
         # Iterate through all releases, starting a release build for all
@@ -184,10 +210,6 @@ class ReleaseBuildRunner(object):
             eu = utils.ExecutionUnit(bctx, releaseBuilder.build, buildLog)
             self.oe.appendExecutionUnit(eu)
 
-    def _closeLogs(self):
-        for logFile in self.logs:
-            logFile.close()
-
     def _ebReleaseBuild(self, failure):
         # Close our log files
         self._closeLogs()
@@ -214,12 +236,12 @@ class ReleaseBuildRunner(object):
         return d
 
 
-class PackageBuildRunner(object):
+class PackageBuildRunner(BuildRunner):
     """
     Run a set of package builds
     """
     def __init__(self, config):
-        self.logs = []
+        super(PackageBuildRunner).__init__(self)
         self.oe = utils.OrderedExecutor()
 
         # Iterate through all releases, starting a package build for all
@@ -269,10 +291,6 @@ class PackageBuildRunner(object):
                 eu = utils.ExecutionUnit(pctx, pb.build, packageLog)
                 self.oe.appendExecutionUnit(eu)
 
-    def _closeLogs(self):
-        for logFile in self.logs:
-            logFile.close()
-
     def _ebPackageBuild(self, failure):
         # Close our log files
         self._closeLogs()
@@ -282,11 +300,11 @@ class PackageBuildRunner(object):
             bctx = failure.value.executionContext
             failure.value.originalFailure.raiseException()
         except builder.PackageBuildError, e:
-            raise builder.ReleaseBuildError, "%s failed: %s.\nFor more information, refer to the package build log \"%s\"" % (bctx.description, e, bctx.logPath)
+            raise builder.PackageBuildError, "%s failed: %s.\nFor more information, refer to the package build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except builder.CVSCommandError, e:
-            raise builder.ReleaseBuildError, "%s failed: cvs\nreturned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
+            raise builder.PackageBuildError, "%s failed: cvs\nreturned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except Exception, e:
-            raise builder.ReleaseBuildError, "Unhandled package build error: %s" % (e)
+            raise builder.PackageBuildError, "Unhandled package build error: %s" % (e)
 
     def _cbPackageBuild(self, result):
         # Close our log files
@@ -296,6 +314,76 @@ class PackageBuildRunner(object):
         # Run!
         d = self.oe.run()
         d.addCallbacks(self._cbPackageBuild, self._ebPackageBuild)
+        return d
+
+class InstallBuildRunner(BuildRunner):
+    """
+    Run a set of installation builds
+    """
+    def __init__(self, config):
+        super(InstallBuildRunner).__init__(self)
+        self.oe = utils.OrderedExecutor()
+       # Iterate through all installations
+        for install in config.Installations.Installation:
+            # Find the release for this installation
+            for release in config.Installations.Installation:
+                if (release.getSectionName() == install.release.lower()):
+                    # Found it
+                    break
+
+            # Installation Name
+            installName = install.getSectionName()
+
+            # Default BuildContext
+            bctx = BuildContext("%s installation build" % installName, logPath)
+
+            # Open the build log file
+            logPath = os.path.join(release.buildroot, 'install.log')
+            installLog = open(logPath, 'w', 0)
+            self.logs.append(installLog)
+
+
+            # Generate the install.cfg
+            installConfig = InstallationConfig(install, config)
+            installConfigPath = os.path.join(release.buildroot, '%s-install.cfg' % (installName))
+            outputFile = file(installConfigPath, 'w')
+
+            # Serialize it
+            eu = utils.ExecutionUnit(bctx, threads.deferToThread, installConfig.serialize, outputFile)
+            self.oe.appendExecutionUnit(eu)
+
+            # Close the output
+            eu = utils.ExecutionUnit(bctx, outputFile.close)
+            self.oe.appendExecutionUnit(eu)
+
+
+            # Instantiate our builder and add it to the OrderedExecutor
+            installBuilder = builder.ReleaseBuilder(installName, release.chroot, config.Releases.tftproot, installConfigPath)
+            eu = utils.ExecutionUnit(bctx, installBuilder.build, buildLog)
+            self.oe.appendExecutionUnit(eu)
+
+
+    def _ebInstallBuild(self, failure):
+        # Close our log files
+        self._closeLogs()
+
+        # Decipher the BuildContext and raise a normal exception, with the message formatted for printing
+        try:            
+            bctx = failure.value.executionContext
+            failure.value.originalFailure.raiseException()
+        except builder.InstallBuildError, e:
+            raise builder.InstallBuildError, "%s failed: %s.\nFor more information, refer to the installation build log \"%s\"" % (bctx.description, e, bctx.logPath)
+        except Exception, e:
+            raise builder.InstallBuildError, "Unhandled installation build error: %s" % (e)
+
+    def _cbPackageBuild(self, result):
+        # Close our log files
+        self._closeLogs()
+
+    def run(self):
+        # Run!
+        d = self.oe.run()
+        d.addCallbacks(self._cbInstallBuild, self._ebInstallBuild)
         return d
 
 
