@@ -88,6 +88,9 @@ class ReleaseBuildError(farb.FarbError):
 class PackageBuildError(farb.FarbError):
     pass
 
+class InstallBuildError(farb.FarbError):
+    pass
+
 class LoggingProcessProtocol(protocol.ProcessProtocol):
     """
     make(1) process protocol
@@ -591,9 +594,9 @@ class InstallBuilder(object):
         try:
             failure.raiseException()
         except MDCommandError, e:
-            raise ReleaseBuildError, "An error occured operating on the mfsroot \"%s\": %s" % (self.mfsOutput, e)
+            raise InstallBuildError, "An error occured operating on the mfsroot \"%s\": %s" % (self.mfsOutput, e)
         except MountCommandError, e:
-            raise ReleaseBuildError, "An error occured mounting \"%s\": %s" % (self.mfsOutput, e)
+            raise InstallBuildError, "An error occured mounting \"%s\": %s" % (self.mfsOutput, e)
 
 
     def _decompressMFSRoot(self):
@@ -610,7 +613,17 @@ class InstallBuilder(object):
     		if (not data):
     			break
     		outputFile.write(data)
-        
+
+    def _doCopyKernel(self):
+        """
+        Copy the kernel directory to the tftproot install specific directory
+        (Synchronous)
+        """
+        if (not os.path.exists(self.tftproot)):
+    	   os.mkdir(self.tftproot)
+    
+        shutil.copytree(self.kernel, os.path.join(self.tftproot, os.path.basename(self.kernel)), symlinks=True)
+
     def _cbMountMFSRoot(self, result):
     	"""
     	Once the MFS root has been decompressed,
@@ -625,7 +638,7 @@ class InstallBuilder(object):
 
     def build(self, log):
         """
-        Build the MFSRoot
+        Build the MFSRoot and copy the kernel.
         @param log: Open log file
         @return Returns a deferred
         """
@@ -642,23 +655,7 @@ class InstallBuilder(object):
         # Unmount/detach md device
         d.addCallback(lambda _: self.mdmount.umount(self.log))
 
-        return d
-        
-    def _doCopyKernel(self):
-        """
-        Copy the kernel directory to the tftproot install specific directory
-        """
-        if (not os.path.exists(self.tftproot)):
-    	   os.mkdir(self.tftproot)
-    
-        shutil.copytree(self.kernel, os.path.join(self.tftproot, os.path.basename(self.kernel)), symlinks=True)
-        
-    def copyKernel(self):
-        """
-        Copy the release kernel into the tftproot
-        """
-        
-        d = threads.deferToThread(self._doCopyKernel)
-        d.addErrback(self._ebInstallError)
+        # Copy the kernel
+        d.addCallback(lambda _: threads.deferToThread(self._doCopyKernel))
         
         return d

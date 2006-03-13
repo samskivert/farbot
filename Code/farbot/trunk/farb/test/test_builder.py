@@ -435,25 +435,18 @@ class InstallBuilderTestCase(unittest.TestCase):
         o = open(self.builder.mfsOutput, 'r')
         self.assertEquals(o.read(), 'Uncompress worked.\n')
         o.close()
+
         # Check to see if the mountpoint was made
         self.assert_(os.path.exists(self.builder.mountPoint))
+
         # Check to see if the install.cfg got copied to the mountPoint
         self.assert_(os.path.exists(self.builder.installConfigDest))
-    
-        self.assertEquals(result, 0)
+
+        # Check to see if the kernel module was copied
+        kmod = os.path.join(self.builder.tftproot, 'kernel', 'righthook.ko')
+        self.assert_(os.path.exists(kmod))
 
     def test_build(self):
         d = self.builder.build(self.log)
         d.addCallback(self._buildResult)
-        return d
-
-    def _copyKernelResult(self, result):
-        kmod = os.path.join(self.builder.tftproot, 'kernel', 'righthook.ko')
-
-        # Check to see if the kernel module was copied
-        self.assert_(os.path.exists(kmod))
-        
-    def test_copyKernel(self):
-        d = self.builder.copyKernel()
-        d.addCallback(self._copyKernelResult)
         return d
