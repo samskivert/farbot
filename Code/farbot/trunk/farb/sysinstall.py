@@ -77,7 +77,7 @@ class NetworkConfig(ConfigSection):
     sectionOptions = (
         'hostname',     # New Server's Host Name
         'domainname',   # New Server's Domain Name
-        'netdev',       # Network Interface
+        'netDev',       # Network Interface
         'nfs',          # NFS Installation Media
         'tryDHCP'       # DHCP an address
     )
@@ -99,7 +99,7 @@ class NetworkConfig(ConfigSection):
         # Install-specific Options
         self.hostname = section.hostname
         self.domainname = section.domain
-        self.netdev = section.networkdevice
+        self.netDev = section.networkdevice
 
         # FarBot-wide Options
         self.nfshost = config.Releases.nfshost

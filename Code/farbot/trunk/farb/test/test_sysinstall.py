@@ -115,7 +115,7 @@ class NetworkConfigTestCase(ConfigTestCase, unittest.TestCase):
         instSect = self.instSection
         nc = sysinstall.NetworkConfig(self.instSection, self.config)
         # Do some basic validation of the serialized output
-        expectedOutput = 'hostname=%s\ndomainname=%s\nnetdev=%s\nnfs=%s\ntryDHCP=YES\nmediaSetNFS\n' % (
+        expectedOutput = 'hostname=%s\ndomainname=%s\nnetDev=%s\nnfs=%s\ntryDHCP=YES\nmediaSetNFS\n' % (
                 instSect.hostname,
                 instSect.domain,
                 instSect.networkdevice,
