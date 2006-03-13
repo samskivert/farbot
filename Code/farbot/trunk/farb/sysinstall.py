@@ -56,13 +56,17 @@ class ConfigSection(object):
             if hasattr(self, option):
                 output.write('%s=%s\n' % (option, getattr(self, option)))
 
-    def _serializeCommands(self, output):
+    def _serializeCommands(self, output, commands=None):
         """
         Write out all commands listed in the sectionCommands class
         attribute.
         @param output: Open, writable file handle
+        @param commands: Commands to output. Defaults to sectionCommands.
         """
-        for command in self.sectionCommands:
+        if (not commands):
+            commands = self.sectionCommands
+
+        for command in commands:
             output.write('%s\n' % (command))
 
 class NetworkConfig(ConfigSection):
@@ -298,6 +302,12 @@ class InstallationConfig(ConfigSection):
     nonInteractive = 'YES'
     noWarn = 'YES'
 
+    # Pre-package commands
+    prePackageCommands = (
+        'diskLabelCommit',  # Write disk labels to disk
+        'installCommit'     # Write install distribution to disk
+    )
+
     # Section commands
     sectionCommands = (
         'shutdown',
@@ -355,6 +365,9 @@ class InstallationConfig(ConfigSection):
         # Disk formatting
         for disk in self.diskPartitionConfigs:
             disk.serialize(output)
+
+        # Commit installation to disk
+        self._serializeCommands(output, commands=self.prePackageCommands)
 
         # Packages
         for pkgc in self.packageConfigs:

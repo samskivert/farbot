@@ -50,14 +50,32 @@ class MockConfigSection(sysinstall.ConfigSection):
         'optionC',
     ]
 
-class ConfigSectionTestCase(unittest.TestCase):
-    def test_serializeOptions(self):
-        output = StringIO()
-        cs = MockConfigSection()
-        cs.optionA = 'A'
+    sectionCommands = [
+        'commandA'
+    ]
 
-        cs._serializeOptions(output)
-        self.assertEquals(output.getvalue(), 'optionA=A\n')
+    otherCommands = [
+        'commandB'
+    ]
+
+class ConfigSectionTestCase(unittest.TestCase):
+    def setUp(self):
+        self.output = StringIO()
+        self.cs = MockConfigSection()
+        self.cs.optionA = 'A'
+
+    def test_serializeOptions(self):
+        self.cs._serializeOptions(self.output)
+        self.assertEquals(self.output.getvalue(), 'optionA=A\n')
+
+    def test_serializeSectionCommands(self):
+        self.cs._serializeCommands(self.output)
+        self.assertEquals(self.output.getvalue(), 'commandA\n')
+
+    def test_serializeOtherCommands(self):
+        self.cs._serializeCommands(self.output, commands=self.cs.otherCommands)
+        self.assertEquals(self.output.getvalue(), 'commandB\n')
+
 
 class ConfigTestCase(object):
     """ Mix-in class handles configuration file parsing and clean up """
