@@ -411,7 +411,7 @@ class PackageBuilderTestCase(unittest.TestCase):
         d = self.builder.build(self.log)
         d.addCallbacks(self._buildSuccess, self._buildError)
         return d
-        
+
 class InstallBuilderTestCase(unittest.TestCase):
     def setUp(self):
         self.log = open(PROCESS_LOG, 'w+')
@@ -449,4 +449,17 @@ class InstallBuilderTestCase(unittest.TestCase):
     def test_build(self):
         d = self.builder.build(self.log)
         d.addCallback(self._buildResult)
+        return d
+
+    def _buildSuccess(self, result):
+        self.fail("This call should not have succeeded")
+
+    def _buildError(self, failure):
+        failure.trap(builder.InstallBuildError)
+
+    def test_buildFailure(self):
+        # Reach into our builder and force an implosion
+        self.builder.mfsCompressed = '/nonexistent'
+        d = self.builder.build(self.log)
+        d.addCallbacks(self._buildSuccess, self._buildError)
         return d

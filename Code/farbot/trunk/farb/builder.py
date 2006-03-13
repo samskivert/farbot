@@ -31,7 +31,7 @@ from twisted.internet import reactor, defer, protocol, threads
 from twisted.python import threadable
 threadable.init()
 
-import os, re, gzip, shutil
+import os, re, gzip, shutil, exceptions
 
 import farb
 from farb import utils
@@ -593,11 +593,12 @@ class InstallBuilder(object):
     def _ebInstallError(self, failure):
         try:
             failure.raiseException()
-        except MDCommandError, e:
+        except MDConfigCommandError, e:
             raise InstallBuildError, "An error occured operating on the mfsroot \"%s\": %s" % (self.mfsOutput, e)
         except MountCommandError, e:
             raise InstallBuildError, "An error occured mounting \"%s\": %s" % (self.mfsOutput, e)
-
+        except exceptions.IOError, e:
+            raise InstallBuildError, "An I/O error occured: %s" % e
 
     def _decompressMFSRoot(self):
     	"""
