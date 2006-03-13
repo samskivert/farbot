@@ -528,7 +528,8 @@ class ReleaseBuilder(object):
 class PackageBuilder(object):
     makeTarget = ('clean', 'package-recursive')
     defaultMakeOptions = {
-        'PACKAGE_BUILDING' : 'yes'
+        'PACKAGE_BUILDING' : 'yes',
+        'BATCH' : 'yes'
     }
 
     """
