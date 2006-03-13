@@ -69,7 +69,8 @@ ROOT_ENV = {
     'GROUP'     : 'wheel',
     'HOME'      : '/root',
     'LOGNAME'   : 'root',
-    'PATH'      : '/sbin:/bin:/usr/sbin:/usr/bin:/usr/games:/usr/local/sbin:/usr/local/bin:/usr/X11R6/bin:/root/bin'
+    'PATH'      : '/sbin:/bin:/usr/sbin:/usr/bin:/usr/games:/usr/local/sbin:/usr/local/bin:/usr/X11R6/bin:/root/bin',
+    'FTP_PASSIVE_MODE' : 'YES'
 }
 
 # Exceptions
