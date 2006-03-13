@@ -252,35 +252,30 @@ class PackageBuildRunner(BuildRunner):
                 continue
 
             # Open a packaging log file
-            packagingLogPath = os.path.join(release.buildroot, 'packaging.log')
-            packagingLog = open(packagingLogPath, 'w', 0)
-            self.logs.append(packagingLog)
+            logPath = os.path.join(release.buildroot, 'packaging.log')
+            buildLog = open(logPath, 'w', 0)
+            self.logs.append(buildLog)
 
             # Checkout the ports tree into the chroot 
             cvs = builder.CVSCommand(release.cvsroot)
-            pctx = BuildContext("%s release cvs export of \"%s\"" % (release.getSectionName(), release.portsdir), packagingLogPath)
-            eu = utils.ExecutionUnit(pctx, cvs.export, 'HEAD', 'ports', release.portsdir, packagingLog)
+            pctx = BuildContext("%s release cvs export of \"%s\"" % (release.getSectionName(), release.portsdir), logPath)
+            eu = utils.ExecutionUnit(pctx, cvs.export, 'HEAD', 'ports', release.portsdir, buildLog)
             self.oe.appendExecutionUnit(eu)
 
-            # Make the packages directory 
+            # Make the packages directory
             if (not os.path.exists(release.packagedir)):
-                pctx = BuildContext("creating \"%s\" directory" % (release.packagedir), packagingLogPath)
+                pctx = BuildContext("creating \"%s\" directory" % (release.packagedir), logPath)
                 eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, release.packagedir)
                 self.oe.appendExecutionUnit(eu)
 
             # Download the current port index
-            pctx = BuildContext("fetching current port index", packagingLogPath)
+            pctx = BuildContext("fetching current port index", logPath)
             index = builder.MakeCommand(builder.FREEBSD_PORTS_PATH, ['fetchindex'], chrootdir=release.chroot)
-            eu = utils.ExecutionUnit(pctx, index.make, packagingLog)
+            eu = utils.ExecutionUnit(pctx, index.make, buildLog)
             self.oe.appendExecutionUnit(eu)
 
             # Fire off a builder for each package
             for package in release.packages:
-                # Open a per-package log file
-                logPath = os.path.join(release.buildroot, package.package + '.log')
-                packageLog = open(logPath, 'w', 0)
-                self.logs.append(packageLog)
-
                 # Grab the package build options
                 buildoptions = {}
                 if package.BuildOptions:
@@ -289,7 +284,7 @@ class PackageBuildRunner(BuildRunner):
                 # Add a package builder to the OrderedExecutor
                 pb = builder.PackageBuilder(release.chroot, package.port, buildoptions)
                 pctx = BuildContext("Package build for release \"%s\"" % release.getSectionName(), logPath)
-                eu = utils.ExecutionUnit(pctx, pb.build, packageLog)
+                eu = utils.ExecutionUnit(pctx, pb.build, buildLog)
                 self.oe.appendExecutionUnit(eu)
 
             # Copy the package INDEX files into the packages directory
