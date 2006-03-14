@@ -274,12 +274,6 @@ class PackageBuildRunner(BuildRunner):
                 eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, release.packagedir)
                 self.oe.appendExecutionUnit(eu)
 
-            # Download the current port index
-            pctx = BuildContext("fetching current port index", logPath)
-            index = builder.MakeCommand(builder.FREEBSD_PORTS_PATH, ['fetchindex'], chrootdir=release.chroot)
-            eu = utils.ExecutionUnit(pctx, index.make, buildLog)
-            self.oe.appendExecutionUnit(eu)
-
             # Clean the system, then fire off a builder for each package
             for package in release.packages:
                 pctx = BuildContext("Package build for release \"%s\"" % release.getSectionName(), logPath)
