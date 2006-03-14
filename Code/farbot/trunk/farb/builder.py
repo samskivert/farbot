@@ -529,7 +529,7 @@ class PackageBuilder(object):
     """
     Build a package from a FreeBSD port
     """
-    makeTarget = ('clean', 'package-recursive')
+    makeTarget = ('deinstall', 'clean', 'package-recursive')
     defaultMakeOptions = {
         'PACKAGE_BUILDING'  : 'yes',
         'BATCH'             : 'yes',
