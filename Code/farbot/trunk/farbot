@@ -286,11 +286,6 @@ class PackageBuildRunner(BuildRunner):
             for package in release.packages:
                 pctx = BuildContext("Package build for release \"%s\"" % release.getSectionName(), logPath)
 
-                # Clean out the system
-                pdx = builder.PkgDeleteCommand(chrootdir=release.chroot)
-                eu = utils.ExecutionUnit(pctx, pdx.deleteAll, buildLog)
-                self.oe.appendExecutionUnit(eu)
-
                 # Grab the package build options
                 buildoptions = {}
                 if package.BuildOptions:
@@ -338,8 +333,6 @@ class PackageBuildRunner(BuildRunner):
             raise builder.PackageBuildError, "%s failed: %s.\nFor more information, refer to the package build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except builder.CVSCommandError, e:
             raise builder.PackageBuildError, "%s failed: cvs returned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
-        except builder.PkgDeleteCommandError, e:
-            raise builder.PackageBuildError, "%s failed: pkg_delete returned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except Exception, e:
             raise builder.PackageBuildError, "Unhandled package build error: %s" % (e)
 

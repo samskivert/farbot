@@ -54,9 +54,6 @@ MOUNT_PATH = '/sbin/mount'
 # umount(8) path
 UMOUNT_PATH = '/sbin/umount'
 
-# pkg_delete(8) path
-PKG_DELETE_PATH = '/usr/sbin/pkg_delete'
-
 # Standard FreeBSD src location
 FREEBSD_REL_PATH = '/usr/src/release'
 
@@ -93,9 +90,6 @@ class MDConfigCommandError(CommandError):
     pass
 
 class MakeCommandError(CommandError):
-    pass
-
-class PkgDeleteCommandError(CommandError):
     pass
 
 class ReleaseBuildError(farb.FarbError):
@@ -253,44 +247,6 @@ class MDConfigCommand(object):
         d = defer.Deferred()
         protocol = MDConfigProcessProtocol(d)
         reactor.spawnProcess(protocol, MDCONFIG_PATH, args=argv, env=ROOT_ENV)
-
-        return d
-
-class PkgDeleteCommand(object):
-    """
-    pkg_delete(1) command context
-    """
-    def __init__(self, chrootdir=None):
-        """
-        Create a new PkgDeleteCommand instance
-        @param chrootdir: Optional chroot directory
-        """
-        self.chrootdir = chrootdir
-
-    def _ebPkgDelete(self, failure):
-        # Provide a more specific exception type
-        failure.trap(CommandError)
-        raise PkgDeleteCommandError, failure.value
-
-    def deleteAll(self, log):
-        """
-        Run pkg_delete -a
-        @param log: Open log file
-        """
-
-        # Create command argv
-        d = defer.Deferred()
-        d.addErrback(self._ebPkgDelete)
-        protocol = LoggingProcessProtocol(d, log)
-        argv = [PKG_DELETE_PATH, '-a']
-        if self.chrootdir:
-            runCmd = CHROOT_PATH
-            argv.insert(0, self.chrootdir)
-            argv.insert(0, CHROOT_PATH)
-        else:
-            runCmd = PKG_DELETE_PATH
-
-        reactor.spawnProcess(protocol, runCmd, args=argv, env=ROOT_ENV)
 
         return d
 
@@ -576,7 +532,8 @@ class PackageBuilder(object):
     makeTarget = ('clean', 'package-recursive')
     defaultMakeOptions = {
         'PACKAGE_BUILDING'  : 'yes',
-        'BATCH'             : 'yes'
+        'BATCH'             : 'yes',
+        'NOCLEANDEPENDS'    : 'yes'
     }
 
     """
