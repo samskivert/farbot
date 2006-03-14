@@ -39,7 +39,7 @@ threadable.init()
 import farb
 from farb import utils, builder, config, sysinstall
 
-INDEX_PATTERN='INDEX*.gz'
+INDEX_PATTERN='INDEX-[0-9]'
 
 class Main(object):
     """
@@ -301,8 +301,8 @@ class PackageBuildRunner(BuildRunner):
 
     def _copyPackageIndexes(self, source, dest):
         """
-        Copy the INDEX*.gz file from source to dest/INDEX
-        @param source: Source directory containing port INDEX*.gz file
+        Copy the INDEX-# file from source to dest/INDEX
+        @param source: Source directory containing port INDEX-# file
         @param dest: Destination directory
         """
         # Copy the package INDEX file into the netinstall root
