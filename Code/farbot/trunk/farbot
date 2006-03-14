@@ -39,7 +39,7 @@ threadable.init()
 import farb
 from farb import utils, builder, config, sysinstall
 
-INDEX_PREFIX='INDEX'
+INDEX_PATTERN='INDEX*.gz'
 
 class Main(object):
     """
@@ -295,22 +295,22 @@ class PackageBuildRunner(BuildRunner):
                 eu = utils.ExecutionUnit(pctx, pb.build, buildLog)
                 self.oe.appendExecutionUnit(eu)
 
-            # Copy the package INDEX files into the packages directory
+            # Copy the package INDEX file into the packages directory
             eu = utils.ExecutionUnit(pctx, self._copyPackageIndexes, release.portsdir, release.packagedir)
             self.oe.appendExecutionUnit(eu)
 
     def _copyPackageIndexes(self, source, dest):
         """
-        Copy any INDEX* files from source to dest
-        @param source: Source directory containing port INDEX* files
+        Copy the INDEX*.gz file from source to dest/INDEX
+        @param source: Source directory containing port INDEX*.gz file
         @param dest: Destination directory
         """
-        # Copy the package INDEX files into the netinstall root
+        # Copy the package INDEX file into the netinstall root
         for file in os.listdir(source):
-            # Find all INDEX* files.
-            if (file[:len(INDEX_PREFIX)] == INDEX_PREFIX):
-                # Copy them over
-                shutil.copy2(os.path.join(source, file), dest)
+            # Find the INDEX*.gz file.
+            if (shutil.fnmatch(file, INDEX_PATTERN)):
+                # Copy the index over 
+                shutil.copy2(os.path.join(source, file), os.path.join(dest, 'INDEX'))
 
         return defer.succeed(None)
 
