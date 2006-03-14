@@ -28,7 +28,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import os
-
+import farb
 
 class ConfigSection(object):
     """
@@ -229,33 +229,6 @@ class DiskPartitionConfig(ConfigSection):
         self.diskLabelConfig.serialize(output)
 
 
-class PackageConfig(ConfigSection):
-    """
-    install.cfg(8) package install configuration section.
-    """
-    # Section option names
-    sectionOptions = (
-        'package',  # Package name
-    )
-
-    # Section commands
-    sectionCommands = (
-        'packageAdd',
-    )
-
-    def __init__(self, section):
-        """
-        Initialize package install configuration for a given
-        installation.
-        @param section: ZConfig Package section
-        """
-        self.package = section.package
-
-    def serialize(self, output):
-        self._serializeOptions(output)
-        self._serializeCommands(output)
-
-
 class SystemCommandConfig(ConfigSection):
     """
     install.cfg(8) system command configuration section.
@@ -284,6 +257,27 @@ class SystemCommandConfig(ConfigSection):
         self._serializeOptions(output)
         self._serializeCommands(output)
 
+class PackageConfig(SystemCommandConfig):
+    """
+    install.cfg(8) package install configuration section.
+
+    Sysinstall's dependency handling is seriously broken,
+    relying on an INDEX that doesn't necessarily reflect reality.
+    We skip the sysinstall package installation code entirely and
+    use a SystemCommand to call pkg_add(8) ourselves post-install.
+    """
+    installPackageScript = os.path.join('/dist', os.path.basename(farb.INSTALL_PACKAGE_SH))
+
+    def __init__(self, section):
+        """
+        Initialize package install configuration for a given
+        installation.
+        @param section: ZConfig Package section
+        """
+        # /dist/install_package.sh <package name>
+        self.package = section.package
+        cmd = "%s %s" % (self.installPackageScript, self.package)
+        super(PackageConfig, self).__init__(cmd)
 
 class InstallationConfig(ConfigSection):
     """

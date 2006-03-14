@@ -214,7 +214,7 @@ class PackageConfigTestCase(ConfigTestCase, unittest.TestCase):
         package = self.config.PackageSets.PackageSet[0].Package[0]
         pkgc = sysinstall.PackageConfig(package)
         pkgc.serialize(output)
-        self.assertEquals(output.getvalue(), 'package=%s\npackageAdd\n' % (package.package))
+        self.assertEquals(output.getvalue(), 'command=/dist/install_package.sh %s\nsystem\n' % (package.package))
 
 class SystemCommandConfigTestCase(ConfigTestCase, unittest.TestCase):
     def test_init(self):

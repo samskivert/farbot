@@ -30,7 +30,7 @@
 
 import getopt, sys, os
 import ZConfig
-import shutil, fnmatch
+import shutil
 
 from twisted.internet import reactor, defer, threads
 from twisted.python import threadable 
@@ -38,8 +38,6 @@ threadable.init()
 
 import farb
 from farb import utils, builder, config, sysinstall
-
-INDEX_PATTERN='INDEX-[0-9]'
 
 class Main(object):
     """
@@ -296,25 +294,6 @@ class PackageBuildRunner(BuildRunner):
                 eu = utils.ExecutionUnit(pctx, pb.build, buildLog)
                 self.oe.appendExecutionUnit(eu)
 
-            # Copy the package INDEX file into the packages directory
-            eu = utils.ExecutionUnit(pctx, self._copyPackageIndexes, release.portsdir, release.packagedir)
-            self.oe.appendExecutionUnit(eu)
-
-    def _copyPackageIndexes(self, source, dest):
-        """
-        Copy the INDEX-# file from source to dest/INDEX
-        @param source: Source directory containing port INDEX-# file
-        @param dest: Destination directory
-        """
-        # Copy the package INDEX file into the netinstall root
-        for file in os.listdir(source):
-            # Find the INDEX*.gz file.
-            if (fnmatch.fnmatch(file, INDEX_PATTERN)):
-                # Copy the index over 
-                shutil.copy2(os.path.join(source, file), os.path.join(dest, 'INDEX'))
-
-        return defer.succeed(None)
-
     def _unmountDevFS(self):
         # Unmount all devfs mounts
         deferreds = []
@@ -443,6 +422,10 @@ class InstallBuildRunner(BuildRunner):
                 # Copy in any local data
                 localdir = os.path.join(installroot, 'local')
                 eu = utils.ExecutionUnit(bctx, defer.execute, os.mkdir, localdir)
+                self.oe.appendExecutionUnit(eu)
+
+                # Add our package installer shell script
+                eu = utils.ExecutionUnit(bctx, defer.execute, shutil.copy2, farb.INSTALL_PACKAGE_SH, installroot)
                 self.oe.appendExecutionUnit(eu)
 
                 for localdata in release.localdata:

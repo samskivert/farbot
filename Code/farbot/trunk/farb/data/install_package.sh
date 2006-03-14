@@ -1,4 +1,6 @@
-# __init__.py vi:ts=4:sw=4:expandtab:
+#!/bin/sh
+# install_package.sh vi:ts=4:sw=4:expandtab:
+# Handle installation of packages so that sysinstall doesn't have to.
 #
 # Copyright (c) 2006 Three Rings Design, Inc.
 # All rights reserved.
@@ -27,26 +29,55 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import os
+# Prevent pkg_add from trying to interact with the user
+export PACKAGE_BUILDING=1
+export BATCH=1
+# Look for packages on the installation media
+export PKG_PATH="/dist/packages/Latest:/dist/packages/All"
 
-__all__ = ['builder', 'config', 'utils', 'sysinstall', 'test']
 
-# General Info
-__version__ = '0.1'
-__license__ = 'BSD License'
-__author__ = 'Three Rings Design, Inc.'
-__author_email__ = 'dpw@threerings.net'
-__copyright__ = 'Copyright (C) 2006 Three Rings Design, Inc. All rights reserved.'
+# Print Usage
+usage() {
+    echo "$0 <package>"
+}
 
-# Useful Constants
-LOG_NAME = 'farb:'
-INSTALL_DIR = os.path.dirname(__file__)
-DATA_DIR = os.path.join(INSTALL_DIR, 'data')
+# Install the package
+installPackage() {
+    pkg="$1"
+    # Exit cleanly if the package is already installed
 
-# Resources
-CONFIG_SCHEMA = os.path.join(DATA_DIR, "farb_conf.xml")
-INSTALL_PACKAGE_SH = os.path.join(DATA_DIR, "install_package.sh")
+    # Glob to check
+    glob='*pkg_add: package * or its older version already installed*'
 
-# Exceptions
-class FarbError(Exception):
-    pass
+    echo "Installing $pkg ..."
+    # Install the package
+    msg=`pkg_add $pkg 2>&1`
+    # Test result
+    if [ "$?" = "1" ]; then
+        case "$msg" in
+            $glob)
+                echo "$pkg is already installed (perhaps by a dependency) ..."
+                exit 0
+                ;;
+            *)
+                echo "$msg"
+                exit 1
+                ;;
+        esac
+    fi
+
+    echo "$msg"
+}
+
+main() {
+    pkg=$1
+    if [ -z "$pkg" ]; then
+        usage
+        exit 1
+    fi
+
+    # Do it!
+    installPackage $pkg
+}
+
+main $1
