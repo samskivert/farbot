@@ -30,7 +30,7 @@
 
 import getopt, sys, os
 import ZConfig
-import shutil
+import shutil, fnmatch
 
 from twisted.internet import reactor, defer, threads
 from twisted.python import threadable 
@@ -282,8 +282,15 @@ class PackageBuildRunner(BuildRunner):
             eu = utils.ExecutionUnit(pctx, index.make, buildLog)
             self.oe.appendExecutionUnit(eu)
 
-            # Fire off a builder for each package
+            # Clean the system, then fire off a builder for each package
             for package in release.packages:
+                pctx = BuildContext("Package build for release \"%s\"" % release.getSectionName(), logPath)
+
+                # Clean out the system
+                pdx = builder.PkgDeleteCommand(chrootdir=release.chroot)
+                eu = utils.ExecutionUnit(pctx, pdx.deleteAll, buildLog)
+                self.oe.appendExecutionUnit(eu)
+
                 # Grab the package build options
                 buildoptions = {}
                 if package.BuildOptions:
@@ -291,7 +298,6 @@ class PackageBuildRunner(BuildRunner):
 
                 # Add a package builder to the OrderedExecutor
                 pb = builder.PackageBuilder(release.chroot, package.port, buildoptions)
-                pctx = BuildContext("Package build for release \"%s\"" % release.getSectionName(), logPath)
                 eu = utils.ExecutionUnit(pctx, pb.build, buildLog)
                 self.oe.appendExecutionUnit(eu)
 
@@ -308,7 +314,7 @@ class PackageBuildRunner(BuildRunner):
         # Copy the package INDEX file into the netinstall root
         for file in os.listdir(source):
             # Find the INDEX*.gz file.
-            if (shutil.fnmatch(file, INDEX_PATTERN)):
+            if (fnmatch.fnmatch(file, INDEX_PATTERN)):
                 # Copy the index over 
                 shutil.copy2(os.path.join(source, file), os.path.join(dest, 'INDEX'))
 
@@ -331,7 +337,9 @@ class PackageBuildRunner(BuildRunner):
         except builder.PackageBuildError, e:
             raise builder.PackageBuildError, "%s failed: %s.\nFor more information, refer to the package build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except builder.CVSCommandError, e:
-            raise builder.PackageBuildError, "%s failed: cvs\nreturned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
+            raise builder.PackageBuildError, "%s failed: cvs returned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
+        except builder.PkgDeleteCommandError, e:
+            raise builder.PackageBuildError, "%s failed: pkg_delete returned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except Exception, e:
             raise builder.PackageBuildError, "Unhandled package build error: %s" % (e)
 
