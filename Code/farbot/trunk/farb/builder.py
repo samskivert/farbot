@@ -644,7 +644,7 @@ class InstallBuilder(object):
         if (not os.path.exists(self.tftproot)):
     	   os.mkdir(self.tftproot)
     
-        shutil.copytree(self.kernel, os.path.join(self.tftproot, os.path.basename(self.kernel)), symlinks=True)
+        utils.copyRecursive(self.kernel, os.path.join(self.tftproot, os.path.basename(self.kernel)), symlinks=True)
 
     def _cbMountMFSRoot(self, result):
     	"""

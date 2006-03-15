@@ -405,12 +405,12 @@ class InstallBuildRunner(BuildRunner):
                 installroot = os.path.join(config.Releases.installroot, releaseName)
 
                 # Copy the installation data
-                eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.copytree, os.path.join(release.chroot, 'R', 'ftp'), installroot, symlinks=True)
+                eu = utils.ExecutionUnit(bctx, threads.deferToThread, utils.copyRecursive, os.path.join(release.chroot, 'R', 'ftp'), installroot, symlinks=True)
                 self.oe.appendExecutionUnit(eu)
 
                 # If there are packages, copy those too
                 if (os.path.exists(release.packagedir)):
-                    eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.copytree, release.packagedir, os.path.join(installroot, 'packages'), symlinks=True)
+                    eu = utils.ExecutionUnit(bctx, threads.deferToThread, utils.copyRecursive, release.packagedir, os.path.join(installroot, 'packages'), symlinks=True)
                     self.oe.appendExecutionUnit(eu)
 
                 # Copy in any local data
@@ -424,7 +424,7 @@ class InstallBuildRunner(BuildRunner):
 
                 for localdata in release.localdata:
                     if (os.path.isdir(localdata)):
-                        eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.copytree, localdata, os.path.join(localdir, os.path.basename(localdata)), symlinks=True)
+                        eu = utils.ExecutionUnit(bctx, threads.deferToThread, utils.copyRecursive, localdata, os.path.join(localdir, os.path.basename(localdata)), symlinks=True)
                     else:
                         eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.copy2, localdata, localdir)
                     self.oe.appendExecutionUnit(eu)
