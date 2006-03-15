@@ -419,14 +419,14 @@ class InstallBuildRunner(BuildRunner):
                 self.oe.appendExecutionUnit(eu)
 
                 # Add our package installer shell script
-                eu = utils.ExecutionUnit(bctx, defer.execute, shutil.copy2, farb.INSTALL_PACKAGE_SH, installroot)
+                eu = utils.ExecutionUnit(bctx, defer.execute, utils.copyWithOwnership, farb.INSTALL_PACKAGE_SH, installroot)
                 self.oe.appendExecutionUnit(eu)
 
                 for localdata in release.localdata:
                     if (os.path.isdir(localdata)):
                         eu = utils.ExecutionUnit(bctx, threads.deferToThread, utils.copyRecursive, localdata, os.path.join(localdir, os.path.basename(localdata)), symlinks=True)
                     else:
-                        eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.copy2, localdata, localdir)
+                        eu = utils.ExecutionUnit(bctx, threads.deferToThread, utils.copyWithOwnership, localdata, localdir)
                     self.oe.appendExecutionUnit(eu)
 
 
