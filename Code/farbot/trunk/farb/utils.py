@@ -28,6 +28,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from twisted.internet import reactor, defer
+import shutil, os, stat
 
 class ExecutionFailureContext(object):
     def __init__(self, context, failure):
@@ -103,3 +104,45 @@ class OrderedExecutor(object):
             d.errback(e)
 
         return d
+
+class Error(EnvironmentError):
+    pass
+
+def copyRecursive(src, dst, symlinks=False):
+    """
+    Recursively copy a directory tree using copy2() and
+    preserving ownership.
+
+    Code adapted from the python shutil.copytree implementation.
+    """
+    names = os.listdir(src)
+    os.makedirs(dst)
+    errors = []
+    for name in names:
+        srcname = os.path.join(src, name)
+        dstname = os.path.join(dst, name)
+        try:
+            if symlinks and os.path.islink(srcname):
+                linkto = os.readlink(srcname)
+                os.symlink(linkto, dstname)
+            elif os.path.isdir(srcname):
+                copyRecursive(srcname, dstname, symlinks)
+            else:
+                shutil.copy2(srcname, dstname)
+                _copyOwnership(srcname, dstname)
+        except (IOError, os.error), why:
+            errors.append((srcname, dstname, why))
+        except Error, err:
+            errors.extend(err.args[0])
+    shutil.copystat(src, dst)
+    _copyOwnership(src, dst)
+    if errors:
+        raise Error, errors
+
+def _copyOwnership(src, dst):
+    """
+    Copy uid and gid. Code adapted from the python 
+    shutil.copystat implementation. 
+    """
+    st = os.stat(src)
+    os.chown(dst, st.st_uid, st.st_gid)

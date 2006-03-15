@@ -29,7 +29,7 @@
 
 """ Misc Utilities Unit Tests """
 
-import os
+import os, shutil
 
 from twisted.trial import unittest
 from twisted.internet import reactor, defer
@@ -38,6 +38,7 @@ from farb import utils
 
 # Useful Constants
 from farb.test import DATA_DIR
+from farb.test.test_builder import BUILDROOT 
 
 class ExecutionUnitTestCase(unittest.TestCase):
     def test_init(self):
@@ -106,3 +107,19 @@ class OrderedExecutorTestCase(unittest.TestCase):
 
         d = self.oe.run()
         d.addErrback(self._ebTestFailure)
+
+class CopyRecursiveTestCase(unittest.TestCase):
+    """
+    Test copyRecursive
+    """
+    def setUp(self):
+        self.copydst = os.path.join(DATA_DIR, 'testcopy')
+
+    def tearDown(self):
+        shutil.rmtree(self.copydst)
+
+    def test_copy(self):
+        utils.copyRecursive(BUILDROOT, self.copydst) 
+        # TODO Would need root running this test in order to test
+        # if the ownership copying code works
+        self.assert_(os.path.exists(os.path.join(self.copydst, 'Makefile')))
