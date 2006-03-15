@@ -113,13 +113,24 @@ class CopyRecursiveTestCase(unittest.TestCase):
     Test copyRecursive
     """
     def setUp(self):
-        self.copydst = os.path.join(DATA_DIR, 'testcopy')
+        self.copySrc = os.path.join(BUILDROOT, 'Makefile')
+        self.copyDst = os.path.join(DATA_DIR, 'testcopy')
+        self.copyRecursiveDst = os.path.join(DATA_DIR, 'testrecurse')
 
     def tearDown(self):
-        shutil.rmtree(self.copydst)
+        if (os.path.exists(self.copyRecursiveDst)):
+            shutil.rmtree(self.copyRecursiveDst)
+        if (os.path.exists(self.copyDst)):
+            os.unlink(self.copyDst)
 
-    def test_copy(self):
-        utils.copyRecursive(BUILDROOT, self.copydst) 
+    def test_copyWithOwnership(self):
+        utils.copyWithOwnership(self.copySrc, self.copyDst) 
         # TODO Would need root running this test in order to test
         # if the ownership copying code works
-        self.assert_(os.path.exists(os.path.join(self.copydst, 'Makefile')))
+        self.assert_(os.path.exists(os.path.join(DATA_DIR, 'testcopy')))
+
+    def test_copyRecursive(self):
+        utils.copyRecursive(BUILDROOT, self.copyRecursiveDst) 
+        # TODO Would need root running this test in order to test
+        # if the ownership copying code works
+        self.assert_(os.path.exists(os.path.join(self.copyRecursiveDst, 'Makefile')))

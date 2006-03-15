@@ -139,6 +139,13 @@ def copyRecursive(src, dst, symlinks=False):
     if errors:
         raise Error, errors
 
+def copyWithOwnership(src, dst):
+    """
+    Teach copy2 to preserve ownership
+    """
+    shutil.copy2(src, dst)
+    _copyOwnership(src, dst)
+
 def _copyOwnership(src, dst):
     """
     Copy uid and gid. Code adapted from the python 
