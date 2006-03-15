@@ -110,8 +110,7 @@ class Error(EnvironmentError):
 
 def copyRecursive(src, dst, symlinks=False):
     """
-    Recursively copy a directory tree using copy2() and
-    preserving ownership.
+    Recursively copy a directory tree using preserving ownership.
 
     Code adapted from the python shutil.copytree implementation.
     """
@@ -128,8 +127,7 @@ def copyRecursive(src, dst, symlinks=False):
             elif os.path.isdir(srcname):
                 copyRecursive(srcname, dstname, symlinks)
             else:
-                shutil.copy2(srcname, dstname)
-                _copyOwnership(srcname, dstname)
+                copyWithOwnership(srcname, dstname)
         except (IOError, os.error), why:
             errors.append((srcname, dstname, why))
         except Error, err:
