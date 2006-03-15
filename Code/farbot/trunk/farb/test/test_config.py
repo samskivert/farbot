@@ -150,6 +150,8 @@ class ConfigParsingTestCase(unittest.TestCase):
         self.assertEquals(config.Releases.Release[1].packages[0].package, 'sudo')
         # Test default override
         self.assertEquals(config.Releases.Release[1].packages[1].package, 'overwrote')
+        # Verify that all package sets are loaded
+        self.assertEquals(config.Releases.Release[0].packages[2].package, 'mysql50-server')
 
     def test_packages_unique(self):
         """ Test handling of duplicate packages in a good package set """

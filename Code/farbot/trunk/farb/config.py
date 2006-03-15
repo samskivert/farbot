@@ -133,28 +133,39 @@ def verifyPackages(config):
     @param config: ZConfig object containing farb configuration
     """
 
-    # dictionary mapping packages to releases
+    # dictionary mapping packagesets to releases
+    release_packagesets = {}
+    # dictionary mapping packages to release
     release_packages = {}
 
-    # Iterate over installations, finding all packages in all package sets,
-    # and then attaching that list to the release section.
-    #
-    # Additionally, verify that packages only appear *once* in 
-    # all package sets used in a specified release.
+    # Iterate over installations, finding all referenced package sets,
+    # and associating them with releases.
     for install in config.Installations.Installation:
         releaseName = install.release.lower()
-        release_packages[releaseName] = []
+        if (not release_packagesets.has_key(releaseName)):
+            release_packagesets[releaseName] = []
+        # Add all package sets
         for pkgsetName in install.packageset:
             for pkgset in config.PackageSets.PackageSet:
                 if (pkgsetName.lower() == pkgset.getSectionName()):
-                    for pkg in pkgset.Package:
-                        # If if this package has already been listed
-                        # by another packageset, in another installation,
-                        # using the same release, throw an error
-                        if (_hasPackage(release_packages, releaseName, pkg)):
-                            raise ZConfig.ConfigurationError("Packages may not be listed in more than one package set within the same release. (Port: \"%s\", Package Set: \"%s\", Release: \"%s\")" % (pkg.port, pkgsetName, install.release))
-                        else:
-                            release_packages[releaseName].append(pkg)
+                    # Don't add the same packge set twice
+                    if (not release_packagesets[releaseName].count(pkgset)):
+                        release_packagesets[releaseName].append(pkgset)
+
+    # Verify that packages only appear *once* in the list of packagesets
+    # used in a specified release.
+    for releaseName, packageSets in release_packagesets.iteritems():
+        if (not release_packages.has_key(releaseName)):
+            release_packages[releaseName] = []
+        for packageSet in packageSets:
+            for pkg in packageSet.Package:
+                # If if this package has already been listed
+                # by another packageset, in another installation,
+                # using the same release, throw an error
+                if (_hasPackage(release_packages, releaseName, pkg)):
+                    raise ZConfig.ConfigurationError("Packages may not be listed in more than one package set within the same release. (Port: \"%s\", Package Set: \"%s\", Release: \"%s\")" % (pkg.port, pkgsetName, install.release))
+                else:
+                    release_packages[releaseName].append(pkg)
 
     # Now add the package lists to the releases
     for release in config.Releases.Release:

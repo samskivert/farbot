@@ -63,6 +63,14 @@
 			PartitionMap	Standard
 		</Disk>
 	</Installation>
+	<Installation Router>
+		Release		6.0
+		NetworkDevice	em0
+		PackageSet      Base
+		<Disk ad0>
+			PartitionMap	Standard
+		</Disk>
+	</Installation>
 	<Installation Other>
 		Release	        6-STABLE	
 		NetworkDevice	em0
