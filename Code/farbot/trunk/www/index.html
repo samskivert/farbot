@@ -21,16 +21,21 @@
 
 		<h2><a id="intro">Introduction</a></h2>
 		<p>
-                This is my intro
+                farbot automates building of netinstall/PXE boot FreeBSD releases. It features 
+                a simple configuration file based on the concept of "installations".
 		</p>
 
 		<p>
-			Splat currently supports writing out the following information:
+                farbot currently handles the following:
 		</p>
 
 		<ul>
-			<li>SSH Public Keys</li>
-			<li>User .forward Files</li>
+			<li>Building freebsd releases, including grabbing any source needed.</li>
+			<li>Building packages for each release, derived from per installation package sets.</li>
+			<li>Laying out an NFS/TFTP exportable file system structure for all built releases,
+                            customized for each installation type.</li>
+			<li>Generation of a customized bootloader with options to install each 
+                            installation type </li>
 		</ul>
 
 		<p>
@@ -58,36 +63,28 @@
                         <li>To actually perform a release build farbot must be running on a FreeBSD host.</li>
 		</ul>
 		<p>
-			Splat uses the standard Python distutils.
+			farbot uses the standard Python distutils.
 			To install, run setup.py:
 		</p>
 		<pre>./setup.py install</pre>
 
 		<p>
-			The splat framework will be installed in the Python site-packages directory.
-			The <em>splatd</em> daemon and the <em>splat-manage</em> command line tool
-			will be installed in the Python-specified bin directory. An example configuration
-			file, <em>splat.conf</em>, is supplied with the source distribution.
+			farbot will be installed in the Python site-packages directory.
+			The <em>farbot</em> command line tool will be installed in the Python-specified 
+                        bin directory. An example configuration
+			file, <em>farbot.conf</em>, is supplied with the source distribution.
 		</p>
 
 		<h2><a id="support">Support</a></h2>
 		<p>
-			A <a href="manual/">Splat Manual</a> is available.
-			You may also join the <a href="https://dpw.threerings.net/mailman/listinfo/splat">Splat Mailing List</a>.
+			A <a href="manual/">farbot Manual</a> is available.
+			You may also join the <a href="https://dpw.threerings.net/mailman/listinfo/farbot">farbot Mailing List</a>.
 		</p>
 		
 		<h2><a id="caveats">Caveats</a></h2>
 		<ul>
 			<li>
-				Splat current stores the full search result in memory. This may cause
-				excessive memory consumption with extremely large result sets.
-			</li>
-			<li>
-				Blocking LDAP calls are used. A complex query or overloaded/unreachable LDAP server
-				may cause Splat to block for significant periods of time.
-			</li>
-			<li>
-				TLS/SSL is supported, but StartTLS is not.
+                        farbot currently doesn't actually write out the bootloader code.
 			</li>
 		</ul>
 		<p>These issues will be addressed in a future release. Patches are welcome.</p>
