@@ -576,16 +576,15 @@ class PackageBuilder(object):
 class InstallBuilder(object):
     """
     Complete a release installation
-
-    @param installName: A unique name for this install instance 
-    @param chroot: The chroot for this release
-    @param tftproot: The global tftproot for farbot 
-    @param installConfigFile: The complete path to this installation's install.cfg
     """
-    def __init__(self, installName, chroot, tftproot, installConfigPath):
+    def __init__(self, installName, chroot, installConfigPath):
+        """
+        @param installName: A unique name for this install instance 
+        @param chroot: The chroot for this release
+        @param installConfigFile: The complete path to this installation's install.cfg
+        """
         self.installName = installName
         self.chroot = chroot
-        self.tftproot = tftproot
         self.installConfigSource = installConfigPath
         
         #
@@ -599,18 +598,6 @@ class InstallBuilder(object):
         # Shared release mfsroot
         self.mfsCompressed = os.path.join(self.chroot, 'R', 'stage', 'mfsroot', 'mfsroot.gz')
         
-        #
-        # Destination Paths
-        #
-        # Installation-specific tftp/netinstallation root
-        self.tftproot = os.path.join(self.tftproot, self.installName)
-        # Path to installation-specific mfsroot
-        self.mfsOutput = os.path.join(self.tftproot, "mfsroot")
-        # Temporary mount point for the mfsroot image
-        self.mountPoint = os.path.join(self.chroot, "mnt", self.installName) 
-        # Write the install.cfg to the mfsroot mount point
-        self.installConfigDest = os.path.join(self.mountPoint, 'install.cfg')
-
     def _ebInstallError(self, failure):
         try:
             failure.raiseException()
@@ -621,63 +608,146 @@ class InstallBuilder(object):
         except exceptions.IOError, e:
             raise InstallBuildError, "An I/O error occured: %s" % e
 
-    def _decompressMFSRoot(self):
+    def _decompressMFSRoot(self, mfsOutput):
     	"""
     	Synchronous decompression/writing of mfsroot file
     	(Not worth making async, so run in a thread)
     	"""
     	compressedFile = gzip.GzipFile(self.mfsCompressed, 'rb')
-    	if (not os.path.exists(self.tftproot)):
-    	   os.mkdir(self.tftproot)
-    	outputFile = open(self.mfsOutput, 'wb')
+    	outputFile = open(mfsOutput, 'wb')
     	while (True):
     		data = compressedFile.read(1024)
     		if (not data):
     			break
     		outputFile.write(data)
 
-    def _doCopyKernel(self):
+        return mfsOutput
+
+    def _doCopyKernel(self, tftproot):
         """
         Copy the kernel directory to the tftproot install specific directory
         (Synchronous)
         """
-        if (not os.path.exists(self.tftproot)):
-    	   os.mkdir(self.tftproot)
-    
-        utils.copyRecursive(self.kernel, os.path.join(self.tftproot, os.path.basename(self.kernel)), symlinks=True)
+        utils.copyRecursive(self.kernel, os.path.join(tftproot, os.path.basename(self.kernel)), symlinks=True)
 
-    def _cbMountMFSRoot(self, result):
+    def _cbMountMFSRoot(self, mfsOutput, mountPoint, log):
     	"""
     	Once the MFS root has been decompressed,
     	mount it
     	"""
-    	mdconfig = MDConfigCommand(self.mfsOutput)
+    	mdconfig = MDConfigCommand(mfsOutput)
     	# Create the mount point, if necessary
-    	if (not os.path.exists(self.mountPoint)):
-    		os.mkdir(self.mountPoint)
-    	self.mdmount = MDMountCommand(mdconfig, self.mountPoint)
-    	return self.mdmount.mount(self.log)
+    	if (not os.path.exists(mountPoint)):
+    		os.mkdir(mountPoint)
+    	self.mdmount = MDMountCommand(mdconfig, mountPoint)
+    	return self.mdmount.mount(log)
 
-    def build(self, log):
+    def build(self, tftproot, log):
         """
         Build the MFSRoot and copy the kernel.
+        @param tftproot: The installation-specific tftproot
         @param log: Open log file
         @return Returns a deferred
         """
-        self.log = log
+
+        #
+        # Destination Paths
+        #
+        # Path to installation-specific mfsroot
+        mfsOutput = os.path.join(tftproot, "mfsroot")
+        # Temporary mount point for the mfsroot image
+        mountPoint = os.path.join(tftproot, "mnt")
+        # Write the install.cfg to the mfsroot mount point
+        installConfigDest = os.path.join(mountPoint, 'install.cfg')
 
         # Write the uncompressed mfsroot file
-        d = threads.deferToThread(self._decompressMFSRoot)
+        d = threads.deferToThread(self._decompressMFSRoot, mfsOutput)
         # Mount the mfsroot once it has been decompressed
-        d.addCallbacks(self._cbMountMFSRoot, self._ebInstallError)
+        d.addErrback(self._ebInstallError)
+        d.addCallback(self._cbMountMFSRoot, mountPoint, log)
 
         # Copy the install.cfg to the attached md device
-        d.addCallback(lambda _: defer.execute(shutil.copy2, self.installConfigSource, self.installConfigDest))
+        d.addCallback(lambda _: defer.execute(shutil.copy2, self.installConfigSource, installConfigDest))
 
         # Unmount/detach md device
-        d.addCallback(lambda _: self.mdmount.umount(self.log))
+        d.addCallback(lambda _: self.mdmount.umount(log))
 
         # Copy the kernel
-        d.addCallback(lambda _: threads.deferToThread(self._doCopyKernel))
+        d.addCallback(lambda _: threads.deferToThread(self._doCopyKernel, tftproot))
         
         return d
+
+
+class ReleaseAssembler(object):
+    """
+    Assemble the per-release installation data directory.
+    """
+    def __init__(self, chroot, localData = []):
+        """
+        Initialize the ReleaseInstallBuilder
+        @param chroot: The release build chroot
+        @param localData: List of file and directory paths to copy to installRoot/local.
+        """
+        self.chroot = chroot
+        self.localData = localData
+
+    def _cbCopyLocal(self, result, source, dest):
+        if (os.path.isdir(source)):
+            d = threads.deferToThread(utils.copyRecursive, source, os.path.join(dest, os.path.basename(source)), symlinks=True)
+        else:
+            d = threads.deferToThread(utils.copyWithOwnership, source, dest)
+
+        return d
+
+    def build(self, installroot, log):
+        """
+        Create the install root, copy in the release data,
+        write out the bootloader configuration and kernels.
+        @param installroot: Per-release installation data directory.
+        @param log: Open log file.
+        """
+        # Copy the installation data
+        d = threads.deferToThread(utils.copyRecursive, os.path.join(self.chroot, 'R', 'ftp'), installroot, symlinks=True)
+
+        # If there are packages, copy those too
+        packagedir = os.path.join(self.chroot, 'usr', 'ports', 'packages')
+        if (os.path.exists(packagedir)):
+            d.addCallback(lambda _: threads.deferToThread(utils.copyRecursive, packagedir, os.path.join(installroot, 'packages'), symlinks=True))
+
+        # Copy in any local data
+        if (len(self.localData)):
+            # Create the local directory
+            localdir = os.path.join(installroot, 'local')
+            d.addCallback(lambda _: defer.execute(os.mkdir, localdir))
+
+            for path in self.localData:
+                d.addCallback(self._cbCopyLocal, path, localdir)
+
+        # Add the FarBot package installer script
+        d.addCallback(lambda _: threads.deferToThread(utils.copyWithOwnership, farb.INSTALL_PACKAGE_SH, installroot))
+
+        return d
+
+class NetinstallAssembler(object):
+    """
+    Assemble the netinstall directory, including the tftproot,
+    using the supplied release and install assemblers.
+    """
+    def __init__(self, installroot, releases, installs):
+        """
+        Initialize the InstallRootBuilder
+        @param installroot: Network install/boot directory.
+        @param releases: List of ReleaseAssembler instances.
+        @param installs: List of InstallAssembler instances.
+        """
+        self.installroot = installroot
+        self.releases = releases
+        self.installs = installs
+
+    def build(self, log):
+        """
+        Create the install root, copy in the release data,
+        write out the bootloader configuration and kernels.
+        @param log: Open log file.
+        """
+        pass
