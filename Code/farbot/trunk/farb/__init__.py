@@ -46,6 +46,7 @@ DATA_DIR = os.path.join(INSTALL_DIR, 'data')
 # Resources
 CONFIG_SCHEMA = os.path.join(DATA_DIR, "farb_conf.xml")
 INSTALL_PACKAGE_SH = os.path.join(DATA_DIR, "install_package.sh")
+BOOT_CONF_TMPL = os.path.join(DATA_DIR, "boot.conf.tmpl")
 
 # Exceptions
 class FarbError(Exception):

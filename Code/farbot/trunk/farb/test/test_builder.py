@@ -440,16 +440,17 @@ class PackageBuilderTestCase(unittest.TestCase):
         d.addCallbacks(self._buildSuccess, self._buildError)
         return d
 
-class InstallBuilderTestCase(unittest.TestCase):
+class InstallAssemblerTestCase(unittest.TestCase):
     def setUp(self):
         self.log = open(PROCESS_LOG, 'w+')
-        self.tftproot = os.path.join(TFTPROOT, 'testinstall')
-        self.mfsroot = os.path.join(self.tftproot, 'mfsroot')
-        self.installCfg = os.path.join(self.tftproot, 'mnt', 'install.cfg')
-        self.builder = builder.InstallBuilder('testinstall', CHROOT, INSTALL_CFG)
+        self.destdir = os.path.join(TFTPROOT, 'testinstall')
+        self.mfsroot = os.path.join(self.destdir, 'mfsroot')
+        self.installCfg = os.path.join(self.destdir, 'mnt', 'install.cfg')
+        self.bootConf = os.path.join(self.destdir, 'boot.conf')
+        self.builder = builder.InstallAssembler('testinstall', CHROOT, INSTALL_CFG)
 
         os.mkdir(TFTPROOT)
-        os.mkdir(self.tftproot)
+        os.mkdir(self.destdir)
 
     def tearDown(self):
         self.log.close()
@@ -461,8 +462,8 @@ class InstallBuilderTestCase(unittest.TestCase):
         # Clean up builder output
         if (os.path.exists(TFTPROOT)):
             shutil.rmtree(TFTPROOT)
-        if (os.path.exists(self.tftproot)):
-            shutil.rmtree(self.tftproot)
+        if (os.path.exists(self.destdir)):
+            shutil.rmtree(self.destdir)
 
     def _buildResult(self, result):
         # Make sure the gunzip worked
@@ -474,11 +475,14 @@ class InstallBuilderTestCase(unittest.TestCase):
         self.assert_(os.path.exists(self.installCfg))
 
         # Check to see if the kernel module was copied
-        kmod = os.path.join(self.tftproot, 'kernel', 'righthook.ko')
+        kmod = os.path.join(self.destdir, 'kernel', 'righthook.ko')
         self.assert_(os.path.exists(kmod))
 
+        # Check to see if boot.conf was created
+        self.assert_(os.path.exists(self.bootConf))
+
     def test_build(self):
-        d = self.builder.build(self.tftproot, self.log)
+        d = self.builder.build(self.destdir, self.log)
         d.addCallback(self._buildResult)
         return d
 
@@ -491,36 +495,14 @@ class InstallBuilderTestCase(unittest.TestCase):
     def test_buildFailure(self):
         # Reach into our builder and force an implosion
         self.builder.mfsCompressed = '/nonexistent'
-        d = self.builder.build(self.tftproot, self.log)
+        d = self.builder.build(self.destdir, self.log)
         d.addCallbacks(self._buildSuccess, self._buildError)
         return d
-
-class NetinstallAssemblerTestCase(unittest.TestCase):
-    def setUp(self):
-        self.log = open(PROCESS_LOG, 'w+')
-        self.installs = [builder.InstallBuilder('testinstall', CHROOT, INSTALL_CFG),]
-        self.releaseInstalls = [builder.ReleaseAssembler(CHROOT),]
-        self.irb = builder.NetinstallAssembler(TFTPROOT, self.releaseInstalls, self.installs)
-
-    def tearDown(self):
-        self.log.close()
-
-        # Clean up process log
-        if (os.path.exists(PROCESS_LOG)):
-            os.unlink(PROCESS_LOG)
-
-        # Clean up builder output
-        if (os.path.exists(TFTPROOT)):
-            shutil.rmtree(TFTPROOT)
-
-    def test_build(self):
-        self.irb.build(self.log)
-
 
 class ReleaseAssemblerTestCase(unittest.TestCase):
     def setUp(self):
         self.log = open(PROCESS_LOG, 'w+')
-        self.installroot = os.path.join(INSTALLROOT, 'buildtest')
+        self.destdir = os.path.join(INSTALLROOT, 'buildtest')
 
     def tearDown(self):
         self.log.close()
@@ -535,31 +517,70 @@ class ReleaseAssemblerTestCase(unittest.TestCase):
 
     def _cbBuild(self, result):
         # Verify that the release data was copied over
-        self.assert_(os.path.exists(os.path.join(self.installroot, 'arelease')))
+        self.assert_(os.path.exists(os.path.join(self.destdir, 'arelease')))
 
         # Verify that the package installation script was copied
-        self.assert_(os.path.exists(os.path.join(self.installroot, os.path.basename(farb.INSTALL_PACKAGE_SH))))
+        self.assert_(os.path.exists(os.path.join(self.destdir, os.path.basename(farb.INSTALL_PACKAGE_SH))))
 
         # Verify that the local directory was not created
-        self.assert_(not os.path.exists(os.path.join(self.installroot, 'local')))
+        self.assert_(not os.path.exists(os.path.join(self.destdir, 'local')))
 
     def test_build(self):
-        rib = builder.ReleaseAssembler(CHROOT)
-        d = rib.build(self.installroot, self.log)
+        rib = builder.ReleaseAssembler('6.0', CHROOT)
+        d = rib.build(self.destdir, self.log)
         d.addCallback(self._cbBuild)
         return d
 
     def _cbBuildLocalData(self, result):
         # Verify that the localdata file was copied
-        self.assert_(os.path.exists(os.path.join(self.installroot, 'local', os.path.basename(INSTALL_CFG))))
+        self.assert_(os.path.exists(os.path.join(self.destdir, 'local', os.path.basename(INSTALL_CFG))))
 
         # Verify that the localdata directory was copied
-        self.assert_(os.path.exists(os.path.join(self.installroot, 'local', os.path.basename(CHROOT), 'R', 'ftp', 'arelease')))
+        self.assert_(os.path.exists(os.path.join(self.destdir, 'local', os.path.basename(CHROOT), 'R', 'ftp', 'arelease')))
 
     def test_buildLocalData(self):
         # Copy in a regular file and a directory
         localData = [CHROOT, INSTALL_CFG]
-        rib = builder.ReleaseAssembler(CHROOT, localData)
-        d = rib.build(self.installroot, self.log)
+        rib = builder.ReleaseAssembler('6.0', CHROOT, localData)
+        d = rib.build(self.destdir, self.log)
         d.addCallback(self._cbBuildLocalData)
+        return d
+
+class NetinstallAssemblerTestCase(unittest.TestCase):
+    def setUp(self):
+        self.log = open(PROCESS_LOG, 'w+')
+        self.installs = [builder.InstallAssembler('testinstall', CHROOT, INSTALL_CFG),]
+        self.releaseInstalls = [builder.ReleaseAssembler('6.0', CHROOT),]
+        self.irb = builder.NetinstallAssembler(INSTALLROOT, self.releaseInstalls, self.installs)
+
+    def tearDown(self):
+        self.log.close()
+
+        # Clean up process log
+        if (os.path.exists(PROCESS_LOG)):
+            os.unlink(PROCESS_LOG)
+
+        # Clean up builder output
+        if (os.path.exists(INSTALLROOT)):
+            shutil.rmtree(INSTALLROOT)
+
+    def _cbBuild(self, result):
+        ## Verify Per-Release Data
+        # Verify that the release data was copied over
+        self.assert_(os.path.exists(os.path.join(INSTALLROOT, '6.0', 'arelease')))
+
+        tftproot = os.path.join(INSTALLROOT, 'tftproot')
+
+        ## Verify Per-Install Data
+        # Check to see if the install kernel module was copied
+        kmod = os.path.join(tftproot, 'testinstall', 'kernel', 'righthook.ko')
+        self.failUnless(os.path.exists(kmod), msg='The pre-install kernel was not copied to the tftproot directory.')
+
+        # Check to see if boot.conf was created
+        self.failUnless(os.path.exists(os.path.join(tftproot, 'testinstall', 'boot.conf')), msg='The per-install boot.conf file was not created.')
+
+
+    def test_build(self):
+        d = self.irb.build(self.log)
+        d.addCallback(self._cbBuild)
         return d
