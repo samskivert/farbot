@@ -66,6 +66,7 @@
     </sectiontype>
 
     <sectiontype name="Installation">
+        <key name="Description" datatype="string" required="yes"/>
         <key name="Release" datatype="string" required="yes"/>
         <key name="Hostname" datatype="dotted-name" required="no" default="install"/>
         <key name="Domain" datatype="dotted-name" required="no" default="example.com"/>

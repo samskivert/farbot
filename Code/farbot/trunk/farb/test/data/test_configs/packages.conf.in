@@ -55,6 +55,7 @@
 #
 <Installations>
 	<Installation Standard>
+		Description	Standard Installation
 		Release		6.0
 		NetworkDevice	em0
 		PackageSet      Base
@@ -64,6 +65,7 @@
 		</Disk>
 	</Installation>
 	<Installation Router>
+		Description	Router
 		Release		6.0
 		NetworkDevice	em0
 		PackageSet      Base
@@ -72,7 +74,8 @@
 		</Disk>
 	</Installation>
 	<Installation Other>
-		Release	        6-STABLE	
+		Description	The Other
+		Release	        6-STABLE
 		NetworkDevice	em0
 		PackageSet      Base
 		PackageSet      Database

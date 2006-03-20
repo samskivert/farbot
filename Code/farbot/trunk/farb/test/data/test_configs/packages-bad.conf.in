@@ -54,6 +54,7 @@
 #
 <Installations>
 	<Installation Standard>
+		Description	Standard Installation
 		Release		6-STABLE
 		NetworkDevice	em0
 		PackageSet      Database
@@ -62,6 +63,7 @@
 		</Disk>
 	</Installation>
 	<Installation NotUnique>
+		Description	Snowflake
 		Release		6.0
 		NetworkDevice	em0
 		PackageSet      Base

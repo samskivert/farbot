@@ -91,6 +91,7 @@
 #
 <Installations>
 	<Installation Test>
+		Description	Clinical Trials
 		Release		6.0
 		PackageSet	@PSET@
 		PackageSet	Database
