@@ -308,6 +308,10 @@ class MountCommand(object):
     """
     mount(8)/umount(8) command context
     """
+    # Work around mount/umount() race condition
+    # in FreeBSD 6.0's vfs code.
+    mountLock = defer.DeferredLock()
+
     def __init__(self, device, mountpoint, fstype=None):
         """
         Create a new MountCommand instance
@@ -322,6 +326,9 @@ class MountCommand(object):
 
 
     def _ebMount(self, failure):
+        # Release the lock
+        self.mountLock.release()
+
         # Provide a more specific exception type
         failure.trap(CommandError)
         raise MountCommandError, failure.value
@@ -341,7 +348,9 @@ class MountCommand(object):
         else:
             argv = [MOUNT_PATH, self.device, self.mountpoint]
 
-        reactor.spawnProcess(protocol, MOUNT_PATH, args=argv, env=ROOT_ENV)
+        lock = self.mountLock.acquire()
+        lock.addCallback(lambda _: reactor.spawnProcess(protocol, MOUNT_PATH, args=argv, env=ROOT_ENV))
+        d.addCallback(lambda _: self.mountLock.release())
 
         return d
 
@@ -357,7 +366,9 @@ class MountCommand(object):
         protocol = LoggingProcessProtocol(d, log)
         argv = [UMOUNT_PATH, self.mountpoint]
 
-        reactor.spawnProcess(protocol, UMOUNT_PATH, args=argv, env=ROOT_ENV)
+        lock = self.mountLock.acquire()
+        lock.addCallback(lambda _: reactor.spawnProcess(protocol, UMOUNT_PATH, args=argv, env=ROOT_ENV))
+        d.addCallback(lambda _: self.mountLock.release())
 
         return d
 
