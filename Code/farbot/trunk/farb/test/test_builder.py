@@ -490,7 +490,7 @@ class InstallAssemblerTestCase(unittest.TestCase):
         self.fail("This call should not have succeeded")
 
     def _buildError(self, failure):
-        failure.trap(builder.InstallBuildError)
+        failure.trap(builder.InstallAssembleError)
 
     def test_buildFailure(self):
         # Reach into our builder and force an implosion
