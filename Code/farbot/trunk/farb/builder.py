@@ -70,6 +70,9 @@ RELEASE_BOOT_PATH = 'R/stage/trees/base/boot'
 # Release-relative path to the package directory
 RELEASE_PACKAGE_PATH = 'usr/ports/packages'
 
+# Release-relative path to the generic kernel file (6.1+ only)
+RELEASE_GENERIC_KERNEL_PATH = 'R/stage/kernels/GENERIC/kernel'
+
 # Release-relative path to the ftp installation data directory
 RELEASE_FTP_PATH = 'R/ftp'
 
@@ -889,15 +892,24 @@ class NetInstallAssembler(object):
         if (not os.path.exists(self.tftproot)):
             os.mkdir(self.tftproot)
 
-        # Copy over the shared boot loader. Lacking any better heuristic, we
+        # Copy over the shared boot loader and kernel. Lacking any better heuristic, we
         # grab the boot loader from the first release provided -- shouldn't
-        # matter where we get it, really.
+        # matter where we get it, really. However, there are some differences between
+        # where releases store the generic kernel, so we try to impedence match.
         release = self.releaseAssemblers[0]
         source = os.path.join(release.chroot, RELEASE_BOOT_PATH)
         dest = os.path.join(self.tftproot, os.path.basename(source))
 
         # Copy it
         d = threads.deferToThread(utils.copyRecursive, source, dest, symlinks=True)
+
+        # Pre-6.0 releases store the kernel in the RELEASE_BOOT_PATH -- it will be
+        # copied in with the boot/ directory.
+        # Post-6.0 releases store it somewhere else.
+        if (not os.path.exists(os.path.join(source, 'kernel', 'kernel'))):
+            kernelFile = os.path.join(release.chroot, RELEASE_GENERIC_KERNEL_PATH)
+            d = threads.deferToThread(utils.copyWithOwnership, kernelFile, os.path.join(dest, 'kernel'))
+
         # Configure it
         d.addCallback(lambda _: threads.deferToThread(self._doConfigureBootLoader, dest))
         deferreds.append(d)
