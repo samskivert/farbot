@@ -76,6 +76,8 @@ class Main(object):
 
     def _cbNetInstallBuild(self, result):
         print "Network installation root created."
+        # Last task, exit
+        reactor.stop()
 
     def _doReleaseBuild(self, farbconfig):
         """
@@ -159,14 +161,11 @@ class Main(object):
             d = self._doReleaseBuild(farbconfig)
             d.addCallback(lambda _: self._doPackageBuild(farbconfig))
             d.addCallback(lambda _: self._doNetInstallBuild(farbconfig))
-            d.addCallback(lambda _: reactor.stop)
         elif (action == "package"):
             d = self._doPackageBuild(farbconfig)
             d.addCallback(lambda _: self._doNetInstallBuild(farbconfig))
-            d.addCallback(lambda _: reactor.stop)
         elif (action == "install"):
             d = self._doNetInstallBuild(farbconfig)
-            d.addCallback(lambda _: reactor.stop)
         else:
             print "Unknown action \"%s\".\n" % (action)
             self.usage()

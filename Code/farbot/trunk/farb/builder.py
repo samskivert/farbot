@@ -712,7 +712,7 @@ class InstallAssembler(object):
         d.addCallback(self._cbMountMFSRoot, mountPoint, log)
 
         # Copy the install.cfg to the attached md device
-        d.addCallback(lambda _: defer.execute(shutil.copy2, self.installConfigSource, installConfigDest))
+        d.addCallback(lambda _: shutil.copy2(self.installConfigSource, installConfigDest))
 
         # Unmount/detach md device
         d.addCallback(lambda _: self.mdmount.umount(log))
@@ -776,7 +776,7 @@ class ReleaseAssembler(object):
         if (len(self.localData)):
             # Create the local directory
             localdir = os.path.join(destdir, 'local')
-            d.addCallback(lambda _: defer.execute(os.mkdir, localdir))
+            d.addCallback(lambda _: os.mkdir(localdir))
 
             for path in self.localData:
                 d.addCallback(self._cbCopyLocal, path, localdir)
