@@ -47,6 +47,9 @@ DATA_DIR = os.path.join(INSTALL_DIR, 'data')
 CONFIG_SCHEMA = os.path.join(DATA_DIR, "farb_conf.xml")
 INSTALL_PACKAGE_SH = os.path.join(DATA_DIR, "install_package.sh")
 BOOT_CONF_TMPL = os.path.join(DATA_DIR, "boot.conf.tmpl")
+LOADER_RC = os.path.join(DATA_DIR, "loader.rc")
+LOADER_CONF = os.path.join(DATA_DIR, "loader.conf")
+NETINSTALL_FORTH_TMPL = os.path.join(DATA_DIR, "netinstall.4th.tmpl")
 
 # Exceptions
 class FarbError(Exception):

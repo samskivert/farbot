@@ -32,6 +32,7 @@ from twisted.python import threadable
 threadable.init()
 
 import os, re, gzip, shutil, exceptions
+import cStringIO
 
 import farb
 from farb import utils
@@ -814,6 +815,51 @@ class NetinstallAssembler(object):
         except Exception, e:
             raise NetinstallAssembleError, "An error occured: %s" % e
 
+    def _doConfigureBootLoader(self, destdir):
+        """
+        Write out the forth for the boot loader installation menu
+        """
+        subst = {}
+
+        # Format Strings
+        variableFormat = 'variable %s\n'
+        menuItemFormat = 'printmenuitem ."  %s" %s !\n'
+        ifBlockFormat = 'dup %s @ = if\ns" /%s/boot.conf" read-conf\n0 boot-conf exit\nthen\n'
+
+        # Output
+        variables = cStringIO.StringIO()
+        menuItems = cStringIO.StringIO()
+        ifBlocks = cStringIO.StringIO()
+
+        # Generate the code blocks
+        for install in self.installAssemblers:
+            # Variable declaration
+            variableName = install.installName + '_key'
+            variables.write(variableFormat % (variableName))
+
+            # Menu item
+            menuItems.write(menuItemFormat % (install.installName, variableName))
+
+            # if block
+            ifBlocks.write(ifBlockFormat % (variableName, install.installName))
+
+        # Write out the netinstall.4th file
+        subst['variables'] = variables.getvalue()
+        subst['menuitems'] = menuItems.getvalue()
+        subst['ifblocks'] = ifBlocks.getvalue()
+        output = open(os.path.join(destdir, 'netinstall.4th'), 'w')
+        template = open(farb.NETINSTALL_FORTH_TMPL, 'r')
+
+        for line in template:
+            output.write(line % (subst))
+
+        output.close()
+        template.close()
+
+        # Copy in our loader.conf and loader.rc
+        utils.copyWithOwnership(farb.LOADER_CONF, destdir)
+        utils.copyWithOwnership(farb.LOADER_RC, destdir)
+
     def build(self, log):
         """
         Create the install root, copy in the release data,
@@ -834,8 +880,13 @@ class NetinstallAssembler(object):
         # grab the boot loader from the first release provided -- shouldn't
         # matter where we get it, really.
         release = self.releaseAssemblers[0]
-        bootLoader = os.path.join(release.chroot, RELEASE_BOOT_PATH)
-        d = threads.deferToThread(utils.copyRecursive, bootLoader, os.path.join(self.tftproot, os.path.basename(bootLoader)), symlinks=True)
+        source = os.path.join(release.chroot, RELEASE_BOOT_PATH)
+        dest = os.path.join(self.tftproot, os.path.basename(source))
+
+        # Copy it
+        d = threads.deferToThread(utils.copyRecursive, source, dest, symlinks=True)
+        # Configure it
+        d.addCallback(lambda _: threads.deferToThread(self._doConfigureBootLoader, dest))
         deferreds.append(d)
 
         # Assemble the release data

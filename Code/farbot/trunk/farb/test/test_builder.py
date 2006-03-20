@@ -583,6 +583,12 @@ class NetinstallAssemblerTestCase(unittest.TestCase):
         # Check to see if the bootloader was copied over
         self.failUnless(os.path.exists(os.path.join(tftproot, 'boot')), msg='The shared boot loader was not copied to the tftproot directory.')
 
+
+        # Check for netinstall.4th, loader.conf, and loader.rc
+        self.failUnless(os.path.exists(os.path.join(tftproot, 'boot', 'netinstall.4th')), msg='The netinstall.4th file was not generated in the tftproot directory.')
+        self.failUnless(os.path.exists(os.path.join(tftproot, 'boot', 'loader.conf')), msg='The FarBot loader.conf file was not copied to the tftproot directory.')
+        self.failUnless(os.path.exists(os.path.join(tftproot, 'boot', 'loader.rc')), msg='The FarBot loader.rc file was not copied to the tftproot directory.')
+
     def test_build(self):
         d = self.irb.build(self.log)
         d.addCallback(self._cbBuild)
