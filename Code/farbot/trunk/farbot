@@ -453,9 +453,9 @@ class NetInstallAssemblerRunner(BuildRunner):
             bctx = failure.value.executionContext
             failure.value.originalFailure.raiseException()
         except builder.NetInstallAssembleError, e:
-            raise builder.NetInstallBuildError, "%s failed: %s.\nFor more information, refer to the installation build log \"%s\"" % (bctx.description, e, bctx.logPath)
+            raise builder.NetInstallAssembleError, "%s failed: %s.\nFor more information, refer to the installation build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except Exception, e:
-            raise builder.NetInstallBuildError, "Unhandled installation build error: %s" % (e)
+            raise builder.NetInstallAssembleError, "Unhandled installation build error: %s" % (e)
 
     def _cbInstallBuild(self, result):
         # Close our log files
