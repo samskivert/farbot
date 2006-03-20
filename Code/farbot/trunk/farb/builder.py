@@ -63,6 +63,18 @@ FREEBSD_PORTS_PATH = '/usr/ports'
 # Relative path of newvers.sh file in the FreeBSD CVS repository
 NEWVERS_PATH = 'src/sys/conf/newvers.sh'
 
+# Release-relative path to the boot directory
+RELEASE_BOOT_PATH = 'R/stage/trees/base/boot'
+
+# Release-relative path to the package directory
+RELEASE_PACKAGE_PATH = 'usr/ports/packages'
+
+# Release-relative path to the ftp installation data directory
+RELEASE_FTP_PATH = 'R/ftp'
+
+# Release-relative path to the mfsroot directory
+RELEASE_MFSROOT_PATH = 'R/stage/mfsroot'
+
 # Default Root Environment
 ROOT_ENV = {
     'USER'      : 'root',
@@ -98,7 +110,13 @@ class ReleaseBuildError(farb.FarbError):
 class PackageBuildError(farb.FarbError):
     pass
 
-class InstallBuildError(farb.FarbError):
+class InstallAssembleError(farb.FarbError):
+    pass
+
+class ReleaseAssembleError(farb.FarbError):
+    pass
+
+class NetinstallAssembleError(farb.FarbError):
     pass
 
 class LoggingProcessProtocol(protocol.ProcessProtocol):
@@ -592,21 +610,23 @@ class InstallAssembler(object):
         #
         
         # Contains shared release boot files
-        self.bootRoot = os.path.join(self.chroot, 'R', 'stage', 'trees', 'base', 'boot')
+        self.bootRoot = os.path.join(self.chroot, RELEASE_BOOT_PATH)
         # Per-release source path for the kernel and modules
         self.kernel = os.path.join(self.bootRoot, 'kernel')
         # Shared release mfsroot
-        self.mfsCompressed = os.path.join(self.chroot, 'R', 'stage', 'mfsroot', 'mfsroot.gz')
+        self.mfsCompressed = os.path.join(self.chroot, RELEASE_MFSROOT_PATH, 'mfsroot.gz')
         
     def _ebInstallError(self, failure):
         try:
             failure.raiseException()
         except MDConfigCommandError, e:
-            raise InstallBuildError, "An error occured operating on the mfsroot \"%s\": %s" % (self.mfsOutput, e)
+            raise InstallAssembleError, "An error occured operating on the mfsroot \"%s\": %s" % (self.mfsOutput, e)
         except MountCommandError, e:
-            raise InstallBuildError, "An error occured mounting \"%s\": %s" % (self.mfsOutput, e)
+            raise InstallAssembleError, "An error occured mounting \"%s\": %s" % (self.mfsOutput, e)
         except exceptions.IOError, e:
-            raise InstallBuildError, "An I/O error occured: %s" % e
+            raise InstallAssembleError, "An I/O error occured: %s" % e
+        except Exception, e:
+            raise InstallAssembleError, "An error occured: %s" % e
 
     def _decompressMFSRoot(self, mfsOutput):
     	"""
@@ -726,6 +746,14 @@ class ReleaseAssembler(object):
 
         return d
 
+    def _ebBuild(self, failure):
+        try:
+            failure.raiseException()
+        except exceptions.IOError, e:
+            raise ReleaseAssembleError, "An I/O error occured: %s" % e
+        except Exception, e:
+            raise ReleaseAssembleError, "An error occured: %s" % e
+
     def build(self, destdir, log):
         """
         Create the install root, copy in the release data,
@@ -734,10 +762,10 @@ class ReleaseAssembler(object):
         @param log: Open log file.
         """
         # Copy the installation data
-        d = threads.deferToThread(utils.copyRecursive, os.path.join(self.chroot, 'R', 'ftp'), destdir, symlinks=True)
+        d = threads.deferToThread(utils.copyRecursive, os.path.join(self.chroot, RELEASE_FTP_PATH), destdir, symlinks=True)
 
         # If there are packages, copy those too
-        packagedir = os.path.join(self.chroot, 'usr', 'ports', 'packages')
+        packagedir = os.path.join(self.chroot, RELEASE_PACKAGE_PATH)
         if (os.path.exists(packagedir)):
             d.addCallback(lambda _: threads.deferToThread(utils.copyRecursive, packagedir, os.path.join(destdir, 'packages'), symlinks=True))
 
@@ -772,6 +800,20 @@ class NetinstallAssembler(object):
         self.releaseAssemblers = releaseAssemblers
         self.installAssemblers = installAssemblers
 
+    def _ebBuild(self, failure):
+        """
+        Called if any deferred in the DeferredList
+        fails. Handles the original exception.
+        """
+        try:
+            failure.value.subFailure.raiseException()
+        except exceptions.IOError, e:
+            raise NetinstallAssembleError, "An I/O error occured: %s" % e
+        except exceptions.OSError, e:
+            raise NetinstallAssembleError, "An OS error occured: %s" % e
+        except Exception, e:
+            raise NetinstallAssembleError, "An error occured: %s" % e
+
     def build(self, log):
         """
         Create the install root, copy in the release data,
@@ -788,6 +830,14 @@ class NetinstallAssembler(object):
         if (not os.path.exists(self.tftproot)):
             os.mkdir(self.tftproot)
 
+        # Copy over the shared boot loader. Lacking any better heuristic, we
+        # grab the boot loader from the first release provided -- shouldn't
+        # matter where we get it, really.
+        release = self.releaseAssemblers[0]
+        bootLoader = os.path.join(release.chroot, RELEASE_BOOT_PATH)
+        d = threads.deferToThread(utils.copyRecursive, bootLoader, os.path.join(self.tftproot, os.path.basename(bootLoader)), symlinks=True)
+        deferreds.append(d)
+
         # Assemble the release data
         for release in self.releaseAssemblers:
             destdir = os.path.join(self.installroot, release.releaseName)
@@ -803,5 +853,6 @@ class NetinstallAssembler(object):
             deferreds.append(d)
 
         d = defer.DeferredList(deferreds, fireOnOneErrback=True)
+        d.addErrback(self._ebBuild)
 
         return d

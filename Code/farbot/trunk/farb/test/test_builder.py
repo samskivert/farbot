@@ -579,6 +579,9 @@ class NetinstallAssemblerTestCase(unittest.TestCase):
         # Check to see if boot.conf was created
         self.failUnless(os.path.exists(os.path.join(tftproot, 'testinstall', 'boot.conf')), msg='The per-install boot.conf file was not created.')
 
+        ## Verify shared boot loader data
+        # Check to see if the bootloader was copied over
+        self.failUnless(os.path.exists(os.path.join(tftproot, 'boot')), msg='The shared boot loader was not copied to the tftproot directory.')
 
     def test_build(self):
         d = self.irb.build(self.log)
