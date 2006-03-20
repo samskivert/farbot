@@ -908,7 +908,7 @@ class NetInstallAssembler(object):
         # Post-6.0 releases store it somewhere else.
         if (not os.path.exists(os.path.join(source, 'kernel', 'kernel'))):
             kernelFile = os.path.join(release.chroot, RELEASE_GENERIC_KERNEL_PATH)
-            d = threads.deferToThread(utils.copyWithOwnership, kernelFile, os.path.join(dest, 'kernel'))
+            d.addCallback(lambda _: threads.deferToThread(utils.copyWithOwnership, kernelFile, os.path.join(dest, 'kernel')))
 
         # Configure it
         d.addCallback(lambda _: threads.deferToThread(self._doConfigureBootLoader, dest))
