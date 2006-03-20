@@ -447,7 +447,7 @@ class InstallAssemblerTestCase(unittest.TestCase):
         self.mfsroot = os.path.join(self.destdir, 'mfsroot')
         self.installCfg = os.path.join(self.destdir, 'mnt', 'install.cfg')
         self.bootConf = os.path.join(self.destdir, 'boot.conf')
-        self.builder = builder.InstallAssembler('testinstall', CHROOT, INSTALL_CFG)
+        self.builder = builder.InstallAssembler('testinstall', 'Test Install', CHROOT, INSTALL_CFG)
 
         os.mkdir(TFTPROOT)
         os.mkdir(self.destdir)
@@ -549,7 +549,7 @@ class ReleaseAssemblerTestCase(unittest.TestCase):
 class NetinstallAssemblerTestCase(unittest.TestCase):
     def setUp(self):
         self.log = open(PROCESS_LOG, 'w+')
-        self.installs = [builder.InstallAssembler('testinstall', CHROOT, INSTALL_CFG),]
+        self.installs = [builder.InstallAssembler('testinstall', 'Test Install', CHROOT, INSTALL_CFG),]
         self.releaseInstalls = [builder.ReleaseAssembler('6.0', CHROOT),]
         self.irb = builder.NetinstallAssembler(INSTALLROOT, self.releaseInstalls, self.installs)
 

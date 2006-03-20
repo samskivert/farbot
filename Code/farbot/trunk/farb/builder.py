@@ -596,13 +596,15 @@ class InstallAssembler(object):
     """
     Assemble an installation configuration
     """
-    def __init__(self, installName, chroot, installConfigPath):
+    def __init__(self, name, description, chroot, installConfigPath):
         """
-        @param installName: A unique name for this install instance 
+        @param name: A unique name for this install instance 
+        @param description: A human-readable description of this install type
         @param chroot: The chroot for this release
         @param installConfigFile: The complete path to this installation's install.cfg
         """
-        self.installName = installName
+        self.name = name
+        self.description = description
         self.chroot = chroot
         self.installConfigSource = installConfigPath
         
@@ -728,14 +730,14 @@ class ReleaseAssembler(object):
     """
     Assemble the per-release installation data directory.
     """
-    def __init__(self, releaseName, chroot, localData = []):
+    def __init__(self, name, chroot, localData = []):
         """
         Initialize the ReleaseAssembler
-        @param releaseName: A unique name for this release
+        @param name: A unique name for this release
         @param chroot: The release build chroot
         @param localData: List of file and directory paths to copy to installRoot/local.
         """
-        self.releaseName = releaseName
+        self.name = name
         self.chroot = chroot
         self.localData = localData
 
@@ -834,14 +836,14 @@ class NetinstallAssembler(object):
         # Generate the code blocks
         for install in self.installAssemblers:
             # Variable declaration
-            variableName = install.installName + '_key'
+            variableName = install.name + '_key'
             variables.write(variableFormat % (variableName))
 
             # Menu item
-            menuItems.write(menuItemFormat % (install.installName, variableName))
+            menuItems.write(menuItemFormat % (install.description, variableName))
 
             # if block
-            ifBlocks.write(ifBlockFormat % (variableName, install.installName))
+            ifBlocks.write(ifBlockFormat % (variableName, install.name))
 
         # Write out the netinstall.4th file
         subst['variables'] = variables.getvalue()
@@ -891,14 +893,14 @@ class NetinstallAssembler(object):
 
         # Assemble the release data
         for release in self.releaseAssemblers:
-            destdir = os.path.join(self.installroot, release.releaseName)
+            destdir = os.path.join(self.installroot, release.name)
 
             d = release.build(destdir, log)
             deferreds.append(d)
 
         # Assemble the installation data
         for install in self.installAssemblers:
-            destdir = os.path.join(self.tftproot, install.installName)
+            destdir = os.path.join(self.tftproot, install.name)
 
             d = install.build(destdir, log)
             deferreds.append(d)
