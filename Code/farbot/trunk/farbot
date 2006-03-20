@@ -60,7 +60,6 @@ class Main(object):
 
     def _cbReleaseBuild(self, result):
         print "Release build completed."
-        reactor.stop()
 
     def _ebPackageBuild(self, failure):
         # Just print the failure and exit
@@ -69,7 +68,6 @@ class Main(object):
 
     def _cbPackageBuild(self, result):
         print "Package build completed."
-        reactor.stop()
 
     def _ebNetInstallBuild(self, failure):
         # Just print the failure and exit
@@ -78,7 +76,6 @@ class Main(object):
 
     def _cbNetInstallBuild(self, result):
         print "Network installation root created."
-        reactor.stop()
 
     def _doReleaseBuild(self, farbconfig):
         """
@@ -162,11 +159,14 @@ class Main(object):
             d = self._doReleaseBuild(farbconfig)
             d.addCallback(lambda _: self._doPackageBuild(farbconfig))
             d.addCallback(lambda _: self._doNetInstallBuild(farbconfig))
+            d.addCallback(lambda _: reactor.stop)
         elif (action == "package"):
             d = self._doPackageBuild(farbconfig)
             d.addCallback(lambda _: self._doNetInstallBuild(farbconfig))
+            d.addCallback(lambda _: reactor.stop)
         elif (action == "install"):
-            self._doNetInstallBuild(farbconfig)
+            d = self._doNetInstallBuild(farbconfig)
+            d.addCallback(lambda _: reactor.stop)
         else:
             print "Unknown action \"%s\".\n" % (action)
             self.usage()
