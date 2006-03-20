@@ -117,7 +117,7 @@ class InstallAssembleError(farb.FarbError):
 class ReleaseAssembleError(farb.FarbError):
     pass
 
-class NetinstallAssembleError(farb.FarbError):
+class NetInstallAssembleError(farb.FarbError):
     pass
 
 class LoggingProcessProtocol(protocol.ProcessProtocol):
@@ -786,7 +786,7 @@ class ReleaseAssembler(object):
 
         return d
 
-class NetinstallAssembler(object):
+class NetInstallAssembler(object):
     """
     Assemble the netinstall directory, including the tftproot,
     using the supplied release and install assemblers.
@@ -811,11 +811,11 @@ class NetinstallAssembler(object):
         try:
             failure.value.subFailure.raiseException()
         except exceptions.IOError, e:
-            raise NetinstallAssembleError, "An I/O error occured: %s" % e
+            raise NetInstallAssembleError, "An I/O error occured: %s" % e
         except exceptions.OSError, e:
-            raise NetinstallAssembleError, "An OS error occured: %s" % e
+            raise NetInstallAssembleError, "An OS error occured: %s" % e
         except Exception, e:
-            raise NetinstallAssembleError, "An error occured: %s" % e
+            raise NetInstallAssembleError, "An error occured: %s" % e
 
     def _doConfigureBootLoader(self, destdir):
         """

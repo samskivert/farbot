@@ -546,12 +546,12 @@ class ReleaseAssemblerTestCase(unittest.TestCase):
         d.addCallback(self._cbBuildLocalData)
         return d
 
-class NetinstallAssemblerTestCase(unittest.TestCase):
+class NetInstallAssemblerTestCase(unittest.TestCase):
     def setUp(self):
         self.log = open(PROCESS_LOG, 'w+')
         self.installs = [builder.InstallAssembler('testinstall', 'Test Install', CHROOT, INSTALL_CFG),]
         self.releaseInstalls = [builder.ReleaseAssembler('6.0', CHROOT),]
-        self.irb = builder.NetinstallAssembler(INSTALLROOT, self.releaseInstalls, self.installs)
+        self.irb = builder.NetInstallAssembler(INSTALLROOT, self.releaseInstalls, self.installs)
 
     def tearDown(self):
         self.log.close()

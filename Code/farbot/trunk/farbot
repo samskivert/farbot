@@ -71,12 +71,12 @@ class Main(object):
         print "Package build completed."
         reactor.stop()
 
-    def _ebInstallBuild(self, failure):
+    def _ebNetInstallBuild(self, failure):
         # Just print the failure and exit
         print failure.value
         reactor.stop()
 
-    def _cbInstallBuild(self, result):
+    def _cbNetInstallBuild(self, result):
         print "Network installation root created."
         reactor.stop()
 
@@ -130,9 +130,9 @@ class Main(object):
             d = pbr.run()
             d.addCallbacks(self._cbPackageBuild, self._ebPackageBuild)
         elif (action == "install"):
-            ibr = InstallBuildRunner(farbconfig)
+            ibr = NetInstallAssemblerRunner(farbconfig)
             d = ibr.run()
-            d.addCallbacks(self._cbInstallBuild, self._ebInstallBuild)
+            d.addCallbacks(self._cbNetInstallBuild, self._ebNetInstallBuild)
         else:
             print "Unknown action \"%s\".\n" % (action)
             self.usage()
@@ -229,6 +229,7 @@ class ReleaseBuildRunner(BuildRunner):
 
     def run(self):
         # Run!
+        print "Building all releases ..."
         d = self.oe.run()
         d.addCallbacks(self._cbReleaseBuild, self._ebReleaseBuild)
         return d
@@ -330,18 +331,22 @@ class PackageBuildRunner(BuildRunner):
 
     def run(self):
         # Run!
+        print "Building all packages ..."
         d = self.oe.run()
         d.addCallbacks(self._cbPackageBuild, self._ebPackageBuild)
         return d
 
-class InstallBuildRunner(BuildRunner):
+class NetInstallAssemblerRunner(BuildRunner):
     """
     Run a set of installation builds
     """
     def __init__(self, config):
-        super(InstallBuildRunner, self).__init__()
+        super(NetInstallAssemblerRunner, self).__init__()
         self.oe = utils.OrderedExecutor()
+
         liveReleases = {}
+        installAssemblers = []
+        releaseAssemblers = []
 
         # Open the build log file
         logPath = os.path.join(config.Releases.buildroot, 'install.log')
@@ -355,12 +360,6 @@ class InstallBuildRunner(BuildRunner):
         if (os.path.exists(config.Releases.installroot)):
             eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.rmtree, config.Releases.installroot)
             self.oe.appendExecutionUnit(eu)
-
-        # Re-create the InstallRoot & tftproot
-        eu = utils.ExecutionUnit(bctx, threads.deferToThread, os.mkdir, config.Releases.installroot)
-        self.oe.appendExecutionUnit(eu)
-        eu = utils.ExecutionUnit(bctx, threads.deferToThread, os.mkdir, config.Releases.tftproot)
-        self.oe.appendExecutionUnit(eu)
 
         # Iterate through all installations
         for install in config.Installations.Installation:
@@ -391,44 +390,27 @@ class InstallBuildRunner(BuildRunner):
             eu = utils.ExecutionUnit(bctx, defer.execute, outputFile.close)
             self.oe.appendExecutionUnit(eu)
 
+            # Instantiate the installation assembler
+            ia = builder.InstallAssembler(installName, install.description, release.chroot, installConfigPath)
+            installAssemblers.append(ia)
 
-            # Instantiate our builder and add it to the OrderedExecutor
-            installBuilder = builder.InstallBuilder(installName, release.chroot, config.Releases.tftproot, installConfigPath)
-            eu = utils.ExecutionUnit(bctx, installBuilder.build, installLog)
-            self.oe.appendExecutionUnit(eu)
-
-        ## TODO landonf: Add a new builder to farb/builder.py for the following
-
-        # Iterate over "live" releases, copying the installation data
+        # Iterate over "live" releases
         for releaseName, release in liveReleases.iteritems():
-                # Per-release install root
-                installroot = os.path.join(config.Releases.installroot, releaseName)
+                # Instantiate the release assembler
+                if (len(release.localdata)):
+                    ra = builder.ReleaseAssembler(releaseName, release.chroot, localData = release.localdata)
+                else:
+                    ra = builder.ReleaseAssembler(releaseName, release.chroot)
 
-                # Copy the installation data
-                eu = utils.ExecutionUnit(bctx, threads.deferToThread, utils.copyRecursive, os.path.join(release.chroot, 'R', 'ftp'), installroot, symlinks=True)
-                self.oe.appendExecutionUnit(eu)
+                releaseAssemblers.append(ra)
 
-                # If there are packages, copy those too
-                if (os.path.exists(release.packagedir)):
-                    eu = utils.ExecutionUnit(bctx, threads.deferToThread, utils.copyRecursive, release.packagedir, os.path.join(installroot, 'packages'), symlinks=True)
-                    self.oe.appendExecutionUnit(eu)
+        # Reset default BuildContext
+        bctx = BuildContext("Installation build", logPath)
 
-                # Copy in any local data
-                localdir = os.path.join(installroot, 'local')
-                eu = utils.ExecutionUnit(bctx, defer.execute, os.mkdir, localdir)
-                self.oe.appendExecutionUnit(eu)
-
-                # Add our package installer shell script
-                eu = utils.ExecutionUnit(bctx, defer.execute, utils.copyWithOwnership, farb.INSTALL_PACKAGE_SH, installroot)
-                self.oe.appendExecutionUnit(eu)
-
-                for localdata in release.localdata:
-                    if (os.path.isdir(localdata)):
-                        eu = utils.ExecutionUnit(bctx, threads.deferToThread, utils.copyRecursive, localdata, os.path.join(localdir, os.path.basename(localdata)), symlinks=True)
-                    else:
-                        eu = utils.ExecutionUnit(bctx, threads.deferToThread, utils.copyWithOwnership, localdata, localdir)
-                    self.oe.appendExecutionUnit(eu)
-
+        # Instantiate our NetInstall Assembler
+        nia = builder.NetInstallAssembler(config.Releases.installroot, releaseAssemblers, installAssemblers)
+        eu = utils.ExecutionUnit(bctx, nia.build, installLog)
+        self.oe.appendExecutionUnit(eu)
 
     def _ebInstallBuild(self, failure):
         # Close our log files
@@ -438,10 +420,10 @@ class InstallBuildRunner(BuildRunner):
         try:            
             bctx = failure.value.executionContext
             failure.value.originalFailure.raiseException()
-        except builder.InstallBuildError, e:
-            raise builder.InstallBuildError, "%s failed: %s.\nFor more information, refer to the installation build log \"%s\"" % (bctx.description, e, bctx.logPath)
+        except builder.NetInstallAssembleError, e:
+            raise builder.NetInstallBuildError, "%s failed: %s.\nFor more information, refer to the installation build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except Exception, e:
-            raise builder.InstallBuildError, "Unhandled installation build error: %s" % (e)
+            raise builder.NetInstallBuildError, "Unhandled installation build error: %s" % (e)
 
     def _cbInstallBuild(self, result):
         # Close our log files
@@ -449,6 +431,7 @@ class InstallBuildRunner(BuildRunner):
 
     def run(self):
         # Run!
+        print "Building network installation root ..."
         d = self.oe.run()
         d.addCallbacks(self._cbInstallBuild, self._ebInstallBuild)
         return d
