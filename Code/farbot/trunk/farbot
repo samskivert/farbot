@@ -49,8 +49,8 @@ class Main(object):
         print "    -f <config>    Use configuration file"
         print "    -r <action>    Execute <action>"
         print "\nSupported actions:"
-        print "    release        Build all defined releases"
-        print "    package        Build all defined packages (requires a release build)"
+        print "    release        Build all defined releases, build all packages, and build the network installation root"
+        print "    package        Build all defined packages, and build the network installation root (requires a release build)"
         print "    install        Build the network installation root (requires package and release builds)"
 
     def _ebReleaseBuild(self, failure):
@@ -79,6 +79,43 @@ class Main(object):
     def _cbNetInstallBuild(self, result):
         print "Network installation root created."
         reactor.stop()
+
+    def _doReleaseBuild(self, farbconfig):
+        """
+        Do a full release build
+        @param farbconfig: zconfig config instance
+        """
+        rbr = ReleaseBuildRunner(farbconfig)
+        d = rbr.run()
+        d.addCallbacks(self._cbReleaseBuild, self._ebReleaseBuild)
+
+        print "Building all releases ..."
+        return d
+
+
+    def _doPackageBuild(self, farbconfig):
+        """
+        Do a full package build
+        @param farbconfig: zconfig config instance
+        """
+        pbr = PackageBuildRunner(farbconfig)
+        d = pbr.run()
+        d.addCallbacks(self._cbPackageBuild, self._ebPackageBuild)
+
+        print "Building all packages ..."
+        return d
+
+    def _doNetInstallBuild(self, farbconfig):
+        """
+        Do a net install directory build
+        @param farbconfig: zconfig config instance
+        """
+        ibr = NetInstallAssemblerRunner(farbconfig)
+        d = ibr.run()
+        d.addCallbacks(self._cbNetInstallBuild, self._ebNetInstallBuild)
+
+        print "Building network installation root ..."
+        return d
 
     def main(self):
         conf_file = None
@@ -122,17 +159,14 @@ class Main(object):
 
         # Execute requested action
         if (action == "release"):
-            rbr = ReleaseBuildRunner(farbconfig)
-            d = rbr.run()
-            d.addCallbacks(self._cbReleaseBuild, self._ebReleaseBuild)
+            d = self._doReleaseBuild(farbconfig)
+            d.addCallback(lambda _: self._doPackageBuild(farbconfig))
+            d.addCallback(lambda _: self._doNetInstallBuild(farbconfig))
         elif (action == "package"):
-            pbr = PackageBuildRunner(farbconfig)
-            d = pbr.run()
-            d.addCallbacks(self._cbPackageBuild, self._ebPackageBuild)
+            d = self._doPackageBuild(farbconfig)
+            d.addCallback(lambda _: self._doNetInstallBuild(farbconfig))
         elif (action == "install"):
-            ibr = NetInstallAssemblerRunner(farbconfig)
-            d = ibr.run()
-            d.addCallbacks(self._cbNetInstallBuild, self._ebNetInstallBuild)
+            self._doNetInstallBuild(farbconfig)
         else:
             print "Unknown action \"%s\".\n" % (action)
             self.usage()
@@ -229,7 +263,6 @@ class ReleaseBuildRunner(BuildRunner):
 
     def run(self):
         # Run!
-        print "Building all releases ..."
         d = self.oe.run()
         d.addCallbacks(self._cbReleaseBuild, self._ebReleaseBuild)
         return d
@@ -331,7 +364,6 @@ class PackageBuildRunner(BuildRunner):
 
     def run(self):
         # Run!
-        print "Building all packages ..."
         d = self.oe.run()
         d.addCallbacks(self._cbPackageBuild, self._ebPackageBuild)
         return d
@@ -431,7 +463,6 @@ class NetInstallAssemblerRunner(BuildRunner):
 
     def run(self):
         # Run!
-        print "Building network installation root ..."
         d = self.oe.run()
         d.addCallbacks(self._cbInstallBuild, self._ebInstallBuild)
         return d
