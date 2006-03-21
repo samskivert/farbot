@@ -34,14 +34,13 @@
   <preface>
     <title>About farbot</title>
 
-    <para>farbot was written by Landon Fuller
-    <email>landonf@threerings.net</email> for the purpose of automating the
-    process of building FreeBSD Jumpstart [netboot] install releases. It
-    handles the building of the releases, builds any packages you wish to
-    install, configures the bootloader, and constructs the NFS exported
-    directory structure needed for a netinstall, all from a simple
-    configuration file. We encourage you to submit any patch you think would
-    be useful.</para>
+    <para>farbot was written by Landon Fuller and Jonathan Le Plastrier for
+    the purpose of automating the process of building FreeBSD Jumpstart
+    [netboot] install releases. It handles the building of the releases,
+    builds any packages you wish to install, configures the bootloader, and
+    constructs the NFS exported directory structure needed for a netinstall,
+    all from a simple configuration file. We encourage you to submit any patch
+    you think would be useful.</para>
   </preface>
 
   <chapter>
@@ -205,7 +204,7 @@
                 <term>InstallCSDs</term>
 
                 <listitem>
-                  <simpara>Whether to create ISO install iamges.</simpara>
+                  <simpara>Whether to create ISO install images.</simpara>
                 </listitem>
               </varlistentry>
             </variablelist>
