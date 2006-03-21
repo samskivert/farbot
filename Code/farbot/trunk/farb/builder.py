@@ -70,8 +70,8 @@ RELEASE_BOOT_PATH = 'R/stage/trees/base/boot'
 # Release-relative path to the package directory
 RELEASE_PACKAGE_PATH = 'usr/ports/packages'
 
-# Release-relative path to the generic kernel file (6.1+ only)
-RELEASE_GENERIC_KERNEL_PATH = 'R/stage/kernels/GENERIC/kernel'
+# Release-relative path to the generic kernel directory (6.1+ only)
+RELEASE_GENERIC_KERNEL_PATH = 'R/stage/kernels/GENERIC'
 
 # Release-relative path to the ftp installation data directory
 RELEASE_FTP_PATH = 'R/ftp'
@@ -628,11 +628,14 @@ class InstallAssembler(object):
         
         # Contains shared release boot files
         self.bootRoot = os.path.join(self.chroot, RELEASE_BOOT_PATH)
-        # Per-release source path for the kernel and modules
-        self.kernel = os.path.join(self.bootRoot, 'kernel')
         # Shared release mfsroot
         self.mfsCompressed = os.path.join(self.chroot, RELEASE_MFSROOT_PATH, 'mfsroot.gz')
-        
+        # Pre-6.0 releases store the kernel in the RELEASE_BOOT_PATH
+        # Post-6.0 releases store it in RELEASE_GENERIC_KERNEL_PATH
+        self.kernel = os.path.join(self.bootRoot, 'kernel')
+        if (not os.path.exists(os.path.join(self.kernel, 'kernel'))):
+            self.kernel = os.path.join(self.chroot, RELEASE_GENERIC_KERNEL_PATH)
+
     def _ebInstallError(self, failure):
         try:
             failure.raiseException()
@@ -677,7 +680,7 @@ class InstallAssembler(object):
         Copy the kernel directory to the install-specific directory
         (Synchronous)
         """
-        dest = os.path.join(destdir, os.path.basename(self.kernel))
+        dest = os.path.join(destdir, 'kernel')
         d = threads.deferToThread(utils.copyRecursive, self.kernel, dest, symlinks=True)
         return d
 
@@ -905,9 +908,9 @@ class NetInstallAssembler(object):
 
         # Pre-6.0 releases store the kernel in the RELEASE_BOOT_PATH -- it will be
         # copied in with the boot/ directory.
-        # Post-6.0 releases store it somewhere else.
+        # Post-6.0 releases store it in RELEASE_GENERIC_KERNEL_PATH.
         if (not os.path.exists(os.path.join(source, 'kernel', 'kernel'))):
-            kernelFile = os.path.join(release.chroot, RELEASE_GENERIC_KERNEL_PATH)
+            kernelFile = os.path.join(release.chroot, RELEASE_GENERIC_KERNEL_PATH, 'kernel')
             d.addCallback(lambda _: threads.deferToThread(utils.copyWithOwnership, kernelFile, os.path.join(dest, 'kernel')))
 
         # Configure it
