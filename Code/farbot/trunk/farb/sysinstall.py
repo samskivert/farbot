@@ -120,7 +120,7 @@ class DistSetConfig(ConfigSection):
         'dists',        # Install these distribution sets
     )
     # Distribution sets are currently hardcoded
-    dists = 'base doc games manpages catpages proflibs dict info'
+    dists = 'base kernels GENERIC SMP doc games manpages catpages proflibs dict info'
 
     # Section commands
     sectionCommands = (
