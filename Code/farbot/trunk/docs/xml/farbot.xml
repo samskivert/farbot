@@ -53,7 +53,7 @@
       <sect2>
         <title>Prerequisites</title>
 
-        <para>Splat depends on the following components:</para>
+        <para>farbot depends on the following components:</para>
 
         <itemizedlist>
           <listitem>
@@ -75,8 +75,8 @@
       <sect2>
         <title>Installing with the Python Distutils</title>
 
-        <para>Splat uses the standard Python distutils. To install, simply run
-        <filename>setup.py</filename>: <programlisting>./setup.py install</programlisting></para>
+        <para>farbot uses the standard Python distutils. To install, simply
+        run <filename>setup.py</filename>: <programlisting>./setup.py install</programlisting></para>
 
         <para>The farbot library will be installed in the Python site-packages
         directory. The <filename>farbot</filename> command line tool will be
@@ -480,8 +480,8 @@
         <title>Logging Configuration</title>
 
         <simpara>The <computeroutput>Logging</computeroutput> section
-        configures logging for the Splat daemon. It is composed of any number
-        of <computeroutput>syslog</computeroutput> or
+        configures logging for <filename>farbot</filename>. It is composed of
+        any number of <computeroutput>syslog</computeroutput> or
         <computeroutput>logfile</computeroutput> subsections.</simpara>
 
         <sect3>
