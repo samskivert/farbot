@@ -40,7 +40,9 @@
     builds any packages you wish to install, configures the bootloader, and
     constructs the NFS exported directory structure needed for a netinstall,
     all from a simple configuration file. We encourage you to submit any patch
-    you think would be useful.</para>
+    you think would be useful. You may also join the <ulink
+    url="https://dpw.threerings.net/mailman/listinfo/farbot">farbot mailing
+    list</ulink>.</para>
   </preface>
 
   <chapter>
@@ -589,18 +591,19 @@
     <sect1>
       <title>Running farbot</title>
 
-      <simpara><filename>farbot</filename> can be run with these arguments
-      XXX.</simpara>
+      <simpara>List a number of command line examples</simpara>
     </sect1>
   </chapter>
 
   <chapter>
-    <title>Not sure we need this. Maybe post install steps?</title>
+    <title>Installing FreeBSD using farbot </title>
 
     <sect1>
       <title>Introduction</title>
 
-      <simpara>What else do we need to cover?</simpara>
+      <simpara>Go through an example installation, showing a screen shot of
+      the bootloader and explaining where errors could occur, possibly a FAQ
+      of common errors.</simpara>
     </sect1>
   </chapter>
 </book>
