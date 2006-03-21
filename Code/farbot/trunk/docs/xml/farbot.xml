@@ -69,6 +69,11 @@
           <listitem>
             <simpara><ulink url="???">Zconfig</ulink></simpara>
           </listitem>
+
+          <listitem>
+            <para><ulink url="http://www.freebsd.org">FreeBSD</ulink> is
+            required to actually build installations.</para>
+          </listitem>
         </itemizedlist>
       </sect2>
 
@@ -83,15 +88,6 @@
         installed in the Python-specified bin directory. An example
         configuration file, <filename>farbot.conf</filename>, is supplied with
         the source distribution.</para>
-
-        <note>
-          <para>The farbot command line tools will be installed in the bin
-          directory as specific by Python. On certain operating systems, this
-          may not be what you expect. For example, Mac OS X might install
-          <filename>farbot</filename> <filename
-          class="directory">/Library/Python/2.3/bin</filename>. Feel free to
-          move the binaries after the installation is complete.</para>
-        </note>
       </sect2>
     </sect1>
 
@@ -118,27 +114,8 @@
             <listitem>
               <simpara>Installations Configuration</simpara>
             </listitem>
-
-            <listitem>
-              <simpara>Logging Configuration</simpara>
-            </listitem>
-          </itemizedlist> The configuration uses an Apache-style syntax:
-        <programlisting>
-&lt;Installations&gt;
-  # An installation for database servers
-  &lt;Installation Database&gt;
-    # Human-readable Description.
-    # Used in the installation-selection boot menu
-    Description  Standard Installation
-    Release  6.0
-    PackageSet Base
-    NetworkDevice em0
-    &lt;Disk ad0&gt;
-      PartitionMap Standard
-    &lt;/Disk&gt;
-  &lt;/Installation&gt;
-&lt;/Installation&gt;
-                    </programlisting></para>
+          </itemizedlist> The configuration uses an Apache-style syntax.
+        </para>
       </sect2>
 
       <sect2>
@@ -477,72 +454,6 @@
       </sect2>
 
       <sect2>
-        <title>Logging Configuration</title>
-
-        <simpara>The <computeroutput>Logging</computeroutput> section
-        configures logging for <filename>farbot</filename>. It is composed of
-        any number of <computeroutput>syslog</computeroutput> or
-        <computeroutput>logfile</computeroutput> subsections.</simpara>
-
-        <sect3>
-          <title>Syslog Configuration Options</title>
-
-          <variablelist>
-            <varlistentry>
-              <term>Level</term>
-
-              <listitem>
-                <simpara>Log Verbosity. One of: debug, info, warning, error,
-                critical</simpara>
-              </listitem>
-            </varlistentry>
-
-            <varlistentry>
-              <term>Facility</term>
-
-              <listitem>
-                <simpara>Syslog Facility.</simpara>
-              </listitem>
-            </varlistentry>
-
-            <varlistentry>
-              <term>Address</term>
-
-              <listitem>
-                <simpara>Address of syslog server, or pathname to syslog
-                socket. This varies between hosts. FreeBSD's syslog socket is
-                located at <filename>/var/run/log</filename>.</simpara>
-              </listitem>
-            </varlistentry>
-          </variablelist>
-        </sect3>
-
-        <sect3>
-          <title>Logfile Configuration Options</title>
-
-          <variablelist>
-            <varlistentry>
-              <term>Level</term>
-
-              <listitem>
-                <simpara>Log Verbosity. One of: debug, info, warning, error,
-                critical</simpara>
-              </listitem>
-            </varlistentry>
-
-            <varlistentry>
-              <term>Path</term>
-
-              <listitem>
-                <simpara>Path to log file, or reference to Python file object
-                such as STDOUT.</simpara>
-              </listitem>
-            </varlistentry>
-          </variablelist>
-        </sect3>
-      </sect2>
-
-      <sect2>
         <title>Example Configuration File</title>
 
         <simpara>An example configuration follows. The same configuration file
@@ -672,20 +583,6 @@
                 &lt;/PostInstall&gt;
         &lt;/Installation&gt;
 &lt;/Installations&gt;
-
-&lt;Logging&gt;
-        # Logging configuration
-        &lt;syslog&gt;
-                Level info
-                Facility daemon
-                Address /var/run/log
-        &lt;/syslog&gt;
-#       &lt;logfile&gt;
-                # Log debug messages to stdout
-#               Level debug
-#               Path STDOUT
-#       &lt;/logfile&gt;
-&lt;/Logging&gt;
                 </programlisting>
       </sect2>
     </sect1>
