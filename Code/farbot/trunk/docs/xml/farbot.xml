@@ -607,7 +607,7 @@ Supported actions:
   install           Build the network installation root (requires package and release builds)</programlisting>
 
       <sect2>
-        <title>Building all defined releases, packages, and setup the
+        <title>Build all defined releases and packages, and setup the
         installation root</title>
 
         <programlisting>./farbot -f farbot.conf -r release</programlisting>
