@@ -336,6 +336,10 @@ class MountCommand(object):
         failure.trap(CommandError)
         raise MountCommandError, failure.value
 
+    def _cbReleaseMountLock(self, result):
+        self.mountLock.release()
+        return result
+
     def mount(self, log):
         """
         Run mount(8)
@@ -353,7 +357,7 @@ class MountCommand(object):
 
         lock = self.mountLock.acquire()
         lock.addCallback(lambda _: reactor.spawnProcess(protocol, MOUNT_PATH, args=argv, env=ROOT_ENV))
-        d.addCallback(lambda _: self.mountLock.release())
+        d.addCallback(self._cbReleaseMountLock)
 
         return d
 
@@ -371,7 +375,7 @@ class MountCommand(object):
 
         lock = self.mountLock.acquire()
         lock.addCallback(lambda _: reactor.spawnProcess(protocol, UMOUNT_PATH, args=argv, env=ROOT_ENV))
-        d.addCallback(lambda _: self.mountLock.release())
+        d.addCallback(self._cbReleaseMountLock)
 
         return d
 
