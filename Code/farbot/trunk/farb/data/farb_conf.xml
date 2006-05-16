@@ -3,11 +3,17 @@
     farb_conf.xml vi:ts=4:sw=4:expandtab
 -->
 <schema prefix="farb.config">
+    <sectiontype name="PackageBuildOptions" keytype="string">
+        <key name="+" datatype="string" attribute="Options" required="yes"/>
+    </sectiontype>
+    
     <!-- Release Configuration -->
     <sectiontype name="Release" datatype=".release_handler">
         <key name="CVSRoot" datatype="existing-directory" required="yes"/>
         <key name="CVSTag" datatype="string" required="yes"/>
         <key name="InstallCDs" datatype="boolean" required="no" default="false"/>
+        <!-- Could not find a way to reuse BuildOptions here -->
+        <section type="PackageBuildOptions" name="*" attribute="PackageBuildOptions" required="no"/>
         <multikey name="LocalData" datatype="existing-path" required="no"/>
     </sectiontype>
 
@@ -40,7 +46,7 @@
     <sectiontype name="BuildOptions" keytype="string">
         <key name="+" datatype="string" attribute="Options" required="yes"/>
     </sectiontype>
-    
+
     <sectiontype name="Package" datatype=".package_handler">
         <key name="Port" datatype="string" required="yes"/>
         <key name="Package" datatype="string" required="no"/>

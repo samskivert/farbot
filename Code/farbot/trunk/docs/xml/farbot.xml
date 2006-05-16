@@ -209,6 +209,20 @@
                   <simpara>Whether to create ISO install images.</simpara>
                 </listitem>
               </varlistentry>
+              <varlistentry>
+                <term>PackageBuildOptions</term>
+
+                <listitem>
+                  <simpara>An optional list of options to pass to every package
+                  build for this release. BuildOptions for a given package 
+                  override this global setting.. <remark>ex:</remark>
+                  </simpara>
+
+                  <programlisting>&lt;PackageBuildOptions&gt;
+    WITHOUT_X11  true
+&lt;/PackageBuildOptions&gt;</programlisting>
+                </listitem>
+              </varlistentry>
             </variablelist>
           </sect4>
         </sect3>

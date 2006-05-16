@@ -25,6 +25,10 @@
 		CVSRoot	@CVSROOT@
 		# Release Tag
 		CVSTag	@TAG2@
+                # Global package build options
+ 		<PackageBuildOptions>
+			WITHOUT_X11 yes 
+ 		</PackageBuildOptions>
 	</Release>
 </Releases>
 
