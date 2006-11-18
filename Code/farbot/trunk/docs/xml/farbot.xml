@@ -58,22 +58,26 @@
 
         <itemizedlist>
           <listitem>
-            <simpara><ulink url="http://www.python.org/">Python
-            2.4</ulink></simpara>
+            <para><ulink url="http://www.python.org/">Python
+            2.4</ulink></para>
           </listitem>
 
           <listitem>
-            <simpara><ulink url="???">Twisted Networking
-            Framework</ulink></simpara>
+            <para><ulink url="http://twistedmatrix.com">Twisted Networking
+            Framework</ulink></para>
           </listitem>
 
           <listitem>
-            <simpara><ulink url="???">Zconfig</ulink></simpara>
+            <para><ulink url="http://www.zope.org/Members/fdrake/zconfig/">
+            Zconfig</ulink></para>
           </listitem>
 
           <listitem>
             <para><ulink url="http://www.freebsd.org">FreeBSD</ulink> is
-            required to actually build installations.</para>
+            required to actually build installations. This build system must 
+            have full sources installed in <filename>/usr/src</filename>, and 
+            a completed buildworld must have been run prior to building 
+            installations with farbot.</para>
           </listitem>
         </itemizedlist>
       </sect2>
