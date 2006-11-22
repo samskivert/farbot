@@ -74,9 +74,9 @@
 
           <listitem>
             <para><ulink url="http://www.freebsd.org">FreeBSD</ulink> is
-            required to actually build installations. This build system must 
-            have full sources installed in <filename>/usr/src</filename>, and 
-            a completed buildworld must have been run prior to building 
+            required to actually build installations. This build system must
+            have full sources installed in <filename>/usr/src</filename>, and
+            a completed buildworld must have been run prior to building
             installations with farbot.</para>
           </listitem>
         </itemizedlist>
@@ -213,14 +213,15 @@
                   <simpara>Whether to create ISO install images.</simpara>
                 </listitem>
               </varlistentry>
+
               <varlistentry>
                 <term>PackageBuildOptions</term>
 
                 <listitem>
-                  <simpara>An optional list of options to pass to every package
-                  build for this release. BuildOptions for a given package 
-                  override this global setting.. <remark>ex:</remark>
-                  </simpara>
+                  <simpara>An optional list of options to pass to every
+                  package build for this release. BuildOptions for a given
+                  package override this global setting..
+                  <remark>ex:</remark></simpara>
 
                   <programlisting>&lt;PackageBuildOptions&gt;
     WITHOUT_X11  true
@@ -495,11 +496,11 @@
         # Should probably be the local machine
         NFSHost         jumpstart.example.org
 
-        &lt;Release 6.0&gt;
+        &lt;Release 6.1&gt;
                 # FreeBSD CVS Repository Mirror
                 CVSRoot         /home/ncvs
                 # Release Tag
-                CVSTag          RELENG_6_0
+                CVSTag          RELENG_6_1
 
                 # LocalData will be copied into the release
                 # distribution. These files will be available at
@@ -603,6 +604,81 @@
         &lt;/Installation&gt;
 &lt;/Installations&gt;
                 </programlisting>
+      </sect2>
+    </sect1>
+
+    <sect1>
+      <title>Configuring the Installation Host</title>
+
+      <para>In addition to configuring farbot, the following services will be
+      required on the imaging server:</para>
+
+      <itemizedlist>
+        <listitem>
+          <para>NFS</para>
+        </listitem>
+
+        <listitem>
+          <para>DHCP</para>
+        </listitem>
+
+        <listitem>
+          <para>TFTP</para>
+        </listitem>
+      </itemizedlist>
+
+      <sect2>
+        <title>NFS</title>
+
+        <para>You must export the tftproot, and any release installation
+        directories. The following <filename>/etc/exports</filename> file
+        corresponds to the provided farbot.conf:</para>
+
+        <programlisting>/export/freebsd/netinstall/tftproot /export/freebsd/netinstall/6.1 /export/freebsd/netinstall/6-stable -ro -maproot=root -network 1
+0.0.50.0 -mask 255.255.255.0</programlisting>
+      </sect2>
+
+      <sect2>
+        <title>DHCP</title>
+
+        <para>A simple <filename>dhcpd.conf</filename> that directs clients to
+        the generated tftproot:</para>
+
+        <programlisting># dhcpd.conf
+#
+# Sample configuration file for ISC dhcpd
+#
+
+# option definitions common to all supported networks...
+default-lease-time 600;
+max-lease-time 7200;
+
+# If this DHCP server is the official DHCP server for the local
+# network, the authoritative directive should be uncommented.
+authoritative;
+
+# ad-hoc DNS update scheme - set to "none" to disable dynamic DNS updates.
+ddns-update-style none;
+
+option subnet-mask 255.255.255.0;
+option routers 10.0.50.1;
+filename "/boot/pxeboot";
+
+subnet 10.0.50.0 netmask 255.255.255.0 {
+  range 10.0.50.10 10.0.50.60;
+  next-server 10.0.50.1;
+  option root-path "/export/freebsd/netinstall/tftproot";
+}</programlisting>
+      </sect2>
+
+      <sect2>
+        <title>TFTP</title>
+
+        <para>The following must be added to
+        <filename>/etc/inetd.conf</filename> to support tftp access to the
+        netbooting client:</para>
+
+        <programlisting>tftp    dgram   udp     wait    root    /usr/libexec/tftpd      tftpd -l -s /export/freebsd/netinstall/tftproot</programlisting>
       </sect2>
     </sect1>
 
