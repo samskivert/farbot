@@ -1,0 +1,474 @@
+#!/usr/bin/env python
+# farbctl vi:ts=4:sw=4:expandtab:
+#
+# Copyright (c) 2006 Three Rings Design, Inc.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+# 3. Neither the name of the copyright owner nor the names of contributors
+#    may be used to endorse or promote products derived from this software
+#    without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+import getopt, sys, os
+import ZConfig
+import shutil
+
+from twisted.internet import reactor, defer, threads
+from twisted.python import threadable 
+threadable.init()
+
+import farb
+from farb import utils, builder, config, sysinstall
+
+class Main(object):
+    """
+    Implements FarBot's Main Runloop
+    """
+    def usage(self):
+        print "Usage: %s [-h] [-f config file] [-r action]" % sys.argv[0]
+        print "    -h             Print usage (this message)"
+        print "    -f <config>    Use configuration file"
+        print "    -r <action>    Execute <action>"
+        print "\nSupported actions:"
+        print "    release        Build all defined releases, build all packages, and build the network installation root"
+        print "    package        Build all defined packages, and build the network installation root (requires a release build)"
+        print "    install        Build the network installation root (requires package and release builds)"
+
+    def _ebReleaseBuild(self, failure):
+        # Just print the failure and exit
+        print failure.value
+        reactor.stop()
+
+    def _cbReleaseBuild(self, result):
+        print "Release build completed."
+
+    def _ebPackageBuild(self, failure):
+        # Just print the failure and exit
+        print failure.value
+        reactor.stop()
+
+    def _cbPackageBuild(self, result):
+        print "Package build completed."
+
+    def _ebNetInstallBuild(self, failure):
+        # Just print the failure and exit
+        print failure.value
+        reactor.stop()
+
+    def _cbNetInstallBuild(self, result):
+        print "Network installation root created."
+        # Last task, exit
+        reactor.stop()
+
+    def _doReleaseBuild(self, farbconfig):
+        """
+        Do a full release build
+        @param farbconfig: zconfig config instance
+        """
+        rbr = ReleaseBuildRunner(farbconfig)
+        d = rbr.run()
+        d.addCallbacks(self._cbReleaseBuild, self._ebReleaseBuild)
+
+        print "Building all releases ..."
+        return d
+
+
+    def _doPackageBuild(self, farbconfig):
+        """
+        Do a full package build
+        @param farbconfig: zconfig config instance
+        """
+        pbr = PackageBuildRunner(farbconfig)
+        d = pbr.run()
+        d.addCallbacks(self._cbPackageBuild, self._ebPackageBuild)
+
+        print "Building all packages ..."
+        return d
+
+    def _doNetInstallBuild(self, farbconfig):
+        """
+        Do a net install directory build
+        @param farbconfig: zconfig config instance
+        """
+        ibr = NetInstallAssemblerRunner(farbconfig)
+        d = ibr.run()
+        d.addCallbacks(self._cbNetInstallBuild, self._ebNetInstallBuild)
+
+        print "Building network installation root ..."
+        return d
+
+    def main(self):
+        conf_file = None
+        action = None
+
+        try:
+            opts,args = getopt.getopt(sys.argv[1:], "hf:r:")
+        except getopt.GetoptError:
+            self.usage()
+            sys.exit(2)
+
+        for opt,arg in opts:
+            if opt == "-h":
+                self.usage()
+                sys.exit()
+            if opt == "-f":
+                conf_file = arg
+            if opt == "-r":
+                action = arg
+
+        if (conf_file == None or action == None):
+            self.usage()
+            sys.exit(1)
+
+        # Load our configuration schema
+        schema = ZConfig.loadSchema(farb.CONFIG_SCHEMA)
+        try:
+            farbconfig, handler = ZConfig.loadConfig(schema, conf_file)
+            config.verifyReferences(farbconfig)
+            config.verifyPackages(farbconfig)
+        except ZConfig.ConfigurationError, e:
+            print "Configuration Error: %s" % e
+            sys.exit(1)
+
+        # Set up logging
+        try:
+            farbconfig.Logging()
+        except Exception, e:
+            print "Log initialization failed: %s" % e
+            sys.exit(1)
+
+        # Execute requested action
+        if (action == "release"):
+            d = self._doReleaseBuild(farbconfig)
+            d.addCallback(lambda _: self._doPackageBuild(farbconfig))
+            d.addCallback(lambda _: self._doNetInstallBuild(farbconfig))
+        elif (action == "package"):
+            d = self._doPackageBuild(farbconfig)
+            d.addCallback(lambda _: self._doNetInstallBuild(farbconfig))
+        elif (action == "install"):
+            d = self._doNetInstallBuild(farbconfig)
+        else:
+            print "Unknown action \"%s\".\n" % (action)
+            self.usage()
+            sys.exit(1)
+
+        reactor.run()
+        sys.exit(0)
+
+class BuildContext(object):
+    """
+    Context associated with release and packaging builds.
+    """
+    def __init__(self, description, logPath):
+        """
+        @param description: Description of the build
+        @param logPath: Path to log file, if any.
+        """
+        self.description = description
+        self.logPath = logPath
+
+class BuildRunner(object):
+    """
+    BuildRunner abstract superclass.
+    """
+    def __init__(self):
+        self.logs = []
+        
+
+    def _closeLogs(self):
+        for logFile in self.logs:
+            logFile.close()
+
+
+class ReleaseBuildRunner(BuildRunner):
+    """
+    Run a set of release builds
+    """
+    def __init__(self, config):
+        super(ReleaseBuildRunner, self).__init__()
+        self.oe = utils.OrderedExecutor()
+
+        # Iterate through all releases, starting a release build for all
+        # releases referenced by an Installation.
+        for release in config.Releases.Release:
+            # Check all installations for a reference to this release
+            for install in config.Installations.Installation:
+                releaseFound = False
+                if (release.getSectionName() == install.release.lower()):
+                    releaseFound = True
+                    break
+            if (not releaseFound):
+                # Skip the release, it's not used by any installation
+                break
+
+            # Create the build directory
+            try:
+                if (not os.path.exists(release.buildroot)):
+                    os.makedirs(release.buildroot)
+            except Exception, e:
+                print "Failed to create build root: %s" % (e)
+                sys.exit(1)
+
+            # Instantiate our builder
+            releaseBuilder = builder.ReleaseBuilder(release.cvsroot, release.cvstag, release.chroot)
+
+            # Open the build log file
+            logPath = os.path.join(release.buildroot, 'build.log')
+            buildLog = open(logPath, 'w', 0)
+            self.logs.append(buildLog)
+
+            # Add our release builder to the OrderedExecutor
+            bctx = BuildContext("%s release build" % release.getSectionName(), logPath)
+            eu = utils.ExecutionUnit(bctx, releaseBuilder.build, buildLog)
+            self.oe.appendExecutionUnit(eu)
+
+    def _ebReleaseBuild(self, failure):
+        # Close our log files
+        self._closeLogs()
+
+        # Decipher the BuildContext and raise a normal exception, with the message formatted for printing
+        try:            
+            bctx = failure.value.executionContext
+            failure.value.originalFailure.raiseException()
+        except builder.ReleaseBuildError, e:
+            raise builder.ReleaseBuildError, "%s failed: %s.\nFor more information, refer to the release build log \"%s\"" % (bctx.description, e, bctx.logPath)
+        except builder.CVSCommandError, e:
+            raise builder.ReleaseBuildError, "%s failed, cvs\nreturned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
+        except Exception, e:
+            raise builder.ReleaseBuildError, "Unhandled release build error: %s" % (e)
+
+    def _cbReleaseBuild(self, result):
+        # Close our log files
+        self._closeLogs()
+
+    def run(self):
+        # Run!
+        d = self.oe.run()
+        d.addCallbacks(self._cbReleaseBuild, self._ebReleaseBuild)
+        return d
+
+
+class PackageBuildRunner(BuildRunner):
+    """
+    Run a set of package builds
+    """
+    def __init__(self, config):
+        super(PackageBuildRunner, self).__init__()
+        self.oe = utils.OrderedExecutor()
+        self.devmounts = {}
+
+        # Iterate through all releases, starting a package build for all
+        # listed packages
+        for release in config.Releases.Release:
+            # Grab the list of packages provided by verifyPackages()
+            if (not release.packages):
+                continue
+
+            # Open a packaging log file
+            logPath = os.path.join(release.buildroot, 'packaging.log')
+            buildLog = open(logPath, 'w', 0)
+            self.logs.append(buildLog)
+
+            # Mount devfs in the chroot
+            pctx = BuildContext("Mount devfs in \"%s\"" % (release.chroot), logPath)
+            devfs = builder.MountCommand('devfs', os.path.join(release.chroot, 'dev'), fstype='devfs')
+            self.devmounts[devfs] = buildLog
+            eu = utils.ExecutionUnit(pctx, devfs.mount, buildLog)
+            self.oe.appendExecutionUnit(eu)
+
+            # Checkout the ports tree into the chroot 
+            cvs = builder.CVSCommand(release.cvsroot)
+            pctx = BuildContext("%s release cvs export of \"%s\"" % (release.getSectionName(), release.portsdir), logPath)
+            eu = utils.ExecutionUnit(pctx, cvs.export, 'HEAD', 'ports', release.portsdir, buildLog)
+            self.oe.appendExecutionUnit(eu)
+
+            # Make the packages directory
+            if (not os.path.exists(release.packagedir)):
+                pctx = BuildContext("creating \"%s\" directory" % (release.packagedir), logPath)
+                eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, release.packagedir)
+                self.oe.appendExecutionUnit(eu)
+
+            # Clean the system, then fire off a builder for each package
+            for package in release.packages:
+                pctx = BuildContext("Package build for release \"%s\"" % release.getSectionName(), logPath)
+
+                # Grab the package build options
+                buildoptions = {}
+                if release.PackageBuildOptions:
+                    buildoptions.update(release.PackageBuildOptions.Options)
+                if package.BuildOptions:
+                    buildoptions.update(package.BuildOptions.Options)
+
+                # Add a package builder to the OrderedExecutor
+                pb = builder.PackageBuilder(release.chroot, package.port, buildoptions)
+                eu = utils.ExecutionUnit(pctx, pb.build, buildLog)
+                self.oe.appendExecutionUnit(eu)
+
+    def _unmountDevFS(self):
+        # Unmount all devfs mounts
+        deferreds = []
+        for mount, log in self.devmounts.iteritems():
+            deferreds.append(mount.umount(log))
+
+        d = defer.DeferredList(deferreds)
+        return d
+
+    def _decipherException(self, result, failure):
+        # Decipher the BuildContext and raise a normal exception, with the message formatted for printing
+        try:            
+            bctx = failure.value.executionContext
+            failure.value.originalFailure.raiseException()
+        except builder.PackageBuildError, e:
+            raise builder.PackageBuildError, "%s failed: %s.\nFor more information, refer to the package build log \"%s\"" % (bctx.description, e, bctx.logPath)
+        except builder.CVSCommandError, e:
+            raise builder.PackageBuildError, "%s failed: cvs returned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
+        except Exception, e:
+            raise builder.PackageBuildError, "Unhandled package build error: %s" % (e)
+
+    def _ebPackageBuild(self, failure):
+        # Close our log files
+        self._closeLogs()
+
+        # Close any devfs mounts
+        d = self._unmountDevFS()
+
+        # Decipher the exception
+        d.addCallback(self._decipherException, failure)
+
+        return d
+
+    def _cbPackageBuild(self, result):
+        # Close our log files
+        self._closeLogs()
+
+        # Close any devfs mounts
+        return self._unmountDevFS()
+
+    def run(self):
+        # Run!
+        d = self.oe.run()
+        d.addCallbacks(self._cbPackageBuild, self._ebPackageBuild)
+        return d
+
+class NetInstallAssemblerRunner(BuildRunner):
+    """
+    Run a set of installation builds
+    """
+    def __init__(self, config):
+        super(NetInstallAssemblerRunner, self).__init__()
+        self.oe = utils.OrderedExecutor()
+
+        liveReleases = {}
+        installAssemblers = []
+        releaseAssemblers = []
+
+        # Open the build log file
+        logPath = os.path.join(config.Releases.buildroot, 'install.log')
+        installLog = open(logPath, 'w', 0)
+        self.logs.append(installLog)
+
+        # Default BuildContext
+        bctx = BuildContext("Installation build", logPath)
+
+        # Clean the InstallRoot
+        if (os.path.exists(config.Releases.installroot)):
+            eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.rmtree, config.Releases.installroot)
+            self.oe.appendExecutionUnit(eu)
+
+        # Iterate through all installations
+        for install in config.Installations.Installation:
+            # Find the release for this installation
+            for release in config.Releases.Release:
+                if (release.getSectionName() == install.release.lower()):
+                    # Found it. Add it to the dictionary of releases.
+                    # It may already be in the dictionary from another installation.
+                    liveReleases[release.getSectionName()] = release
+                    break
+
+            # Installation Name
+            installName = install.getSectionName()
+
+            # Default BuildContext
+            bctx = BuildContext("%s installation build" % installName, logPath)
+
+            # Generate the install.cfg
+            installConfig = sysinstall.InstallationConfig(install, config)
+            installConfigPath = os.path.join(config.Releases.buildroot, '%s-install.cfg' % (installName))
+            outputFile = file(installConfigPath, 'w')
+
+            # Serialize it
+            eu = utils.ExecutionUnit(bctx, threads.deferToThread, installConfig.serialize, outputFile)
+            self.oe.appendExecutionUnit(eu)
+
+            # Close the output
+            eu = utils.ExecutionUnit(bctx, defer.execute, outputFile.close)
+            self.oe.appendExecutionUnit(eu)
+
+            # Instantiate the installation assembler
+            ia = builder.InstallAssembler(installName, install.description, release.chroot, installConfigPath)
+            installAssemblers.append(ia)
+
+        # Iterate over "live" releases
+        for releaseName, release in liveReleases.iteritems():
+                # Instantiate the release assembler
+                if (len(release.localdata)):
+                    ra = builder.ReleaseAssembler(releaseName, release.chroot, localData = release.localdata)
+                else:
+                    ra = builder.ReleaseAssembler(releaseName, release.chroot)
+
+                releaseAssemblers.append(ra)
+
+        # Reset default BuildContext
+        bctx = BuildContext("Installation build", logPath)
+
+        # Instantiate our NetInstall Assembler
+        nia = builder.NetInstallAssembler(config.Releases.installroot, releaseAssemblers, installAssemblers)
+        eu = utils.ExecutionUnit(bctx, nia.build, installLog)
+        self.oe.appendExecutionUnit(eu)
+
+    def _ebInstallBuild(self, failure):
+        # Close our log files
+        self._closeLogs()
+
+        # Decipher the BuildContext and raise a normal exception, with the message formatted for printing
+        try:            
+            bctx = failure.value.executionContext
+            failure.value.originalFailure.raiseException()
+        except builder.NetInstallAssembleError, e:
+            raise builder.NetInstallAssembleError, "%s failed: %s.\nFor more information, refer to the installation build log \"%s\"" % (bctx.description, e, bctx.logPath)
+        except Exception, e:
+            raise builder.NetInstallAssembleError, "Unhandled installation build error: %s" % (e)
+
+    def _cbInstallBuild(self, result):
+        # Close our log files
+        self._closeLogs()
+
+    def run(self):
+        # Run!
+        d = self.oe.run()
+        d.addCallbacks(self._cbInstallBuild, self._ebInstallBuild)
+        return d
+
+
+if __name__ == "__main__":
+    main = Main()
+    main.main()
