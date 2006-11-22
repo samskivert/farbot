@@ -58,26 +58,22 @@
 
         <itemizedlist>
           <listitem>
-            <para><ulink url="http://www.python.org/">Python
-            2.4</ulink></para>
+            <simpara><ulink url="http://www.python.org/">Python
+            2.4</ulink></simpara>
           </listitem>
 
           <listitem>
-            <para><ulink url="http://twistedmatrix.com">Twisted Networking
-            Framework</ulink></para>
+            <simpara><ulink url="???">Twisted Networking
+            Framework</ulink></simpara>
           </listitem>
 
           <listitem>
-            <para><ulink url="http://www.zope.org/Members/fdrake/zconfig/">
-            Zconfig</ulink></para>
+            <simpara><ulink url="???">Zconfig</ulink></simpara>
           </listitem>
 
           <listitem>
             <para><ulink url="http://www.freebsd.org">FreeBSD</ulink> is
-            required to actually build installations. This build system must
-            have full sources installed in <filename>/usr/src</filename>, and
-            a completed buildworld must have been run prior to building
-            installations with farbot.</para>
+            required to actually build installations.</para>
           </listitem>
         </itemizedlist>
       </sect2>
@@ -119,8 +115,8 @@
             <listitem>
               <simpara>Installations Configuration</simpara>
             </listitem>
-          </itemizedlist> The configuration uses an Apache-style
-        syntax.</para>
+          </itemizedlist> The configuration uses an Apache-style syntax.
+        </para>
       </sect2>
 
       <sect2>
@@ -128,7 +124,7 @@
 
         <simpara>The <computeroutput>Releases</computeroutput> section defines
         at least one <computeroutput>Release</computeroutput> within a farbot
-        configuration file.</simpara>
+        configuration file. </simpara>
 
         <sect3>
           <title>Releases Configuration Options</title>
@@ -213,21 +209,6 @@
                   <simpara>Whether to create ISO install images.</simpara>
                 </listitem>
               </varlistentry>
-
-              <varlistentry>
-                <term>PackageBuildOptions</term>
-
-                <listitem>
-                  <simpara>An optional list of options to pass to every
-                  package build for this release. BuildOptions for a given
-                  package override this global setting..
-                  <remark>ex:</remark></simpara>
-
-                  <programlisting>&lt;PackageBuildOptions&gt;
-    WITHOUT_X11  true
-&lt;/PackageBuildOptions&gt;</programlisting>
-                </listitem>
-              </varlistentry>
             </variablelist>
           </sect4>
         </sect3>
@@ -239,7 +220,7 @@
         <simpara>The <computeroutput>Partitions</computeroutput> section
         defines at least one <computeroutput>PartitionMap</computeroutput>
         with at least one <computeroutput>Partition</computeroutput> within a
-        farbot configuration file.</simpara>
+        farbot configuration file. </simpara>
 
         <sect3>
           <title>PartitionMap Configuration Options</title>
@@ -305,7 +286,7 @@
 
         <simpara>The <computeroutput>PackageSets</computeroutput> section
         defines at least one <computeroutput>PackageSets</computeroutput>
-        within a farbot configuration file.</simpara>
+        within a farbot configuration file. </simpara>
 
         <sect3>
           <title>PackageSet Configuration Options</title>
@@ -368,7 +349,7 @@
 
         <simpara>The <computeroutput>Installations</computeroutput> section
         defines at least one <computeroutput>Installation</computeroutput>
-        within a farbot configuration file.</simpara>
+        within a farbot configuration file. </simpara>
 
         <sect3>
           <title>Installation Configuration Options</title>
@@ -411,8 +392,8 @@
               <listitem>
                 <simpara>A list of <computeroutput>PackageSet</computeroutput>
                 names as defined in the
-                <computeroutput>PackageSets</computeroutput>
-                section.</simpara>
+                <computeroutput>PackageSets</computeroutput> section.
+                </simpara>
               </listitem>
             </varlistentry>
 
@@ -496,11 +477,11 @@
         # Should probably be the local machine
         NFSHost         jumpstart.example.org
 
-        &lt;Release 6.1&gt;
+        &lt;Release 6.0&gt;
                 # FreeBSD CVS Repository Mirror
                 CVSRoot         /home/ncvs
                 # Release Tag
-                CVSTag          RELENG_6_1
+                CVSTag          RELENG_6_0
 
                 # LocalData will be copied into the release
                 # distribution. These files will be available at
@@ -608,116 +589,14 @@
     </sect1>
 
     <sect1>
-      <title>Configuring the Installation Host</title>
-
-      <para>In addition to configuring farbot, the following services will be
-      required on the imaging server:</para>
-
-      <itemizedlist>
-        <listitem>
-          <para>NFS</para>
-        </listitem>
-
-        <listitem>
-          <para>DHCP</para>
-        </listitem>
-
-        <listitem>
-          <para>TFTP</para>
-        </listitem>
-      </itemizedlist>
-
-      <sect2>
-        <title>NFS</title>
-
-        <para>You must export the tftproot, and any release installation
-        directories. The following <filename>/etc/exports</filename> file
-        corresponds to the provided farbot.conf:</para>
-
-        <programlisting>/export/freebsd/netinstall/tftproot /export/freebsd/netinstall/6.1 /export/freebsd/netinstall/6-stable -ro -maproot=root -network 1
-0.0.50.0 -mask 255.255.255.0</programlisting>
-      </sect2>
-
-      <sect2>
-        <title>DHCP</title>
-
-        <para>A simple <filename>dhcpd.conf</filename> that directs clients to
-        the generated tftproot:</para>
-
-        <programlisting># dhcpd.conf
-#
-# Sample configuration file for ISC dhcpd
-#
-
-# option definitions common to all supported networks...
-default-lease-time 600;
-max-lease-time 7200;
-
-# If this DHCP server is the official DHCP server for the local
-# network, the authoritative directive should be uncommented.
-authoritative;
-
-# ad-hoc DNS update scheme - set to "none" to disable dynamic DNS updates.
-ddns-update-style none;
-
-option subnet-mask 255.255.255.0;
-option routers 10.0.50.1;
-filename "/boot/pxeboot";
-
-subnet 10.0.50.0 netmask 255.255.255.0 {
-  range 10.0.50.10 10.0.50.60;
-  next-server 10.0.50.1;
-  option root-path "/export/freebsd/netinstall/tftproot";
-}</programlisting>
-      </sect2>
-
-      <sect2>
-        <title>TFTP</title>
-
-        <para>The following must be added to
-        <filename>/etc/inetd.conf</filename> to support tftp access to the
-        netbooting client:</para>
-
-        <programlisting>tftp    dgram   udp     wait    root    /usr/libexec/tftpd      tftpd -l -s /export/freebsd/netinstall/tftproot</programlisting>
-      </sect2>
-    </sect1>
-
-    <sect1>
       <title>Running farbot</title>
 
-      <simpara>Help is available by running <filename>farbot
-      -h</filename>:</simpara>
-
-      <programlisting>Usage: ./farbot [-h] [-f config file] [-r action]
-    -h             Print usage (this message)
-    -f &lt;config&gt;    Use configuration file
-    -r &lt;action&gt;    Execute &lt;action&gt;
-
-Supported actions:
-  release        Build all defined releases, build all packages, and build 
-                         the network installation root
-  package       Build all defined packages, and build the network installation 
-                         root (requires a release build)
-  install           Build the network installation root (requires package and release builds)</programlisting>
-
-      <sect2>
-        <title>Build all defined releases and packages, and setup the
-        installation root</title>
-
-        <programlisting>./farbot -f farbot.conf -r release</programlisting>
-      </sect2>
-
-      <sect2>
-        <title>Rebuild just the installation configuration, using already
-        built releases and packages</title>
-
-        <programlisting>./farbot -f farbot.conf -r install</programlisting>
-      </sect2>
+      <simpara>List a number of command line examples</simpara>
     </sect1>
   </chapter>
 
   <chapter>
-    <title>Installing FreeBSD using farbot</title>
+    <title>Installing FreeBSD using farbot </title>
 
     <sect1>
       <title>Introduction</title>

@@ -313,10 +313,8 @@ class PackageBuildRunner(BuildRunner):
 
                 # Grab the package build options
                 buildoptions = {}
-                if release.PackageBuildOptions:
-                    buildoptions.update(release.PackageBuildOptions.Options)
                 if package.BuildOptions:
-                    buildoptions.update(package.BuildOptions.Options)
+                    buildoptions = package.BuildOptions.Options
 
                 # Add a package builder to the OrderedExecutor
                 pb = builder.PackageBuilder(release.chroot, package.port, buildoptions)
