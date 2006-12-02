@@ -342,9 +342,10 @@ class InstallationConfig(ConfigSection):
 
         # System Commands
         self.systemCommandConfigs = []
-        for cmd in section.PostInstall.command:
-            systemCommandConfig = SystemCommandConfig(cmd)
-            self.systemCommandConfigs.append(systemCommandConfig)
+        if (section.PostInstall):
+            for cmd in section.PostInstall.command:
+                systemCommandConfig = SystemCommandConfig(cmd)
+                self.systemCommandConfigs.append(systemCommandConfig)
 
     def serialize(self, output):
         # Global configuration options

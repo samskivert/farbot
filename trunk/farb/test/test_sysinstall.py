@@ -94,6 +94,7 @@ class ConfigTestCase(object):
         rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, CONFIG_SUBS)
         self.config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
         self.instSection = self.config.Installations.Installation[0]
+        self.instSectionNoCommands = self.config.Installations.Installation[1]
 
     def tearDown(self):
         os.unlink(RELEASE_CONFIG_FILE)
@@ -246,6 +247,13 @@ class InstallationConfigTestCase(ConfigTestCase, unittest.TestCase):
         Initialize an InstallationConfig
         """
         self.assertEquals(self.inst.name, self.instSection.getSectionName())
+
+    def test_noCommands(self):
+        """
+        Test for no post-installation command handling.
+        See: https://dpw.threerings.net/pipermail/farbot/2006-November/000033.html
+        """
+        inst = sysinstall.InstallationConfig(self.instSectionNoCommands, self.config)
 
     def test_serialize(self):
         """
