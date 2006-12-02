@@ -94,7 +94,7 @@
 # Installations
 #
 <Installations>
-	<Installation Test>
+	<Installation Test1>
 		Description	Clinical Trials
 		Release		6.0
 		PackageSet	@PSET@
@@ -108,6 +108,17 @@
                         Command /dist/local/local.sh database
                 </PostInstall>
 	</Installation>
+	<Installation Test2>
+		Description	Clinical Trials
+		Release		6.1
+		PackageSet	@PSET@
+		PackageSet	Database
+		NetworkDevice	em0
+		<Disk ad0>
+			PartitionMap @PMAP@
+		</Disk>
+	</Installation>
+
 </Installations>
 
 <Logging>
