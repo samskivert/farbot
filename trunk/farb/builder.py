@@ -802,8 +802,9 @@ class ReleaseAssembler(object):
             for path in self.localData:
                 d.addCallback(self._cbCopyLocal, path, localdir)
 
-        # Add the FarBot package installer script
+        # Add the FarBot package installer script and make it executable
         d.addCallback(lambda _: threads.deferToThread(utils.copyWithOwnership, farb.INSTALL_PACKAGE_SH, destdir))
+        d.addCallback(lambda _: os.chmod(os.path.join(destdir, os.path.basename(farb.INSTALL_PACKAGE_SH)), 0755))
 
         return d
 

@@ -519,8 +519,10 @@ class ReleaseAssemblerTestCase(unittest.TestCase):
         # Verify that the release data was copied over
         self.assert_(os.path.exists(os.path.join(self.destdir, 'arelease')))
 
-        # Verify that the package installation script was copied
+        # Verify that the package installation script was copied and is 
+        # executable
         self.assert_(os.path.exists(os.path.join(self.destdir, os.path.basename(farb.INSTALL_PACKAGE_SH))))
+        self.assert_(os.access(os.path.join(self.destdir, os.path.basename(farb.INSTALL_PACKAGE_SH)), os.X_OK))
 
         # Verify that the local directory was not created
         self.assert_(not os.path.exists(os.path.join(self.destdir, 'local')))
