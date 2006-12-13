@@ -1,97 +1,114 @@
 <?xml version="1.0"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
-	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
-	<head>
-		<title>farbot: FreeBSD Automated Release 'Bot</title>
-		<meta http-equiv="content-type" content="text/html;
-		charset=iso-8859-1"/>
-		<link rel="stylesheet" type="text/css" href="default.css"/>
-	</head>
-	<body>
-		<h1>farbot: FreeBSD Automated Release 'Bot<img
+    <head>
+        <title>Farbot: FreeBSD Automated Release 'Bot</title>
+        <meta http-equiv="content-type" content="text/html;
+        charset=iso-8859-1"/>
+        <link rel="stylesheet" type="text/css" href="default.css"/>
+    </head>
+    <body>
+        <h1>Farbot: FreeBSD Automated Release 'Bot<img
             style="float: right;" src="dpw.png" alt="DPW Logo"/></h1>
 
-		<ul id="nav">
-			<li><a href="#intro">Introduction</a></li>
-			<li><a href="#get">Download</a></li>
-			<li><a href="#require">Requirements</a></li>
-			<li><a href="#support">Support</a></li>
-			<li><a href="#mailinglist">Mailing List</a></li>
-			<li><a href="#authors">Authors</a></li>
-		</ul>
+        <ul id="nav">
+            <li><a href="#intro">Introduction</a></li>
+            <li><a href="#get">Download</a></li>
+            <li><a href="#require">Requirements</a></li>
+            <li><a href="#installation">Installation</a></li>
+            <li><a href="#support">Support</a></li>
+            <li><a href="#mailinglist">Mailing List</a></li>
+            <li><a href="#authors">Authors</a></li>
+        </ul>
 
-		<h2><a id="intro">Introduction</a></h2>
-		<p>
-                farbot automates building of netinstall/PXE boot FreeBSD releases. It features 
-		a simple configuration file based on the concept of "Installations", "PackageSets",
-		and "PartitionMaps". Check out an <a href="example.conf">example config.</a>
-		</p>
+        <h2><a id="intro">Introduction</a></h2>
+        <p>
+            Farbot automates building of netinstall/PXE boot FreeBSD releases. 
+            It features a simple configuration file based on the concept of 
+            "Installations", "PackageSets", and "PartitionMaps". Check out an 
+            <a href="example.conf">example config.</a>
+        </p>
 
-		<p>
-                farbot currently handles the following:
-		</p>
+        <p>
+            Farbot currently handles the following:
+        </p>
 
-		<ul>
-			<li>Building freebsd releases, including grabbing any source needed.</li>
-			<li>Building packages for each release, derived from per installation package sets.</li>
-			<li>Laying out an NFS/TFTP exportable file system structure for all built releases,
-                            customized for each installation type.</li>
-			<li>Generation of a customized bootloader with options to install each 
-                            installation type </li>
-		</ul>
+        <ul>
+            <li>
+                Building FreeBSD releases, including grabbing any source 
+                needed.
+            </li>
+            <li>
+                Building packages for each release, derived from per 
+                installation package sets.
+            </li>
+            <li>
+                Laying out an NFS/TFTP exportable file system structure for all 
+                built releases, customized for each installation type.
+            </li>
+            <li>
+                Generation of a customized bootloader with options to install 
+                each installation type.
+            </li>
+        </ul>
 
-		<h2><a id="get">Download</a></h2>
-		<p>
-			The source for farbot 1.0alpha2 can be downloaded
-			<a href="farbot-1.0-alpha2.tar.gz">here</a>, and verified against this <a
-				href="farbot-1.0-alpha2.tar.gz.sig">PGP signature.</a>
-		</p>
-		<p>
-			The public key needed to verify this signature (key ID 0x85971303) 
-			can be obtained
-			<a href="http://dpw.threerings.net/dpw_public_key.asc">here</a>, or
-			retrieved from one of the subkeys.pgp.net keyservers. 
-				
-		</p>
-		<h2><a id="require">Requirements</a></h2>
-		<ul>
-			<li><a href="http://www.python.org">Python 2.4</a></li>
-			<li><a href="http://twistedmatrix.com">Twisted Networking Framework</a></li>
-			<li><a href="http://www.zope.org/Members/fdrake/zconfig/">Zconfig</a></li>
-                        <li>To actually perform a release build farbot must be running on a FreeBSD host.</li>
-		</ul>
-		<p>
-			farbot uses the standard Python distutils.
-			To install, run setup.py:
-		</p>
-		<pre>./setup.py install</pre>
+        <h2><a id="get">Download</a></h2>
+        <p>
+            The source for farbot 1.0alpha2 can be downloaded
+            <a href="farbot-1.0-alpha2.tar.gz">here</a>, and verified against 
+            this <a href="farbot-1.0-alpha2.tar.gz.sig">PGP signature.</a>
+        </p>
+        <p>
+            The public key needed to verify this signature (key ID 0x85971303) 
+            can be obtained 
+            <a href="http://dpw.threerings.net/dpw_public_key.asc">here</a>, or
+            retrieved from one of the subkeys.pgp.net keyservers. 
+        </p>
+        
+        <h2><a id="require">Requirements</a></h2>
+        <ul>
+            <li><a href="http://www.python.org">Python 2.4</a></li>
+            <li><a href="http://twistedmatrix.com">Twisted Networking Framework</a></li>
+            <li><a href="http://www.zope.org/Members/fdrake/zconfig/">Zconfig</a></li>
+            <li>
+                To actually perform a release build farbot must be running on 
+                a FreeBSD host.
+            </li>
+        </ul>
+        <h2><a id="installation">Installation</a></h2>
+        <p>
+            Farbot uses the standard Python distutils. To install, run 
+            setup.py:
+        </p>
+        <pre>./setup.py install</pre>
+        <p>
+            Farbot will be installed in the Python site-packages directory.
+            The <em>farbot</em> command line tool will be installed in the 
+            Python-specified bin directory. An example configuration file, 
+            <em>farbot.conf</em>, is supplied with the source distribution.
+        </p>
+        <p>
+            Farbot is also available in the FreeBSD ports collection as 
+            sysutils/farbot.
+        </p>
 
-		<p>
-			farbot will be installed in the Python site-packages directory.
-			The <em>farbot</em> command line tool will be installed in the Python-specified 
-                        bin directory. An example configuration
-			file, <em>farbot.conf</em>, is supplied with the source distribution.
-		</p>
+        <h2><a id="support">Support</a></h2>
+        <p>
+            A <a href="manual/">Farbot Manual</a> is available.
+        </p>
+        
+        <h2><a id="mailinglist">Mailing List</a></h2>
+            <p>
+                You may also join the 
+                <a href="https://dpw.threerings.net/mailman/listinfo/farbot">
+                Farbot Mailing List</a>.
+            </p>
 
-		<h2><a id="support">Support</a></h2>
-		<p>
-			A <a href="manual/">farbot Manual</a> is available.
-		</p>
-		
-		<h2><a id="mailinglist">Mailing List</a></h2>
-                <p>
-			You may also join the <a href="https://dpw.threerings.net/mailman/listinfo/farbot">farbot Mailing List</a>.
-                </p>
-
-		<h2><a id="authors">Authors</a></h2>
-		<ul>
-			<li>
-                        Landon Fuller
-			</li>
-                        <li>
-                        Jonathan Le Plastrier
-                        </li>
-		</ul>
-	</body>
-</html>	
+        <h2><a id="authors">Authors</a></h2>
+        <ul>
+            <li>Landon Fuller</li>
+            <li>Jonathan Le Plastrier</li>
+        </ul>
+    </body>
+</html> 
