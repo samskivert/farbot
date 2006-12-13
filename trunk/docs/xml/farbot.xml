@@ -207,7 +207,7 @@
               </varlistentry>
 
               <varlistentry>
-                <term>InstallCSDs</term>
+                <term>InstallCDs</term>
 
                 <listitem>
                   <simpara>Whether to create ISO install images.</simpara>
