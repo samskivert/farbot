@@ -391,8 +391,9 @@ class NetInstallAssemblerRunner(BuildRunner):
 
         # Clean the InstallRoot
         if (os.path.exists(config.Releases.installroot)):
-            eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.rmtree, config.Releases.installroot)
-            self.oe.appendExecutionUnit(eu)
+            for directory in os.listdir(config.Releases.installroot):
+                eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.rmtree, os.path.join(config.Releases.installroot, directory))
+                self.oe.appendExecutionUnit(eu)
 
         # Iterate through all installations
         for install in config.Installations.Installation:
