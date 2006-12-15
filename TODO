@@ -20,3 +20,5 @@
   freebsd-update. Ignore changes in config files! Not sure how to handle the
   kernel; maybe just require local upgrade/recompilation of kernel on clients
   for now.
+- Add paging to bootloader menu so we can have more than 8 or so installation
+  types.
