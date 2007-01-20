@@ -50,6 +50,7 @@ CVSROOT = os.path.join(DATA_DIR, 'fakencvs')
 INSTALLROOT = os.path.join(DATA_DIR, 'netinstall')
 TFTPROOT = os.path.join(DATA_DIR, 'test_tftproot')
 CVSTAG = 'RELENG_6_0'
+CVSTAG_OLD = 'RELENG_5_3'
 EXPORT_FILE = os.path.join(BUILDROOT, 'newvers.sh')
 INSTALL_CFG = os.path.join(DATA_DIR, 'test_configs', 'install.cfg')
 
@@ -115,11 +116,19 @@ class CVSCommandTestCase(unittest.TestCase):
         self.assert_(os.path.exists(EXPORT_FILE))
         self.assertEquals(result, 0)
 
-    def test_cvs(self):
+    def test_cvsCheckout(self):
         cvs = builder.CVSCommand(CVSROOT)
-        d = cvs.export(CVSTAG, builder.NEWVERS_PATH, BUILDROOT, self.log)
+        d = cvs.checkout(CVSTAG, builder.NEWVERS_PATH, BUILDROOT, self.log)
         d.addCallback(self._cvsResult)
+        return d
 
+    # Make sure cvs.checkout can handle updating an older version of an already
+    # checked out file.
+    def test_cvsUpdate(self):
+        cvs = builder.CVSCommand(CVSROOT)
+        d = cvs.checkout(CVSTAG_OLD, builder.NEWVERS_PATH, BUILDROOT, self.log)
+        d = cvs.checkout(CVSTAG, builder.NEWVERS_PATH, BUILDROOT, self.log)
+        d.addCallback(self._cvsResult)
         return d
 
 class MountCommandTestCase(unittest.TestCase):

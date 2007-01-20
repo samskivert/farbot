@@ -288,12 +288,12 @@ class CVSCommand(object):
         failure.trap(CommandError)
         raise CVSCommandError, failure.value
 
-    def export(self, release, module, destination, log):
+    def checkout(self, release, module, destination, log):
         """
-        Run cvs(1) export
+        Run cvs(1) checkout
         @param release: release to checkout, ex. HEAD 
         @param module: module to use, ex: ports 
-        @param destination: destination for the export 
+        @param destination: destination for the checkout 
         @param log: Open log file
         """
 
@@ -301,7 +301,7 @@ class CVSCommand(object):
         d = defer.Deferred()
         d.addErrback(self._ebCVS)
         protocol = LoggingProcessProtocol(d, log)
-        argv = [CVS_PATH, '-R', '-d', self.repository, 'export', '-r', release, '-d', destination, module]
+        argv = [CVS_PATH, '-R', '-d', self.repository, 'checkout', '-r', release, '-d', destination, module]
 
         reactor.spawnProcess(protocol, CVS_PATH, args=argv, env=ROOT_ENV)
 

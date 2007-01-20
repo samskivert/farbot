@@ -297,8 +297,8 @@ class PackageBuildRunner(BuildRunner):
 
             # Checkout the ports tree into the chroot 
             cvs = builder.CVSCommand(release.cvsroot)
-            pctx = BuildContext("%s release cvs export of \"%s\"" % (release.getSectionName(), release.portsdir), logPath)
-            eu = utils.ExecutionUnit(pctx, cvs.export, 'HEAD', 'ports', release.portsdir, buildLog)
+            pctx = BuildContext("%s release cvs checkout of \"%s\"" % (release.getSectionName(), release.portsdir), logPath)
+            eu = utils.ExecutionUnit(pctx, cvs.checkout, 'HEAD', 'ports', release.portsdir, buildLog)
             self.oe.appendExecutionUnit(eu)
 
             # Make the packages directory
