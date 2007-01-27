@@ -22,3 +22,8 @@
   for now.
 - Add paging to bootloader menu so we can have more than 8 or so installation
   types.
+- Support optionally creating releases from binaries on official FreeBSD release
+  CDs. This will make it possible to use freebsd-update on machines imaged from
+  these releases. It will also skip a lot of compiling, leading to faster farbot
+  builds.
+
