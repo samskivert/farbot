@@ -29,4 +29,5 @@
   build chroot. This coupled with building from official release binaries could
   bring the possibility of running farbot without having a mirror of FreeBSD's
   cvs repository on hand.
-
+- Add option for persistent ports distfiles directory, which can be shared
+  between releases. 
