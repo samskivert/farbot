@@ -299,9 +299,15 @@ class PackageBuildRunner(BuildRunner):
             # Clean out any old work directories in the ports tree
             workdirs = glob.glob(os.path.join(release.portsdir, '*', '*', 'work'))
             for workdir in workdirs:
-                pctx = BuildContext("Removing old port work directory \"%s\"" % workdir, logPath)
+                pctx = BuildContext("Removing old port work directory \"%s\"" % (workdir), logPath)
                 eu = utils.ExecutionUnit(pctx, defer.execute, shutil.rmtree, workdir)
                 self.oe.appendExecutionUnit(eu)
+                
+            # Remove any packages that may be installed in the chroot
+            pctx = BuildContext("Removing all installed packages in chroot \"%s\"" % (release.chroot), logPath)
+            pdx = builder.PkgDeleteCommand(release.chroot)
+            eu = utils.ExecutionUnit(pctx, pdx.deleteAll, buildLog)
+            self.oe.appendExecutionUnit(eu)
 
             # Checkout the ports tree into the chroot 
             cvs = builder.CVSCommand(release.cvsroot)
