@@ -1,7 +1,3 @@
-- Make package builds remove all installed packages and completely clean the
-  ports tree (perhaps by rm'ing it then doing portsnap extract) in a chroot
-  prior to starting a new build. This will make it more likely that doing
-  package builds without doing a release build won't lead to breakage.
 - More granularity of builds. Allow rebuilding of individual releases, 
   individual packagesets for a release, and even individual packages.
 - Make it possible to install a functional ports tree into releases. 
@@ -20,10 +16,17 @@
   freebsd-update. Ignore changes in config files! Not sure how to handle the
   kernel; maybe just require local upgrade/recompilation of kernel on clients
   for now.
+- Alternative to previous: support optionally creating releases from binaries on
+  official FreeBSD release CDs. This will make it possible to use freebsd-update
+  on machines imaged from these releases. It will also skip a lot of compiling,
+  leading to faster farbot builds.
 - Add paging to bootloader menu so we can have more than 8 or so installation
   types.
-- Support optionally creating releases from binaries on official FreeBSD release
-  CDs. This will make it possible to use freebsd-update on machines imaged from
-  these releases. It will also skip a lot of compiling, leading to faster farbot
-  builds.
+- Allow customization of install from bootloader menu: give user option to
+  select release, packagesets, disk layout, etc. as an alternative to
+  pre-configured installations in farbot configuration file.
+- Support for portsnap as an alternative to cvs for installing ports tree in
+  build chroot. This coupled with building from official release binaries could
+  bring the possibility of running farbot without having a mirror of FreeBSD's
+  cvs repository on hand.
 
