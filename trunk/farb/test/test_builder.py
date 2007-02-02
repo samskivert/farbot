@@ -58,6 +58,7 @@ MDCONFIG_PATH = os.path.join(CMD_DIR, 'mdconfig.sh')
 CHROOT_PATH = os.path.join(CMD_DIR, 'chroot.sh')
 MOUNT_PATH = os.path.join(CMD_DIR, 'mount.sh')
 UMOUNT_PATH = os.path.join(CMD_DIR, 'umount.sh')
+PKG_DELETE_PATH = os.path.join(CMD_DIR, 'pkg_delete.sh')
 ECHO_PATH = '/bin/echo'
 SH_PATH = '/bin/sh'
 
@@ -67,6 +68,7 @@ builder.MDCONFIG_PATH = MDCONFIG_PATH
 builder.CHROOT_PATH = CHROOT_PATH
 builder.MOUNT_PATH = MOUNT_PATH
 builder.UMOUNT_PATH = UMOUNT_PATH
+builder.PKG_DELETE_PATH = PKG_DELETE_PATH
 
 class LoggingProcessProtocolTestCase(unittest.TestCase):
     def setUp(self):
@@ -275,6 +277,25 @@ class MakeCommandTestCase(unittest.TestCase):
         d = mc.make(self.log) 
         d.addCallback(self._makeChrootResult)
         return d
+
+class PkgDeleteCommandTestCase(unittest.TestCase):
+	def setUp(self):
+	    self.log = open(PROCESS_LOG, 'w+')
+	
+	def tearDown(self):
+	    self.log.close()
+		os.unlink(PROCESS_LOG)
+	
+	def _chrootResult(self, result):
+		self.log.seek(0)
+		self.assertEquals('-a', self.log.read().splitlines()[1])
+		self.assertEquals(result, 0)
+	
+	def test_deleteAll(self):
+		pdc = builder.PkgDeleteCommand('/nonexistant')
+		d = pdc.deleteAll(self.log)
+		d.addCallback(self._chrootResult)
+		return d
 
 
 class NCVSBuildnameProcessProtocolTestCase(unittest.TestCase):
