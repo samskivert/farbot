@@ -31,6 +31,7 @@
 import getopt, sys, os
 import ZConfig
 import shutil
+import glob
 
 from twisted.internet import reactor, defer, threads
 from twisted.python import threadable 
@@ -295,6 +296,13 @@ class PackageBuildRunner(BuildRunner):
             eu = utils.ExecutionUnit(pctx, devfs.mount, buildLog)
             self.oe.appendExecutionUnit(eu)
 
+            # Clean out any old work directories in the ports tree
+            workdirs = glob.glob(os.path.join(release.portsdir, '*', '*', 'work'))
+            for workdir in workdirs:
+                pctx = BuildContext("Removing old port work directory \"%s\"" % workdir, logPath)
+                eu = utils.ExecutionUnit(pctx, defer.execute, shutil.rmtree, workdir)
+                self.oe.appendExecutionUnit(eu)
+
             # Checkout the ports tree into the chroot 
             cvs = builder.CVSCommand(release.cvsroot)
             pctx = BuildContext("%s release cvs checkout of \"%s\"" % (release.getSectionName(), release.portsdir), logPath)
@@ -307,7 +315,7 @@ class PackageBuildRunner(BuildRunner):
                 eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, release.packagedir)
                 self.oe.appendExecutionUnit(eu)
 
-            # Clean the system, then fire off a builder for each package
+            # Fire off a builder for each package
             for package in release.packages:
                 pctx = BuildContext("Package build for release \"%s\"" % release.getSectionName(), logPath)
 
