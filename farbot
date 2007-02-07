@@ -328,7 +328,7 @@ class PackageBuildRunner(BuildRunner):
             # Mount distfiles directory in chroot if configured
             if self.distfiles:
                 pctx = BuildContext("Mount nullfs in \"%s\"" % (release.chroot), logPath)
-                nullfs = builder.MountCommand(self.distfiles, os.path.join(release.chroot, '/usr/ports/distfiles'), fstype='nullfs')
+                nullfs = builder.MountCommand(self.distfiles, os.path.join(release.chroot, 'usr/ports/distfiles'), fstype='nullfs')
                 self.distfilesmounts[nullfs] = buildLog
                 eu = utils.ExecutionUnit(pctx, nullfs.mount, buildLog)
                 self.oe.appendExecutionUnit(eu)
