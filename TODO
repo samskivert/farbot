@@ -29,4 +29,7 @@
   build chroot. This coupled with building from official release binaries could
   bring the possibility of running farbot without having a mirror of FreeBSD's
   cvs repository on hand.
- 
+- Add an option for per port distfiles which can be copied from some location.
+  This way the distfiles cache given by the Distfiles option in PackageSets can
+  be periodically cleaned out without fear of accidentally deleting some
+  distfile that can't be automatically downloaded (e.g. diablo-jdk).
