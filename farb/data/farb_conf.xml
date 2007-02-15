@@ -79,7 +79,7 @@
         <key name="Domain" datatype="dotted-name" required="no" default="example.com"/>
         <key name="NetworkDevice" datatype="string" required="yes"/>
         <multikey name="PackageSet" datatype="string" required="no"/>
-        <multisection type="Disk" name="+" attribute="Disk" required="yes"/>
+        <multisection type="Disk" name="+" attribute="Disk" required="no"/>
         <section type="PostInstall" name="*" attribute="PostInstall" required="no"/>
     </sectiontype>
 
