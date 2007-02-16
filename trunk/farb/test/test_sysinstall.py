@@ -32,6 +32,7 @@
 import os
 import ZConfig
 from cStringIO import StringIO
+import string
 
 from twisted.trial import unittest
 
@@ -95,6 +96,7 @@ class ConfigTestCase(object):
         self.config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
         self.instSection = self.config.Installations.Installation[0]
         self.instSectionNoCommands = self.config.Installations.Installation[1]
+        self.instSectionNoDisks = self.config.Installations.Installation[2]
 
     def tearDown(self):
         os.unlink(RELEASE_CONFIG_FILE)
@@ -254,6 +256,17 @@ class InstallationConfigTestCase(ConfigTestCase, unittest.TestCase):
         See: https://dpw.threerings.net/pipermail/farbot/2006-November/000033.html
         """
         inst = sysinstall.InstallationConfig(self.instSectionNoCommands, self.config)
+        
+    def test_noDisks(self):
+        """
+        Test installations where no disks are defined. 
+        """
+        inst = sysinstall.InstallationConfig(self.instSectionNoDisks, self.config)
+        output = StringIO()
+        # Verify that the expected disk related stuff is in the serialized output
+        expectedOutput = 'diskInteractive="YES"\ndiskPartitionEditor\ndiskLabelEditor'
+        inst.serialize(output)
+        assert(string.find(output.getvalue(), expectedOutput) >= 0)
 
     def test_serialize(self):
         """
