@@ -276,15 +276,15 @@ class PackageBuildRunner(BuildRunner):
         super(PackageBuildRunner, self).__init__()
         self.oe = utils.OrderedExecutor()
         self.devmounts = {}
-        self.distfiles = config.PackageSets.distfiles
+        self.distfilescache = config.PackageSets.distfilescache
         self.distfilesmounts = {}
         
-        # Create the distfiles directory if necessary
+        # Create the distfiles cache directory if necessary
         try:
-            if (self.distfiles and not os.path.exists(self.distfiles)):
-                os.makedirs(self.distfiles)
+            if (self.distfilescache and not os.path.exists(self.distfilescache)):
+                os.makedirs(self.distfilescache)
         except Exception, e:
-            print "Failed to create distfiles directory %s: %s" % (self.distfiles, e)
+            print "Failed to create distfiles cache directory %s: %s" % (self.distfilescache, e)
             sys.exit(1)
 
         # Iterate through all releases, starting a package build for all
@@ -325,10 +325,10 @@ class PackageBuildRunner(BuildRunner):
             eu = utils.ExecutionUnit(pctx, cvs.checkout, 'HEAD', 'ports', release.portsdir, buildLog)
             self.oe.appendExecutionUnit(eu)
 
-            # Mount distfiles directory in chroot if configured
-            if self.distfiles:
+            # Mount distfiles cache directory in chroot if configured
+            if self.distfilescache:
                 pctx = BuildContext("Mount nullfs in \"%s\"" % (release.chroot), logPath)
-                nullfs = builder.MountCommand(self.distfiles, os.path.join(release.chroot, 'usr', 'ports', 'distfiles'), fstype='nullfs')
+                nullfs = builder.MountCommand(self.distfilescache, os.path.join(release.chroot, 'usr', 'ports', 'distfiles'), fstype='nullfs')
                 self.distfilesmounts[nullfs] = buildLog
                 eu = utils.ExecutionUnit(pctx, nullfs.mount, buildLog)
                 self.oe.appendExecutionUnit(eu)
@@ -362,7 +362,7 @@ class PackageBuildRunner(BuildRunner):
             deferreds.append(mount.umount(log))
             
         # Same thing for distfiles nullfs mounts
-        if self.distfiles:
+        if self.distfilescache:
             for mount, log in self.distfilesmounts.iteritems():
                 deferreds.append(mount.umount(log))
 
