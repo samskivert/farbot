@@ -58,7 +58,7 @@
     </sectiontype>
 
     <sectiontype name="PackageSets">
-        <key name="Distfiles" datatype="string" required="no"/>
+        <key name="DistfilesCache" datatype="string" required="no"/>
         <multisection type="PackageSet" name="*" attribute="PackageSet" required="yes"/>
     </sectiontype>
     <section type="PackageSets" name="*" attribute="PackageSets" required="no"/>
