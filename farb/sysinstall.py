@@ -296,6 +296,13 @@ class InstallationConfig(ConfigSection):
     nonInteractive = 'YES'
     noWarn = 'YES'
 
+    # Commands needed to start up the interactive partitioner
+    interactivePartitionCommands = (
+        'diskInteractive="YES"',    # Partition and label disks interactively
+        'diskPartitionEditor',      # Run disk partition (MBR) editor
+        'diskLabelEditor'           # Run disk label editor
+    )
+
     # Pre-package commands
     prePackageCommands = (
         'diskLabelCommit',  # Write disk labels to disk
@@ -360,6 +367,10 @@ class InstallationConfig(ConfigSection):
         # Disk formatting
         for disk in self.diskPartitionConfigs:
             disk.serialize(output)
+        
+        # If we have no diskPartitionConfigs, partition interactively
+        if len(self.diskPartitionConfigs) == 0:
+            self._serializeCommands(output, commands=self.interactivePartitionCommands)
 
         # Commit installation to disk
         self._serializeCommands(output, commands=self.prePackageCommands)
