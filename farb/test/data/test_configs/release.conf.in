@@ -118,6 +118,13 @@
 			PartitionMap @PMAP@
 		</Disk>
 	</Installation>
+	<Installation Test3>
+	    Description Clinical Trials
+	    Release     6.0
+	    PackageSet  @PSET@
+	    NetworkDevice   em0
+	    # No disks -- they will be partitioned and labeled interactively
+	</Installation>
 
 </Installations>
 
