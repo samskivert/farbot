@@ -30,6 +30,13 @@
 			WITHOUT_X11 yes 
  		</PackageBuildOptions>
 	</Release>
+	
+	<Release 6.2-RELEASE>
+		@RELEASETYPE@
+		@PORTSOURCE@
+		@MEDIA@
+	</Release>
+	    
 </Releases>
 
 #

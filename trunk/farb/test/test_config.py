@@ -58,7 +58,10 @@ CONFIG_SUBS = {
     '@TAG2@' : 'RELENG_6',
     '@SWAPSU@' : 'False',
     '@PMAP@' : 'Standard',
-    '@PSET@' : 'Base'
+    '@PSET@' : 'Base',
+    '@RELEASETYPE@' : 'BinaryRelease True',
+    '@PORTSOURCE@' : 'UsePortsnap True',
+    '@MEDIA@' : 'Media ' + os.path.join(DATA_DIR, 'fake_cd.iso')
 }
 
 def rewrite_config(inpath, outpath, variables):
@@ -112,6 +115,60 @@ class ConfigParsingTestCase(unittest.TestCase):
         self.assertEquals(release.packages, None)
         self.assertEquals(release.buildroot, buildroot)
         self.assertEquals(release.chroot, chroot)
+    
+    def test_binary_release(self):
+        """ Load a binary release configuration """
+        config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
+        release = config.Releases.Release[2]
+        # Make sure options were set correctly
+        self.assertEquals(release.binaryrelease, True)
+        self.assertEquals(release.useportsnap, True)
+        self.assertEquals(release.media, os.path.join(DATA_DIR, 'fake_cd.iso'))
+        
+    def test_missing_release_type(self):
+        """ Test handling of unset release type """
+        subs = CONFIG_SUBS.copy()
+        del subs['@RELEASETYPE@']
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
+    
+    def test_cvsroot_present(self):
+        """ Verify CVSRoot is set when BinaryRelease is False """
+        subs = CONFIG_SUBS.copy()
+        subs['@RELEASETYPE@'] = 'CVSTag RELENG_6_0'
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
+    
+    def test_cvstag_present(self):
+        """ Verify CVSTag is set when BinaryRelease is False """
+        subs = CONFIG_SUBS.copy()
+        subs['@PORTSOURCE@'] = 'CVSRoot ' + CVSROOT
+        subs['@RELEASETYPE@'] = 'BinaryRelease False'
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
+    
+    def test_missing_media(self):
+        """ Test handling of BinaryReleases without Media """
+        subs = CONFIG_SUBS.copy()
+        del subs['@MEDIA@']
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
+
+    def test_missing_ports_source(self):
+        """ Test handling of UsePortsnap and CVSRoot not existing """
+        subs = CONFIG_SUBS.copy()
+        del subs['@PORTSOURCE@']
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
+
+    def test_ports_cvs(self):
+        """ Test using CVS for ports in binary release """
+        subs = CONFIG_SUBS.copy()
+        subs['@PORTSOURCE@'] = 'CVSRoot ' + CVSROOT
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
+        release = config.Releases.Release[2]
+        self.assertEquals(release.cvsroot, CVSROOT)
 
     def test_partition_softupdates(self):
         """ Verify that SoftUpdates flags are tweaked appropriately """

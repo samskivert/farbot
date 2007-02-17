@@ -9,12 +9,15 @@
     
     <!-- Release Configuration -->
     <sectiontype name="Release" datatype=".release_handler">
-        <key name="CVSRoot" datatype="existing-directory" required="yes"/>
-        <key name="CVSTag" datatype="string" required="yes"/>
+        <key name="CVSRoot" datatype="existing-directory" required="no"/>
+        <key name="CVSTag" datatype="string" required="no"/>
         <key name="InstallCDs" datatype="boolean" required="no" default="false"/>
         <!-- Could not find a way to reuse BuildOptions here -->
         <section type="PackageBuildOptions" name="*" attribute="PackageBuildOptions" required="no"/>
         <multikey name="LocalData" datatype="existing-path" required="no"/>
+        <key name="BinaryRelease" datatype="boolean" required="no" default="false"/>
+        <key name="Media" datatype="string" required="no"/>
+        <key name="UsePortsnap" datatype="boolean" required="no"/>
     </sectiontype>
 
     <sectiontype name="Releases" datatype=".releases_handler">

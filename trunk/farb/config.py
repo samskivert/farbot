@@ -50,6 +50,15 @@ def releases_handler(section):
             raise ZConfig.ConfigurationError("CVS Tags may not be re-used in mutiple Release sections. (Tag: \"%s\")" % (release.cvstag))
         else:
             tags.append(release.cvstag)
+            
+        if (not release.binaryrelease and (release.cvsroot == None or release.cvstag == None)):
+            raise ZConfig.ConfigurationError("You must either set BinaryRelease to True or set CVSRoot and CVSTag")
+
+        if (release.binaryrelease and (release.media == None)):
+            raise ZConfig.ConfigurationError("Media must be set if using a BinaryRelease")
+        
+        if (not release.useportsnap and release.cvsroot == None):
+            raise ZConfig.ConfigurationError("UsePortsnap must be true or CVSRoot needs to be set")
 
         # The buildroot directory is merely a combination of the buildroot + release name
         release.buildroot = os.path.join(section.buildroot, release.getSectionName())
