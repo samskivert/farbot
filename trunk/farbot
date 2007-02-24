@@ -325,10 +325,17 @@ class PackageBuildRunner(BuildRunner):
             eu = utils.ExecutionUnit(pctx, cvs.checkout, 'HEAD', 'ports', release.portsdir, buildLog)
             self.oe.appendExecutionUnit(eu)
 
-            # Mount distfiles cache directory in chroot if configured
+            # Mount distfiles cache directory in chroot if configured, creating
+            # the mount point if necessary.
             if self.distfilescache:
+                mntpoint = os.path.join(release.chroot, 'usr', 'ports', 'distfiles')
+                if (not os.path.exists(mntpoint)):
+                    pctx = BuildContext("creating \"%s\" directory" % (mntpoint), logPath)
+                    eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, mntpoint)
+                    self.oe.appendExecutionUnit(eu)
+                
                 pctx = BuildContext("Mount nullfs in \"%s\"" % (release.chroot), logPath)
-                nullfs = builder.MountCommand(self.distfilescache, os.path.join(release.chroot, 'usr', 'ports', 'distfiles'), fstype='nullfs')
+                nullfs = builder.MountCommand(self.distfilescache, mntpoint, fstype='nullfs')
                 self.distfilesmounts[nullfs] = buildLog
                 eu = utils.ExecutionUnit(pctx, nullfs.mount, buildLog)
                 self.oe.appendExecutionUnit(eu)
