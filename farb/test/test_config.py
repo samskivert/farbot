@@ -61,7 +61,7 @@ CONFIG_SUBS = {
     '@PSET@' : 'Base',
     '@RELEASETYPE@' : 'BinaryRelease True',
     '@PORTSOURCE@' : 'UsePortsnap True',
-    '@MEDIA@' : 'Media ' + os.path.join(DATA_DIR, 'fake_cd.iso')
+    '@ISO@' : 'ISO ' + os.path.join(DATA_DIR, 'fake_cd.iso')
 }
 
 def rewrite_config(inpath, outpath, variables):
@@ -123,7 +123,7 @@ class ConfigParsingTestCase(unittest.TestCase):
         # Make sure options were set correctly
         self.assertEquals(release.binaryrelease, True)
         self.assertEquals(release.useportsnap, True)
-        self.assertEquals(release.media, os.path.join(DATA_DIR, 'fake_cd.iso'))
+        self.assertEquals(release.iso, os.path.join(DATA_DIR, 'fake_cd.iso'))
         
     def test_missing_release_type(self):
         """ Test handling of unset release type """
@@ -147,10 +147,10 @@ class ConfigParsingTestCase(unittest.TestCase):
         rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
         self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
     
-    def test_missing_media(self):
-        """ Test handling of BinaryReleases without Media """
+    def test_missing_iso(self):
+        """ Test handling of BinaryReleases without ISO """
         subs = CONFIG_SUBS.copy()
-        del subs['@MEDIA@']
+        del subs['@ISO@']
         rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
         self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
 
