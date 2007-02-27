@@ -16,7 +16,7 @@
         <section type="PackageBuildOptions" name="*" attribute="PackageBuildOptions" required="no"/>
         <multikey name="LocalData" datatype="existing-path" required="no"/>
         <key name="BinaryRelease" datatype="boolean" required="no" default="false"/>
-        <key name="Media" datatype="string" required="no"/>
+        <key name="ISO" datatype="string" required="no"/>
         <key name="UsePortsnap" datatype="boolean" required="no"/>
     </sectiontype>
 

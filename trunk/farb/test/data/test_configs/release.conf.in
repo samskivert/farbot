@@ -34,7 +34,7 @@
 	<Release 6.2-RELEASE>
 		@RELEASETYPE@
 		@PORTSOURCE@
-		@MEDIA@
+		@ISO@
 	</Release>
 	    
 </Releases>

@@ -54,8 +54,8 @@ def releases_handler(section):
         if (not release.binaryrelease and (release.cvsroot == None or release.cvstag == None)):
             raise ZConfig.ConfigurationError("You must either set BinaryRelease to True or set CVSRoot and CVSTag")
 
-        if (release.binaryrelease and (release.media == None)):
-            raise ZConfig.ConfigurationError("Media must be set if using a BinaryRelease")
+        if (release.binaryrelease and (release.iso == None)):
+            raise ZConfig.ConfigurationError("ISO must be set if using a BinaryRelease")
         
         if (not release.useportsnap and release.cvsroot == None):
             raise ZConfig.ConfigurationError("UsePortsnap must be true or CVSRoot needs to be set")
