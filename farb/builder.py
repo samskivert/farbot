@@ -558,7 +558,7 @@ class PortsnapCommand(object):
         protocol = LoggingProcessProtocol(d, log)
         argv = [PORTSNAP_PATH, 'fetch']
 
-        reactor.spawnProcess(protocol, PORTSNAP_PATH, args=argv, env=ROOT_ENV)
+        reactor.spawnProcess(protocol, PORTSNAP_PATH, args=argv, env=ROOT_ENV, usePTY=True)
 
         return d
 
