@@ -58,6 +58,9 @@ UMOUNT_PATH = '/sbin/umount'
 # pkg_delete(1) path
 PKG_DELETE_PATH = '/usr/sbin/pkg_delete'
 
+# portsnap(8) path
+PORTSNAP_PATH = '/usr/sbin/portsnap'
+
 # Standard FreeBSD src location
 FREEBSD_REL_PATH = '/usr/src/release'
 
@@ -112,6 +115,9 @@ class MakeCommandError(CommandError):
     pass
 
 class PkgDeleteCommandError(CommandError):
+    pass
+
+class PortsnapCommandError(CommandError):
     pass
 
 class ReleaseBuildError(farb.FarbError):
@@ -453,7 +459,6 @@ class MDMountCommand(MountCommand):
 
         return d
 
-
 class MakeCommand(object):
     """
     make(1) command context
@@ -532,6 +537,44 @@ class PkgDeleteCommand(object):
         argv = [CHROOT_PATH, self.chrootdir, PKG_DELETE_PATH, '-a']
         reactor.spawnProcess(protocol, CHROOT_PATH, args=argv, env=ROOT_ENV)
         
+        return d
+
+class PortsnapCommand(object):
+    """
+    portsnap(8) command context
+    """
+    def _ebPortsnap(self, failure):
+        # Provide a more specific exception type
+        failure.trap(CommandError)
+        raise PortsnapCommandError, failure.value
+
+    def fetch(self, log):
+        """
+        Run portsnap(8) fetch to get an up-to-date ports tree snapshot
+        @param log: Open log file
+        """
+        d = defer.Deferred()
+        d.addErrback(self._ebPortsnap)
+        protocol = LoggingProcessProtocol(d, log)
+        argv = [PORTSNAP_PATH, 'fetch']
+
+        reactor.spawnProcess(protocol, PORTSNAP_PATH, args=argv, env=ROOT_ENV)
+
+        return d
+
+    def extract(self, destination, log):
+        """
+        Run portsnap(8) extract in a ports directory
+        @param destination: Ports directory to extract to
+        @param log: Open log file
+        """
+        d = defer.Deferred()
+        d.addErrback(self._ebPortsnap)
+        protocol = LoggingProcessProtocol(d, log)
+        argv = [PORTSNAP_PATH, '-p', destination, 'extract']
+
+        reactor.spawnProcess(protocol, PORTSNAP_PATH, args=argv, env=ROOT_ENV)
+
         return d
 
 class ReleaseBuilder(object):
