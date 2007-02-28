@@ -321,15 +321,15 @@ class PackageBuildRunner(BuildRunner):
             
             # If we're using portsnap, run portsnap fetch now to get an updated 
             # snapshot.
-            if (self.config.PackageSets.useportsnap):
+            if (release.useportsnap):
                 pc = builder.PortsnapCommand()
                 pctx = BuildContext("Fetching up-to-date ports snapshot", logPath)
-                eu = utils.ExecutionUnit(pctx, pc.fetch, buildlog)
+                eu = utils.ExecutionUnit(pctx, pc.fetch, buildLog)
                 self.oe.appendExecutionUnit(eu)
                 
                 # Then run portsnap extract a fresh ports tree in the chroot
                 pctx = BuildContext("Extracting ports tree in \"%s\"" % (release.portsdir), logPath)
-                eu = utils.ExecutionUnit(pctx, pc.extract, release.portsdir, buildlog)
+                eu = utils.ExecutionUnit(pctx, pc.extract, release.portsdir, buildLog)
                 self.oe.appendExecutionUnit(eu)
                 
             else:
