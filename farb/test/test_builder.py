@@ -59,6 +59,7 @@ CHROOT_PATH = os.path.join(CMD_DIR, 'chroot.sh')
 MOUNT_PATH = os.path.join(CMD_DIR, 'mount.sh')
 UMOUNT_PATH = os.path.join(CMD_DIR, 'umount.sh')
 PKG_DELETE_PATH = os.path.join(CMD_DIR, 'pkg_delete.sh')
+PORTSNAP_PATH = os.path.join(CMD_DIR, 'portsnap.sh')
 ECHO_PATH = '/bin/echo'
 SH_PATH = '/bin/sh'
 
@@ -69,6 +70,7 @@ builder.CHROOT_PATH = CHROOT_PATH
 builder.MOUNT_PATH = MOUNT_PATH
 builder.UMOUNT_PATH = UMOUNT_PATH
 builder.PKG_DELETE_PATH = PKG_DELETE_PATH
+builder.PORTSNAP_PATH = PORTSNAP_PATH
 
 class LoggingProcessProtocolTestCase(unittest.TestCase):
     def setUp(self):
@@ -297,6 +299,28 @@ class PkgDeleteCommandTestCase(unittest.TestCase):
 		d.addCallback(self._chrootResult)
 		return d
 
+class PortsnapCommandTestCase(unittest.TestCase):
+	def setUp(self):
+	    self.log = open(PROCESS_LOG, 'w+')
+	    self.pc = builder.PortsnapCommand()
+
+	def tearDown(self):
+	    self.log.close()
+		os.unlink(PROCESS_LOG)
+
+    def _cbPortsnapResult(self, result):
+        self.log.seek(0)
+        self.assertEquals(result, 0)
+
+    def test_fetch(self):
+        d = self.pc.fetch(self.log)
+        d.addCallback(self._cbPortsnapResult)
+        return d
+        
+    def test_extract(self):
+        d = self.pc.extract('/nonexistent', self.log)
+        d.addCallback(self._cbPortsnapResult)
+        return d
 
 class NCVSBuildnameProcessProtocolTestCase(unittest.TestCase):
     def _cvsResult(self, result):
