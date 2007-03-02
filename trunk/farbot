@@ -327,7 +327,7 @@ class PackageBuildRunner(BuildRunner):
                 eu = utils.ExecutionUnit(pctx, pc.fetch, buildLog)
                 self.oe.appendExecutionUnit(eu)
                 
-                # Then run portsnap extract a fresh ports tree in the chroot
+                # Then portsnap extract a fresh ports tree in the chroot
                 pctx = BuildContext("Extracting ports tree in \"%s\"" % (release.portsdir), logPath)
                 eu = utils.ExecutionUnit(pctx, pc.extract, release.portsdir, buildLog)
                 self.oe.appendExecutionUnit(eu)
