@@ -123,6 +123,9 @@ class PortsnapCommandError(CommandError):
 class ReleaseBuildError(farb.FarbError):
     pass
 
+class BinaryReleaseInstallError(farb.FarbError):
+    pass
+
 class PackageBuildError(farb.FarbError):
     pass
 
@@ -640,6 +643,50 @@ class ReleaseBuilder(object):
         d.addErrback(self._ebBuildError)
         reactor.spawnProcess(pp, CVS_PATH, args=[CVS_PATH, '-R', '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH], env=ROOT_ENV)
         return d
+
+class BinaryReleaseInstaller(object):
+    """
+    Copy a binary FreeBSD release from an ISO CD image into a build chroot.
+    """
+    
+    def __init__(self, iso, chroot):
+        """
+        Create a new BinaryReleaseInstaller instance
+        @param iso: Path to ISO file of FreeBSD install CD
+        @param mountpoint: Mount point for ISO
+        @param chroot: Chroot directory to install to
+        @param dists: Distribution sets to install in chroot
+        """
+        self.iso = iso
+        self.mountpoint = mountpoint
+        self.chroot = chroot
+        self.dists = dists
+    
+    def _getCDRelease(self):
+        # Get the release name from the ISO's cdrom.inf file
+        infFile = os.path.join(self.mountpoint, 'cdrom.inf')
+        if not os.path.exists(infFile):
+            raise BinaryReleaseInstallError, "No cdrom.inf file on ISO mounted at %s. Is this a CD image for FreeBSD >= 2.1.5?" % (self.mountpoint)
+
+        # First line in cdrom.inf should look like: CD_VERSION = x.y-RELEASE
+        fileObj = open(infFile, 'r')
+        line = fileObj.readline()
+        fileObj.close()
+        
+        line = line.strip()
+        splitString = line.split(' = ')
+        if (len(splitString) != 2 or splitString[0] != 'CD_VERSION'):
+            raise BinaryReleaseInstallError, "cdrom.inf file on ISO mounted at %s has unrecognized first line: %s" % (self.mountpoint, line)
+        
+        return splitString[1]
+    
+    
+    def install(self, log):
+        """
+        Install the release into a chroot
+        @param log: Open log file
+        """
+        cdRelease = self._getCDRelease()
 
 class PackageBuilder(object):
     """
