@@ -31,7 +31,7 @@ from twisted.internet import reactor, defer, protocol, threads
 from twisted.python import threadable
 threadable.init()
 
-import os, re, gzip, shutil, exceptions
+import os, re, gzip, shutil, exceptions, glob
 import cStringIO
 
 import farb
@@ -60,6 +60,9 @@ PKG_DELETE_PATH = '/usr/sbin/pkg_delete'
 
 # portsnap(8) path
 PORTSNAP_PATH = '/usr/sbin/portsnap'
+
+# tar(1) path
+TAR_PATH = '/usr/bin/tar'
 
 # Standard FreeBSD src location
 FREEBSD_REL_PATH = '/usr/src/release'
@@ -644,23 +647,22 @@ class ReleaseBuilder(object):
         reactor.spawnProcess(pp, CVS_PATH, args=[CVS_PATH, '-R', '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH], env=ROOT_ENV)
         return d
 
-class BinaryReleaseInstaller(object):
+class BinaryChrootBuilder(object):
     """
-    Copy a binary FreeBSD release from an ISO CD image into a build chroot.
+    Copy a binary FreeBSD release from a mounted CD image into a build chroot. 
+    NB: this makes some assumptions about how FreeBSD install CDs are laid out, 
+    and what distribution sets are available on them. It may not work with 
+    FreeBSD releases older than 5.5 or newer than 6.2.
     """
     
-    def __init__(self, iso, chroot):
+    def __init__(self, mountpoint, chroot):
         """
         Create a new BinaryReleaseInstaller instance
-        @param iso: Path to ISO file of FreeBSD install CD
-        @param mountpoint: Mount point for ISO
+        @param mountpoint: Mount point of FreeBSD install ISO
         @param chroot: Chroot directory to install to
-        @param dists: Distribution sets to install in chroot
         """
-        self.iso = iso
         self.mountpoint = mountpoint
         self.chroot = chroot
-        self.dists = dists
     
     def _getCDRelease(self):
         # Get the release name from the ISO's cdrom.inf file
@@ -680,14 +682,53 @@ class BinaryReleaseInstaller(object):
         
         return splitString[1]
     
+    def _extractDist(self, distdir, distname, log):
+        # Create tar command for extracting into chroot.
+        d = defer.Deferred()
+        protocol = LoggingProcessProtocol(d, log)
+        argv = [TAR_PATH, '--unlink', '-xpzf', '-', '-C', self.chroot]
+        
+        # Spawn a process to run tar, creating a pipe we can write into tar's 
+        # standard input (fd 0) with.
+        pt = reactor.spawnProcess(protocol, TAR_PATH, args=argv, env=ROOT_ENV)
+
+        path = os.path.join(distdir, distname)
+        files = glob.glob(path + '??')
+        for filename in files:
+            file = open(filename, 'rb')
+            pt.writeToChild(0, file.read())
+            file.close()
+        
+        pt.closeStdin()
+        
+        return d
     
-    def install(self, log):
+    def extract(self, log):
         """
-        Install the release into a chroot
+        Extract the release into a chroot
         @param log: Open log file
         """
         cdRelease = self._getCDRelease()
-
+        
+        d = defer.Deferred()
+        
+        # TODO: Don't hard code dists. Most ports should only need base and 
+        # maybe some sources to build. On AMD64 we probably also need the lib32 
+        # dist. 
+        dists = { 
+            'base'  :   ['base'],
+            'src'   :   ['sbase', 'scontrib', 'scrypto', 'sgnu', 'setc', 'sgames', 'sinclude', 'skrb5', 'slib', 'slibexec', 'srelease', 'sbin', 'ssecure', 'ssbin', 'sshare', 'ssys', 'subin', 'susbin', 'stools', 'srescue']
+        }
+        
+        # Extract each dist in the chroot
+        for key in dists.iterkeys():
+            distdir = os.path.join(self.mountpoint, cdRelease, key)
+            for distname in dists[key]:
+                # TODO: really need an errback here in case tar explodes on us.
+                d.addCallback(self._extractDist, distdir, distname, log)
+        
+        return d
+    
 class PackageBuilder(object):
     """
     Build a package from a FreeBSD port
