@@ -38,7 +38,7 @@ import farb
 from farb import config
 
 # Useful Constants
-from farb.test import DATA_DIR
+from farb.test import DATA_DIR, rewrite_config
 from farb.test.test_builder import CVSROOT, BUILDROOT
 
 CONFIG_DIR = os.path.join(DATA_DIR, 'test_configs')
@@ -63,19 +63,6 @@ CONFIG_SUBS = {
     '@PORTSOURCE@' : 'UsePortsnap True',
     '@ISO@' : 'ISO ' + os.path.join(DATA_DIR, 'fake_cd.iso')
 }
-
-def rewrite_config(inpath, outpath, variables):
-        # Fix up paths in the farb configuration file
-        output = open(outpath, 'w')
-        input = open(inpath, 'r')
-        for line in input:
-            for key,value in variables.iteritems():
-                line = line.replace(key, value)
-            output.write(line)
-
-        output.close()
-        input.close()
-
 
 class ConfigParsingTestCase(unittest.TestCase):
     def setUp(self):

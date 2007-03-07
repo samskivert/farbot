@@ -126,7 +126,7 @@ class PortsnapCommandError(CommandError):
 class ReleaseBuildError(farb.FarbError):
     pass
 
-class BinaryReleaseInstallError(farb.FarbError):
+class BinaryChrootBuildError(farb.FarbError):
     pass
 
 class PackageBuildError(farb.FarbError):
@@ -668,7 +668,7 @@ class BinaryChrootBuilder(object):
         # Get the release name from the ISO's cdrom.inf file
         infFile = os.path.join(self.mountpoint, 'cdrom.inf')
         if not os.path.exists(infFile):
-            raise BinaryReleaseInstallError, "No cdrom.inf file on ISO mounted at %s. Is this a CD image for FreeBSD >= 2.1.5?" % (self.mountpoint)
+            raise BinaryChrootBuildError, "No cdrom.inf file on ISO mounted at %s. Is this a CD image for FreeBSD >= 2.1.5?" % (self.mountpoint)
 
         # First line in cdrom.inf should look like: CD_VERSION = x.y-RELEASE
         fileObj = open(infFile, 'r')
@@ -678,22 +678,29 @@ class BinaryChrootBuilder(object):
         line = line.strip()
         splitString = line.split(' = ')
         if (len(splitString) != 2 or splitString[0] != 'CD_VERSION'):
-            raise BinaryReleaseInstallError, "cdrom.inf file on ISO mounted at %s has unrecognized first line: %s" % (self.mountpoint, line)
+            raise BinaryChrootBuildError, "cdrom.inf file on ISO mounted at %s has unrecognized first line: %s" % (self.mountpoint, line)
         
         return splitString[1]
     
-    def _extractDist(self, distdir, distname, log):
-        # Create tar command for extracting into chroot.
+    # TODO: this is kind of a crappy error handler
+    def _ebExtractError(self, failure):
+        # Provide a more specific exception
+        failure.trap(CommandError)
+        raise BinaryChrootBuildError, failure.value
+    
+    def _cbExtractDist(self, distdir, distname, log):
+        # Extract a distribution set into the chroot with tar.
         d = defer.Deferred()
         protocol = LoggingProcessProtocol(d, log)
         argv = [TAR_PATH, '--unlink', '-xpzf', '-', '-C', self.chroot]
         
-        # Spawn a process to run tar, creating a pipe we can write into tar's 
-        # standard input (fd 0) with.
+        # Spawn a process to run tar, keeping the IProcessTransport 
+        # providing object it returns so we can write to the process'
+        # stdin using IProcessTransport.writeToChild()
         pt = reactor.spawnProcess(protocol, TAR_PATH, args=argv, env=ROOT_ENV)
-
+                
         path = os.path.join(distdir, distname)
-        files = glob.glob(path + '??')
+        files = glob.glob(path + '.??')
         for filename in files:
             file = open(filename, 'rb')
             pt.writeToChild(0, file.read())
@@ -703,32 +710,42 @@ class BinaryChrootBuilder(object):
         
         return d
     
-    def extract(self, log):
+    def extract(self, dists, log):
         """
         Extract the release into a chroot
+        @param dists: Dictionary of distribution sets to extract. The key is a 
+            string corresponding to the name of the dist, and the value is an 
+            array of the subdists in that directory. For dists that don't have 
+            a lot of subdists, this value will probably just be an array 
+            containing the same string as the key.
         @param log: Open log file
         """
         cdRelease = self._getCDRelease()
-        
-        d = defer.Deferred()
-        
+        # Make sure the release we got from cdrom.inf matches the release on
+        # the ISO.
+        releaseDir = os.path.join(self.mountpoint, cdRelease)
+        if not os.path.exists(releaseDir):
+            raise BinaryChrootBuildError, "Release %s specified in %s does not appear to be on the ISO mounted at %s" % (cdRelease, os.path.join(self.mountpoint, 'cdrom.inf'), self.mountpoint)
+                
         # TODO: Don't hard code dists. Most ports should only need base and 
         # maybe some sources to build. On AMD64 we probably also need the lib32 
         # dist. 
-        dists = { 
-            'base'  :   ['base'],
-            'src'   :   ['sbase', 'scontrib', 'scrypto', 'sgnu', 'setc', 'sgames', 'sinclude', 'skrb5', 'slib', 'slibexec', 'srelease', 'sbin', 'ssecure', 'ssbin', 'sshare', 'ssys', 'subin', 'susbin', 'stools', 'srescue']
-        }
-        
+        #dists = { 
+        #    'base'  :   ['base'],
+        #    'src'   :   ['sbase', 'scontrib', 'scrypto', 'sgnu', 'setc', 'sgames', 'sinclude', 'skrb5', 'slib', 'slibexec', 'srelease', 'sbin', 'ssecure', 'ssbin', 'sshare', 'ssys', 'subin', 'susbin', 'stools', 'srescue']
+        #}
+                
         # Extract each dist in the chroot
+        deferreds = []
         for key in dists.iterkeys():
-            distdir = os.path.join(self.mountpoint, cdRelease, key)
+            distdir = os.path.join(releaseDir, key)
             for distname in dists[key]:
-                # TODO: really need an errback here in case tar explodes on us.
-                d.addCallback(self._extractDist, distdir, distname, log)
+                deferreds.append(self._cbExtractDist(distdir, distname, log))
         
+        d = defer.DeferredList(deferreds, fireOnOneErrback=True)
+        d.addErrback(self._ebExtractError)
         return d
-    
+
 class PackageBuilder(object):
     """
     Build a package from a FreeBSD port
