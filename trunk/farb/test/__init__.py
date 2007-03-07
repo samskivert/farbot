@@ -35,3 +35,22 @@ __all__ = ['test_builder', 'test_config', 'test_sysinstall', 'test_utils']
 INSTALL_DIR = os.path.dirname(__file__)
 DATA_DIR = os.path.join(INSTALL_DIR, 'data')
 CMD_DIR = os.path.join(DATA_DIR, 'fake_cmds')
+
+# This method is used by a number of tests.
+def rewrite_config(inpath, outpath, variables):
+    """
+    Create a new file from a template after replacing one or more strings.
+    @param inpath: Path to input, or template file.
+    @param outpath: Path to output file.
+    @param variables: Dictionary containing variables (keys) and their 
+        replacement strings (values).
+    """
+    output = open(outpath, 'w')
+    input = open(inpath, 'r')
+    for line in input:
+        for key,value in variables.iteritems():
+            line = line.replace(key, value)
+        output.write(line)
+    
+    output.close()
+    input.close()

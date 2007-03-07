@@ -38,7 +38,7 @@ import farb
 from farb import builder
 
 # Useful Constants
-from farb.test import DATA_DIR, CMD_DIR
+from farb.test import DATA_DIR, CMD_DIR, rewrite_config
 
 FREEBSD_REL_PATH = os.path.join(DATA_DIR, 'buildtest')
 PROCESS_LOG = os.path.join(FREEBSD_REL_PATH, 'process.log')
@@ -53,6 +53,10 @@ CVSTAG = 'RELENG_6_0'
 CVSTAG_OLD = 'RELENG_5_3'
 EXPORT_FILE = os.path.join(BUILDROOT, 'newvers.sh')
 INSTALL_CFG = os.path.join(DATA_DIR, 'test_configs', 'install.cfg')
+ISO_MOUNTPOINT = os.path.join(DATA_DIR, 'fake_iso_mount')
+CDROM_INF_IN = os.path.join(DATA_DIR, 'test_configs', 'cdrom.inf.in')
+CDROM_INF = os.path.join(ISO_MOUNTPOINT, 'cdrom.inf')
+EXTRACTED_BASE_DIST = os.path.join(CHROOT, 'usr')
 
 MDCONFIG_PATH = os.path.join(CMD_DIR, 'mdconfig.sh')
 CHROOT_PATH = os.path.join(CMD_DIR, 'chroot.sh')
@@ -452,6 +456,52 @@ class ReleaseBuilderTestCase(unittest.TestCase):
         self.builder.cvsroot = 'nonexistent'
         d = self.builder.build(self.log)
         d.addCallbacks(self._buildCVSSuccess, self._buildCVSError)
+        return d
+
+class BinaryChrootBuilderTestCase(unittest.TestCase):
+    def setUp(self):
+        self.builder = builder.BinaryChrootBuilder(ISO_MOUNTPOINT, CHROOT)
+        self.log = open(PROCESS_LOG, 'w+')
+    
+    def tearDown(self):
+        self.log.close()
+        if (os.path.exists(PROCESS_LOG)):
+            os.unlink(PROCESS_LOG)
+        if (os.path.exists(PROCESS_OUT)):
+            os.unlink(PROCESS_OUT)
+        if (os.path.exists(CDROM_INF)):
+            os.unlink(CDROM_INF)
+        if (os.path.exists(EXTRACTED_BASE_DIST)):
+            shutil.rmtree(EXTRACTED_BASE_DIST)
+    
+    def _extractResult(self, result):
+        #self.assertEquals(result, [(True, 0), (True, 0), (True, 0)])
+        self.assertEquals(result, [(True, 0)])
+    
+    def test_getCDRelease(self):
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
+        self.assertEquals(self.builder._getCDRelease(), '6.2-RELEASE')
+    
+    def test_badCDInf(self):
+        # Make sure we have an exception when CD_VERSION line looks wrong
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'hi I am a CD!'})
+        self.assertRaises(builder.BinaryChrootBuildError, self.builder._getCDRelease)
+    
+    def test_missingCDInf(self):
+        # Also make sure we get an exception also when there is no cdrom.inf
+        self.assertRaises(builder.BinaryChrootBuildError, self.builder._getCDRelease)
+    
+    def test_wrongRelease(self):
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.0-RELEASE'})
+        self.assertRaises(builder.BinaryChrootBuildError, self.builder.extract, {}, self.log)
+    
+    def test_extract(self):
+        # Try actually extracting a fake base dist into the chroot.
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
+        #dists = {'base' : ['base'], 'src' : ['szomg', 'swtf']}
+        dists = {'src' : ['swtf']}
+        d = self.builder.extract(dists, self.log)
+        d.addCallback(self._extractResult)
         return d
 
 class PackageBuilderTestCase(unittest.TestCase):
