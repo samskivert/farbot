@@ -477,6 +477,7 @@ class BinaryChrootBuilderTestCase(unittest.TestCase):
     def _extractResult(self, result):
         #self.assertEquals(result, [(True, 0), (True, 0), (True, 0)])
         self.assertEquals(result, [(True, 0)])
+        self.assert_(os.path.exists(os.path.join(CHROOT, 'usr', 'src', 'wtf.c')))
     
     def test_getCDRelease(self):
         rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
