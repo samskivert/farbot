@@ -64,6 +64,7 @@ MOUNT_PATH = os.path.join(CMD_DIR, 'mount.sh')
 UMOUNT_PATH = os.path.join(CMD_DIR, 'umount.sh')
 PKG_DELETE_PATH = os.path.join(CMD_DIR, 'pkg_delete.sh')
 PORTSNAP_PATH = os.path.join(CMD_DIR, 'portsnap.sh')
+TAR_PATH = os.path.join(CMD_DIR, 'tar.sh')
 ECHO_PATH = '/bin/echo'
 SH_PATH = '/bin/sh'
 
@@ -75,6 +76,7 @@ builder.MOUNT_PATH = MOUNT_PATH
 builder.UMOUNT_PATH = UMOUNT_PATH
 builder.PKG_DELETE_PATH = PKG_DELETE_PATH
 builder.PORTSNAP_PATH = PORTSNAP_PATH
+builder.TAR_PATH = TAR_PATH
 
 class LoggingProcessProtocolTestCase(unittest.TestCase):
     def setUp(self):
@@ -475,9 +477,11 @@ class BinaryChrootBuilderTestCase(unittest.TestCase):
             shutil.rmtree(EXTRACTED_BASE_DIST)
     
     def _extractResult(self, result):
-        #self.assertEquals(result, [(True, 0), (True, 0), (True, 0)])
-        self.assertEquals(result, [(True, 0)])
+        self.assertEquals(result, [(True, 0), (True, 0), (True, 0)])
         self.assert_(os.path.exists(os.path.join(CHROOT, 'usr', 'src', 'wtf.c')))
+        self.assert_(os.path.exists(os.path.join(CHROOT, 'usr', 'src', 'zomg.c')))
+        self.assert_(os.path.exists(os.path.join(CHROOT, 'usr', 'bin', 'foo.sh')))
+        self.assert_(os.path.exists(os.path.join(CHROOT, 'usr', 'bin', 'bar.sh')))
     
     def test_getCDRelease(self):
         rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
@@ -499,8 +503,7 @@ class BinaryChrootBuilderTestCase(unittest.TestCase):
     def test_extract(self):
         # Try actually extracting a fake base dist into the chroot.
         rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
-        #dists = {'base' : ['base'], 'src' : ['szomg', 'swtf']}
-        dists = {'src' : ['swtf']}
+        dists = {'base' : ['base'], 'src' : ['szomg', 'swtf']}
         d = self.builder.extract(dists, self.log)
         d.addCallback(self._extractResult)
         return d
