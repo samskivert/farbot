@@ -65,6 +65,7 @@ UMOUNT_PATH = os.path.join(CMD_DIR, 'umount.sh')
 PKG_DELETE_PATH = os.path.join(CMD_DIR, 'pkg_delete.sh')
 PORTSNAP_PATH = os.path.join(CMD_DIR, 'portsnap.sh')
 TAR_PATH = os.path.join(CMD_DIR, 'tar.sh')
+CHFLAGS_PATH = os.path.join(CMD_DIR, 'chflags.sh')
 ECHO_PATH = '/bin/echo'
 SH_PATH = '/bin/sh'
 
@@ -77,6 +78,7 @@ builder.UMOUNT_PATH = UMOUNT_PATH
 builder.PKG_DELETE_PATH = PKG_DELETE_PATH
 builder.PORTSNAP_PATH = PORTSNAP_PATH
 builder.TAR_PATH = TAR_PATH
+builder.CHFLAGS_PATH = CHFLAGS_PATH
 
 class LoggingProcessProtocolTestCase(unittest.TestCase):
     def setUp(self):
@@ -326,6 +328,24 @@ class PortsnapCommandTestCase(unittest.TestCase):
     def test_extract(self):
         d = self.pc.extract('/nonexistent', self.log)
         d.addCallback(self._cbPortsnapResult)
+        return d
+
+class ChflagsCommandTestCase(unittest.TestCase):
+    def setUp(self):
+        self.log = open(PROCESS_LOG, 'w+')
+        self.cc = builder.ChflagsCommand('/nonexistent')
+    
+    def tearDown(self):
+        self.log.close()
+        os.unlink(PROCESS_LOG)
+    
+    def _cbChflagsResult(self, result):
+        self.log.seek(0)
+        self.assertEquals(result, 0)
+    
+    def test_removeAll(self):
+        d = self.cc.removeAll(self.log)
+        d.addCallback(self._cbChflagsResult)
         return d
 
 class NCVSBuildnameProcessProtocolTestCase(unittest.TestCase):
