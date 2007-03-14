@@ -207,6 +207,7 @@ class ReleaseBuildRunner(BuildRunner):
     def __init__(self, config):
         super(ReleaseBuildRunner, self).__init__()
         self.oe = utils.OrderedExecutor()
+        self.isomounts = {}
 
         # Iterate through all releases, starting a release build for all
         # releases referenced by an Installation.
@@ -228,39 +229,108 @@ class ReleaseBuildRunner(BuildRunner):
             except Exception, e:
                 print "Failed to create build root: %s" % (e)
                 sys.exit(1)
-
-            # Instantiate our builder
-            releaseBuilder = builder.ReleaseBuilder(release.cvsroot, release.cvstag, release.chroot)
-
+            
             # Open the build log file
             logPath = os.path.join(release.buildroot, 'build.log')
             buildLog = open(logPath, 'w', 0)
             self.logs.append(buildLog)
+            
+            if (release.binaryrelease):
+                # Wipe out the chroot directory if it exists.
+                if os.path.exists(release.chroot):
+                    bctx = BuildContext("Cleaning out chroot \"%s\"" % release.chroot, logPath)
+                    eu = utils.ExecutionUnit(bctx, defer.execute, shutil.rmtree, release.chroot, ignore_errors=True)
+                    self.oe.appendExecutionUnit(eu)
+                    
+                    # Now if the chroot still exists, it is becuase there are 
+                    # files left over with schg flags set. Remove those flags, 
+                    # then try wiping the directory again. This is what is 
+                    # currently done in /usr/src/release/Makefile.
+                    if os.path.exists(release.chroot):
+                        cc = builder.ChflagsCommand(release.chroot)
+                        eu = utils.ExecutionUnit(bctx, cc.removeAll, buildLog)
+                        self.oe.appendExecutionUnit(eu)
+                        
+                        eu = utils.ExecutionUnit(bctx, defer.execute, shutil.rmtree, release.chroot)
+                        self.oe.appendExecutionUnit(eu)
+                
+                # Create the ISOs mount point if needed
+                mountpoint = os.path.join(release.buildroot, 'mnt')
+                if (not os.path.exists(mountpoint)):
+                    bctx = BuildContext("Creating mount point \"%s\" for ISO" % mountpoint, logPath)
+                    eu = utils.ExecutionUnit(bctx, threads.deferToThread, os.mkdir, mountpoint)
+                    self.oe.appendExecutionUnit(eu)
 
-            # Add our release builder to the OrderedExecutor
-            bctx = BuildContext("%s release build" % release.getSectionName(), logPath)
-            eu = utils.ExecutionUnit(bctx, releaseBuilder.build, buildLog)
-            self.oe.appendExecutionUnit(eu)
+                # Mount the ISO                
+                mdconfig = builder.MDConfigCommand(release.iso)                
+                bctx = BuildContext("Mount ISO in \"%s\"" % mountpoint, logPath)
+                isofs = builder.MDMountCommand(mdconfig, mountpoint, fstype='cd9660')
+                self.isomounts[isofs] = buildLog
+                eu = utils.ExecutionUnit(bctx, isofs.mount, buildLog)
+                self.oe.appendExecutionUnit(eu)
+                
+                # TODO: Don't hard code dists. Most ports should only need base and 
+                # maybe some sources to build. On AMD64 we probably also need the lib32 
+                # dist. 
+                dists = { 
+                    'base'  :   ['base'],
+                    'src'   :   ['sbase', 'scontrib', 'scrypto', 'sgnu', 'setc', 'sgames', 'sinclude', 'skrb5', 'slib', 'slibexec', 'srelease', 'sbin', 'ssecure', 'ssbin', 'sshare', 'ssys', 'subin', 'susbin', 'stools', 'srescue']
+                }
+                
+                # Extract distribution sets
+                releaseExtractor = builder.BinaryChrootBuilder(mountpoint, release.chroot)
+                bctx = BuildContext("%s release extraction to %s" % (release.getSectionName(), release.chroot), logPath)
+                eu = utils.ExecutionUnit(bctx, releaseExtractor.extract, dists, buildLog)
+                self.oe.appendExecutionUnit(eu)
+            
+            else:
+                # Instantiate our builder
+                releaseBuilder = builder.ReleaseBuilder(release.cvsroot, release.cvstag, release.chroot)
 
-    def _ebReleaseBuild(self, failure):
-        # Close our log files
-        self._closeLogs()
-
+                # Add our release builder to the OrderedExecutor
+                bctx = BuildContext("%s release build" % release.getSectionName(), logPath)
+                eu = utils.ExecutionUnit(bctx, releaseBuilder.build, buildLog)
+                self.oe.appendExecutionUnit(eu)
+    
+    def _unmountISOs(self):
+        # Unmount ISOs and detach their MD devices.
+        deferreds = []
+        for mount, log in self.isomounts.iteritems():
+            deferreds.append(mount.umount(log))
+        
+        d = defer.DeferredList(deferreds)
+        return d
+    
+    def _decipherException(self, result, failure):
         # Decipher the BuildContext and raise a normal exception, with the message formatted for printing
         try:            
             bctx = failure.value.executionContext
             failure.value.originalFailure.raiseException()
-        except builder.ReleaseBuildError, e:
+        except (builder.ReleaseBuildError, builder.BinaryChrootBuildError), e:
             raise builder.ReleaseBuildError, "%s failed: %s.\nFor more information, refer to the release build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except builder.CVSCommandError, e:
             raise builder.ReleaseBuildError, "%s failed, cvs\nreturned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except Exception, e:
             raise builder.ReleaseBuildError, "Unhandled release build error: %s" % (e)
-
+    
+    def _ebReleaseBuild(self, failure):
+        # Close our log files
+        self._closeLogs()
+        
+        # Unmount ISOs
+        d = self._unmountISOs()
+        
+        # Decipher the exception
+        d.addCallback(self._decipherException, failure)
+        
+        return d
+    
     def _cbReleaseBuild(self, result):
         # Close our log files
         self._closeLogs()
-
+        
+        return self._unmountISOs()
+    
     def run(self):
         # Run!
         d = self.oe.run()
@@ -376,7 +446,7 @@ class PackageBuildRunner(BuildRunner):
                 eu = utils.ExecutionUnit(pctx, pb.build, buildLog)
                 self.oe.appendExecutionUnit(eu)
 
-    def _unmountDevFS(self):
+    def _cleanUpMounts(self):
         # Unmount all devfs mounts
         deferreds = []
         for mount, log in self.devmounts.iteritems():
@@ -406,8 +476,8 @@ class PackageBuildRunner(BuildRunner):
         # Close our log files
         self._closeLogs()
 
-        # Close any devfs mounts
-        d = self._unmountDevFS()
+        # Unmount anything in the chroot
+        d = self._cleanUpMounts()
 
         # Decipher the exception
         d.addCallback(self._decipherException, failure)
@@ -418,8 +488,8 @@ class PackageBuildRunner(BuildRunner):
         # Close our log files
         self._closeLogs()
 
-        # Close any devfs mounts
-        return self._unmountDevFS()
+        # Unmount anything in the chroot
+        return self._cleanUpMounts()
 
     def run(self):
         # Run!

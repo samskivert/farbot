@@ -64,6 +64,9 @@ PORTSNAP_PATH = '/usr/sbin/portsnap'
 # tar(1) path
 TAR_PATH = '/usr/bin/tar'
 
+# chflags(1) path
+CHFLAGS_PATH = '/bin/chflags'
+
 # Standard FreeBSD src location
 FREEBSD_REL_PATH = '/usr/src/release'
 
@@ -121,6 +124,9 @@ class PkgDeleteCommandError(CommandError):
     pass
 
 class PortsnapCommandError(CommandError):
+    pass
+
+class ChflagsCommandError(CommandError):
     pass
 
 class ReleaseBuildError(farb.FarbError):
@@ -401,14 +407,16 @@ class MDMountCommand(MountCommand):
     """
     mount(8)/umount(8) command context
     """
-    def __init__(self, mdc, mountpoint):
+    def __init__(self, mdc, mountpoint, fstype=None):
         """
         Create a new MountCommand instance
         @param mdc: MDConfigCommand instance
         @param mountpoint: mount point
+        @param fstype: File system type. If unspecified, mount(8) will
+        try to figure it out.
         """
         self.mdc = mdc
-        super(MDMountCommand, self).__init__(None, mountpoint)
+        super(MDMountCommand, self).__init__(None, mountpoint, fstype)
 
     def _ebUnmount(self, failure):
         # Provide a more specific exception type
@@ -583,6 +591,34 @@ class PortsnapCommand(object):
 
         return d
 
+class ChflagsCommand(object):
+    """
+    chflags(1) command context
+    """
+    def __init__(self, path):
+        """
+        Create a new ChflagsCommand instance
+        @param path: Path to file or directory whose flags will be changed
+        """
+        self.path = path
+    
+    def _ebChflags(self, failure):
+        failure.trap(CommandError)
+        raise ChflagsCommandError, failure.value
+    
+    def removeAll(self, log):
+        """
+        Recursively remove all flags from self.path
+        @param log: Open log file
+        """
+        d = defer.Deferred()
+        d.addErrback(self._ebChflags)
+        protocol = LoggingProcessProtocol(d, log)
+        argv = [CHFLAGS_PATH, '-R', '0', self.path]
+        reactor.spawnProcess(protocol, CHFLAGS_PATH, args=argv, env=ROOT_ENV)
+        
+        return d
+
 class ReleaseBuilder(object):
     makeTarget = ('release',)
     defaultMakeOptions = {
@@ -688,11 +724,15 @@ class BinaryChrootBuilder(object):
         failure.trap(CommandError)
         raise BinaryChrootBuildError, failure.value
     
-    def _cbExtractDist(self, distdir, distname, log):
+    def _cbExtractDist(self, distdir, distname, target, log):
         # Extract a distribution set into the chroot with tar.
         d = defer.Deferred()
         protocol = LoggingProcessProtocol(d, log)
-        argv = [TAR_PATH, '--unlink', '-xpzf', '-', '-C', self.chroot]
+        argv = [TAR_PATH, '--unlink', '-xpzf', '-', '-C', target]
+        
+        # Create target directory if it isn't already there
+        if not os.path.exists(target):
+            os.makedirs(target)
         
         # Spawn a process to run tar, keeping the IProcessTransport 
         # providing object it returns so we can write to the process'
@@ -726,21 +766,27 @@ class BinaryChrootBuilder(object):
         releaseDir = os.path.join(self.mountpoint, cdRelease)
         if not os.path.exists(releaseDir):
             raise BinaryChrootBuildError, "Release %s specified in %s does not appear to be on the ISO mounted at %s" % (cdRelease, os.path.join(self.mountpoint, 'cdrom.inf'), self.mountpoint)
-                
-        # TODO: Don't hard code dists. Most ports should only need base and 
-        # maybe some sources to build. On AMD64 we probably also need the lib32 
-        # dist. 
-        #dists = { 
-        #    'base'  :   ['base'],
-        #    'src'   :   ['sbase', 'scontrib', 'scrypto', 'sgnu', 'setc', 'sgames', 'sinclude', 'skrb5', 'slib', 'slibexec', 'srelease', 'sbin', 'ssecure', 'ssbin', 'sshare', 'ssys', 'subin', 'susbin', 'stools', 'srescue']
-        #}
-                
+        
         # Extract each dist in the chroot
         deferreds = []
         for key in dists.iterkeys():
             distdir = os.path.join(releaseDir, key)
             for distname in dists[key]:
-                deferreds.append(self._cbExtractDist(distdir, distname, log))
+                # Just to make things difficult, not all dists extract relative 
+                # to /. The source distribution sets, for instance, should be 
+                # extracted in /usr/src/. 
+                # TODO: I'd love to handle this a better way, and I don't know 
+                # what releases of FreeBSD are this way (all of them?). It 
+                # would be a good idea to handle other distribution sets that 
+                # have this fun property (e.g. kernels extract to /boot). See 
+                # Distribution structs near the top of 
+                # /usr/src/usr.sbin/sysinstall/dist.c
+                if key == 'src':
+                    target = os.path.join(self.chroot, 'usr', 'src')
+                else:
+                    target = self.chroot
+                
+                deferreds.append(self._cbExtractDist(distdir, distname, target, log))
         
         d = defer.DeferredList(deferreds, fireOnOneErrback=True)
         d.addErrback(self._ebExtractError)
