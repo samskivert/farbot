@@ -346,8 +346,11 @@ class PackageBuildRunner(BuildRunner):
         super(PackageBuildRunner, self).__init__()
         self.oe = utils.OrderedExecutor()
         self.devmounts = {}
-        self.distfilescache = config.PackageSets.distfilescache
+        self.distfilescache = None
         self.distfilesmounts = {}
+        
+        if config.PackageSets:
+            self.distfilescache = config.PackageSets.distfilescache
         
         # Create the distfiles cache directory if necessary
         try:
