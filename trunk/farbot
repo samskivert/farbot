@@ -44,11 +44,14 @@ class Main(object):
     """
     Implements FarBot's Main Runloop
     """
+    doAllActions = True
+
     def usage(self):
         print "Usage: %s [-h] [-f config file] [-r action]" % sys.argv[0]
         print "    -h             Print usage (this message)"
         print "    -f <config>    Use configuration file"
         print "    -r <action>    Execute <action>"
+        print "    -o             Do one action only.  Do not continue after <action>"
         print "\nSupported actions:"
         print "    release        Build all defined releases, build all packages, and build the network installation root"
         print "    package        Build all defined packages, and build the network installation root (requires a release build)"
@@ -61,6 +64,8 @@ class Main(object):
 
     def _cbReleaseBuild(self, result):
         print "Release build completed."
+        if (not self.doAllActions):
+            reactor.stop()
 
     def _ebPackageBuild(self, failure):
         # Just print the failure and exit
@@ -69,6 +74,8 @@ class Main(object):
 
     def _cbPackageBuild(self, result):
         print "Package build completed."
+        if (not self.doAllActions):
+            reactor.stop()
 
     def _ebNetInstallBuild(self, failure):
         # Just print the failure and exit
@@ -122,7 +129,7 @@ class Main(object):
         action = None
 
         try:
-            opts,args = getopt.getopt(sys.argv[1:], "hf:r:")
+            opts,args = getopt.getopt(sys.argv[1:], "hof:r:")
         except getopt.GetoptError:
             self.usage()
             sys.exit(2)
@@ -135,6 +142,8 @@ class Main(object):
                 conf_file = arg
             if opt == "-r":
                 action = arg
+            if opt == "-o":
+                self.doAllActions = False
 
         if (conf_file == None or action == None):
             self.usage()
@@ -160,11 +169,13 @@ class Main(object):
         # Execute requested action
         if (action == "release"):
             d = self._doReleaseBuild(farbconfig)
-            d.addCallback(lambda _: self._doPackageBuild(farbconfig))
-            d.addCallback(lambda _: self._doNetInstallBuild(farbconfig))
+            if (self.doAllActions):
+                d.addCallback(lambda _: self._doPackageBuild(farbconfig))
+                d.addCallback(lambda _: self._doNetInstallBuild(farbconfig))
         elif (action == "package"):
             d = self._doPackageBuild(farbconfig)
-            d.addCallback(lambda _: self._doNetInstallBuild(farbconfig))
+            if (self.doAllActions):
+                d.addCallback(lambda _: self._doNetInstallBuild(farbconfig))
         elif (action == "install"):
             d = self._doNetInstallBuild(farbconfig)
         else:
