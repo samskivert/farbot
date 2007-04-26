@@ -74,10 +74,11 @@
 
           <listitem>
             <para><ulink url="http://www.freebsd.org">FreeBSD</ulink> is
-            required to actually build installations. This build system must
-            have full sources installed in <filename>/usr/src</filename>, and
-            a completed buildworld must have been run prior to building
-            installations with farbot.</para>
+            required to actually build installations. The system running farbot
+            must have full sources installed in <filename>/usr/src</filename>, 
+            and <filename>/usr/obj</filename> must be populated from a "make 
+            buildworld" run on sources matching the currently running kernel. 
+            </para>
           </listitem>
         </itemizedlist>
       </sect2>
