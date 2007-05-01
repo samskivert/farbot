@@ -246,25 +246,7 @@ class ReleaseBuildRunner(BuildRunner):
             buildLog = open(logPath, 'w', 0)
             self.logs.append(buildLog)
             
-            if (release.binaryrelease):
-                # Wipe out the chroot directory if it exists.
-                if os.path.exists(release.chroot):
-                    bctx = BuildContext("Cleaning out chroot \"%s\"" % release.chroot, logPath)
-                    eu = utils.ExecutionUnit(bctx, defer.execute, shutil.rmtree, release.chroot, ignore_errors=True)
-                    self.oe.appendExecutionUnit(eu)
-                    
-                    # Now if the chroot still exists, it is becuase there are 
-                    # files left over with schg flags set. Remove those flags, 
-                    # then try wiping the directory again. This is what is 
-                    # currently done in /usr/src/release/Makefile.
-                    if os.path.exists(release.chroot):
-                        cc = builder.ChflagsCommand(release.chroot)
-                        eu = utils.ExecutionUnit(bctx, cc.removeAll, buildLog)
-                        self.oe.appendExecutionUnit(eu)
-                        
-                        eu = utils.ExecutionUnit(bctx, defer.execute, shutil.rmtree, release.chroot)
-                        self.oe.appendExecutionUnit(eu)
-                
+            if (release.binaryrelease):               
                 # Create the ISOs mount point if needed
                 mountpoint = os.path.join(release.buildroot, 'mnt')
                 if (not os.path.exists(mountpoint)):
@@ -280,23 +262,15 @@ class ReleaseBuildRunner(BuildRunner):
                 eu = utils.ExecutionUnit(bctx, isofs.mount, buildLog)
                 self.oe.appendExecutionUnit(eu)
                 
-                # TODO: Don't hard code dists. Most ports should only need base and 
-                # maybe some sources to build. On AMD64 we probably also need the lib32 
-                # dist. 
-                dists = { 
-                    'base'  :   ['base'],
-                    'src'   :   ['sbase', 'scontrib', 'scrypto', 'sgnu', 'setc', 'sgames', 'sinclude', 'skrb5', 'slib', 'slibexec', 'srelease', 'sbin', 'ssecure', 'ssbin', 'sshare', 'ssys', 'subin', 'susbin', 'stools', 'srescue']
-                }
-                
-                # Extract distribution sets
-                releaseExtractor = builder.BinaryChrootBuilder(mountpoint, release.chroot)
-                bctx = BuildContext("%s release extraction to %s" % (release.getSectionName(), release.chroot), logPath)
-                eu = utils.ExecutionUnit(bctx, releaseExtractor.extract, dists, buildLog)
+                # Copy distribution sets to release directory
+                isoReader = builder.ISOReader(mountpoint, release.releaseroot)
+                bctx = BuildContext("%s release copying to %s" % (release.getSectionName(), release.releaseroot), logPath)
+                eu = utils.ExecutionUnit(bctx, isoReader.copy)
                 self.oe.appendExecutionUnit(eu)
             
             else:
                 # Instantiate our builder
-                releaseBuilder = builder.ReleaseBuilder(release.cvsroot, release.cvstag, release.chroot)
+                releaseBuilder = builder.ReleaseBuilder(release.cvsroot, release.cvstag, release.releaseroot)
 
                 # Add our release builder to the OrderedExecutor
                 bctx = BuildContext("%s release build" % release.getSectionName(), logPath)
@@ -383,24 +357,44 @@ class PackageBuildRunner(BuildRunner):
             buildLog = open(logPath, 'w', 0)
             self.logs.append(buildLog)
 
-            # Mount devfs in the chroot
-            pctx = BuildContext("Mount devfs in \"%s\"" % (release.chroot), logPath)
-            devfs = builder.MountCommand('devfs', os.path.join(release.chroot, 'dev'), fstype='devfs')
-            self.devmounts[devfs] = buildLog
-            eu = utils.ExecutionUnit(pctx, devfs.mount, buildLog)
-            self.oe.appendExecutionUnit(eu)
-
-            # Clean out any old work directories in the ports tree
-            workdirs = glob.glob(os.path.join(release.portsdir, '*', '*', 'work'))
-            for workdir in workdirs:
-                pctx = BuildContext("Removing old port work directory \"%s\"" % (workdir), logPath)
-                eu = utils.ExecutionUnit(pctx, defer.execute, shutil.rmtree, workdir)
+            # Clean out any existing package chroot
+            if (os.path.exists(self.pkgroot)):
+                bctx = BuildContext("Cleaning out package chroot \"%s\"" % release.pkgroot, logPath)
+                eu = utils.ExecutionUnit(bctx, defer.execute, shutil.rmtree, release.pkgroot, ignore_errors=True)
                 self.oe.appendExecutionUnit(eu)
                 
-            # Remove any packages that may be installed in the chroot
-            pctx = BuildContext("Removing all installed packages in chroot \"%s\"" % (release.chroot), logPath)
-            pdx = builder.PkgDeleteCommand(release.chroot)
-            eu = utils.ExecutionUnit(pctx, pdx.deleteAll, buildLog)
+                # Now if the chroot still exists, it is becuase there are 
+                # files left over with schg flags set. Remove those flags, 
+                # then try wiping the directory again. This is what is 
+                # currently done in /usr/src/release/Makefile.
+                if os.path.exists(release.pkgroot):
+                    cc = builder.ChflagsCommand(release.pkgroot)
+                    eu = utils.ExecutionUnit(bctx, cc.removeAll, buildLog)
+                    self.oe.appendExecutionUnit(eu)
+                    
+                    eu = utils.ExecutionUnit(bctx, defer.execute, shutil.rmtree, release.pkgroot)
+                    self.oe.appendExecutionUnit(eu)
+            
+            # TODO: Don't hard code dists. Most ports should only need base and 
+            # maybe some sources to build. On AMD64 we probably also need the lib32 
+            # dist. 
+            dists = { 
+                'base'  :   ['base'],
+                'src'   :   ['sbase', 'scontrib', 'scrypto', 'sgnu', 'setc', 'sgames', 'sinclude', 'skrb5', 'slib', 'slibexec', 'srelease', 'sbin', 'ssecure', 'ssbin', 'sshare', 'ssys', 'subin', 'susbin', 'stools', 'srescue']
+            }
+            
+            # Populate a new package chroot from the release binaries we built
+            # or extracted from an ISO.
+            pctx = BuildContext("Extracting release binaries to \"%s\"" % (release.pkgroot), logPath)
+            assembler = builder.PackageChrootAssembler(os.path.join(release.releaseroot, builder.RELEASE_FTP_PATH), release.pkgroot)
+            eu = utils.ExecutionUnit(pctx, assembler.extract, dists, buildLog)
+            self.oe.appendExecutionUnit(eu)
+
+            # Mount devfs in the chroot
+            pctx = BuildContext("Mount devfs in \"%s\"" % (release.pkgroot), logPath)
+            devfs = builder.MountCommand('devfs', os.path.join(release.pkgroot, 'dev'), fstype='devfs')
+            self.devmounts[devfs] = buildLog
+            eu = utils.ExecutionUnit(pctx, devfs.mount, buildLog)
             self.oe.appendExecutionUnit(eu)
             
             # If we're using portsnap, run portsnap fetch now to get an updated 
@@ -426,13 +420,13 @@ class PackageBuildRunner(BuildRunner):
             # Mount distfiles cache directory in chroot if configured, creating
             # the mount point if necessary.
             if self.distfilescache:
-                mntpoint = os.path.join(release.chroot, 'usr', 'ports', 'distfiles')
+                mntpoint = os.path.join(release.releaseroot, 'usr', 'ports', 'distfiles')
                 if (not os.path.exists(mntpoint)):
                     pctx = BuildContext("creating \"%s\" directory" % (mntpoint), logPath)
                     eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, mntpoint)
                     self.oe.appendExecutionUnit(eu)
                 
-                pctx = BuildContext("Mount nullfs in \"%s\"" % (release.chroot), logPath)
+                pctx = BuildContext("Mount nullfs in \"%s\"" % (release.releaseroot), logPath)
                 nullfs = builder.MountCommand(self.distfilescache, mntpoint, fstype='nullfs')
                 self.distfilesmounts[nullfs] = buildLog
                 eu = utils.ExecutionUnit(pctx, nullfs.mount, buildLog)
@@ -456,7 +450,7 @@ class PackageBuildRunner(BuildRunner):
                     buildoptions.update(package.BuildOptions.Options)
 
                 # Add a package builder to the OrderedExecutor
-                pb = builder.PackageBuilder(release.chroot, package.port, buildoptions)
+                pb = builder.PackageBuilder(release.releaseroot, package.port, buildoptions)
                 eu = utils.ExecutionUnit(pctx, pb.build, buildLog)
                 self.oe.appendExecutionUnit(eu)
 
@@ -567,16 +561,16 @@ class NetInstallAssemblerRunner(BuildRunner):
             self.oe.appendExecutionUnit(eu)
 
             # Instantiate the installation assembler
-            ia = builder.InstallAssembler(installName, install.description, release.chroot, installConfigPath)
+            ia = builder.InstallAssembler(installName, install.description, release.releaseroot, installConfigPath)
             installAssemblers.append(ia)
 
         # Iterate over "live" releases
         for releaseName, release in liveReleases.iteritems():
                 # Instantiate the release assembler
                 if (len(release.localdata)):
-                    ra = builder.ReleaseAssembler(releaseName, release.chroot, localData = release.localdata)
+                    ra = builder.ReleaseAssembler(releaseName, release.releaseroot, localData = release.localdata)
                 else:
-                    ra = builder.ReleaseAssembler(releaseName, release.chroot)
+                    ra = builder.ReleaseAssembler(releaseName, release.releaseroot)
 
                 releaseAssemblers.append(ra)
 

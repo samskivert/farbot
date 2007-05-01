@@ -95,13 +95,13 @@ class ConfigParsingTestCase(unittest.TestCase):
         # Per-release settings
         release = config.Releases.Release[0]
         buildroot = os.path.join(config.Releases.buildroot, release.getSectionName())
-        chroot = os.path.join(buildroot, 'chroot')
+        chroot = os.path.join(buildroot, 'releaseroot')
         portsdir = os.path.join(buildroot, 'usr', 'ports')
         packagedir = os.path.join(portsdir, 'packages')
         self.assertEquals(release.cvstag, 'RELENG_6_0')
         self.assertEquals(release.packages, None)
         self.assertEquals(release.buildroot, buildroot)
-        self.assertEquals(release.chroot, chroot)
+        self.assertEquals(release.releaseroot, chroot)
     
     def test_binary_release(self):
         """ Load a binary release configuration """

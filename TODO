@@ -6,16 +6,6 @@
 - Give option of dumping built packages in a directory that is shared via
   http/ftp so it can be used for binary package updates on running systems with 
   portupgrade -P.
-- Binary patches for base system update. Keep previous versions of a built
-  release around, and each time a new build of that release is done, create a
-  patch (or set of patches) against the previous version using bsdiff (see
-  http://sf.net/projects/cx-bsdiff for python bsdiff module. This needs a port).
-  Then, keep these patch(sets), with cryptographic signatures, and make them
-  available in some http/ftp accessible dir for older farbot-built machines to
-  grab when an update is needed. Bonus points if the client can use
-  freebsd-update. Ignore changes in config files! Not sure how to handle the
-  kernel; maybe just require local upgrade/recompilation of kernel on clients
-  for now.
 - Alternative to previous: support optionally creating releases from binaries on
   official FreeBSD release CDs. This will make it possible to use freebsd-update
   on machines imaged from these releases. It will also skip a lot of compiling,

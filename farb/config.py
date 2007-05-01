@@ -62,10 +62,11 @@ def releases_handler(section):
 
         # The buildroot directory is merely a combination of the buildroot + release name
         release.buildroot = os.path.join(section.buildroot, release.getSectionName())
-        # And the chroot
-        release.chroot = os.path.join(release.buildroot, 'chroot')
+        # And the chroots
+        release.releaseroot = os.path.join(release.buildroot, 'releaseroot')
+        release.pkgroot = os.path.join(release.buildroot, 'pkgroot')
         # And the ports tree
-        release.portsdir = os.path.join(release.chroot, 'usr', 'ports')
+        release.portsdir = os.path.join(release.pkgroot, 'usr', 'ports')
         # And the package dir ...
         release.packagedir = os.path.join(release.portsdir, 'packages')
 
