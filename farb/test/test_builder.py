@@ -50,7 +50,6 @@ PKGROOT = os.path.join(BUILDROOT, 'pkgroot')
 CVSROOT = os.path.join(DATA_DIR, 'fakencvs')
 INSTALLROOT = os.path.join(DATA_DIR, 'netinstall')
 TFTPROOT = os.path.join(DATA_DIR, 'test_tftproot')
-FTPDIR = os.path.join(RELEASEROOT, builder.RELEASE_FTP_PATH)
 CVSTAG = 'RELENG_6_0'
 CVSTAG_OLD = 'RELENG_5_3'
 EXPORT_FILE = os.path.join(BUILDROOT, 'newvers.sh')
@@ -494,8 +493,8 @@ class ISOReaderTestCase(unittest.TestCase):
             os.unlink(PROCESS_OUT)
         if (os.path.exists(CDROM_INF)):
             os.unlink(CDROM_INF)
-        if (os.path.exists(FTPDIR)):
-            shutil.rmtree(FTPDIR)
+        if (os.path.exists(RELEASEROOT)):
+            shutil.rmtree(RELEASEROOT)
     
     def test_getCDRelease(self):
         rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
@@ -518,13 +517,14 @@ class ISOReaderTestCase(unittest.TestCase):
         rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
         # Try copying the dists from the CD into the release root
         self.reader.copy()
-        self.assert_(os.path.exists(os.path.join(FTPDIR, 'base', 'base.aa')))
-        self.assert_(os.path.exists(os.path.join(FTPDIR, 'base', 'base.ab')))
-        self.assert_(os.path.exists(os.path.join(FTPDIR, 'base', 'base.ac')))
-        self.assert_(os.path.exists(os.path.join(FTPDIR, 'src', 'swtf.aa')))
-        self.assert_(os.path.exists(os.path.join(FTPDIR, 'src', 'swtf.ab')))
-        self.assert_(os.path.exists(os.path.join(FTPDIR, 'src', 'szomg.aa')))
-        self.assert_(os.path.exists(os.path.join(FTPDIR, 'src', 'szomg.ab')))        
+        ftpdir = os.path.join(RELEASEROOT, builder.RELEASE_FTP_PATH)
+        self.assert_(os.path.exists(os.path.join(ftpdir, 'base', 'base.aa')))
+        self.assert_(os.path.exists(os.path.join(ftpdir, 'base', 'base.ab')))
+        self.assert_(os.path.exists(os.path.join(ftpdir, 'base', 'base.ac')))
+        self.assert_(os.path.exists(os.path.join(ftpdir, 'src', 'swtf.aa')))
+        self.assert_(os.path.exists(os.path.join(ftpdir, 'src', 'swtf.ab')))
+        self.assert_(os.path.exists(os.path.join(ftpdir, 'src', 'szomg.aa')))
+        self.assert_(os.path.exists(os.path.join(ftpdir, 'src', 'szomg.ab')))        
 
 class PackageChrootAssemblerTestCase(unittest.TestCase):
     def setUp(self):
@@ -607,6 +607,11 @@ class InstallAssemblerTestCase(unittest.TestCase):
 
         os.mkdir(TFTPROOT)
         os.mkdir(self.destdir)
+        
+        # Create dummy "release" containing the kernel and mfsroot needed
+        reader = builder.ISOReader(ISO_MOUNTPOINT, RELEASEROOT)
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
+        reader.copy()
 
     def tearDown(self):
         self.log.close()
@@ -620,6 +625,12 @@ class InstallAssemblerTestCase(unittest.TestCase):
             shutil.rmtree(TFTPROOT)
         if (os.path.exists(self.destdir)):
             shutil.rmtree(self.destdir)
+        
+        # Remove dummy release
+        if (os.path.exists(RELEASEROOT)):
+            shutil.rmtree(RELEASEROOT)
+        if (os.path.exists(CDROM_INF)):
+            os.unlink(CDROM_INF)
 
     def _buildResult(self, result):
         # Make sure the gunzip worked
@@ -659,10 +670,10 @@ class ReleaseAssemblerTestCase(unittest.TestCase):
     def setUp(self):
         self.log = open(PROCESS_LOG, 'w+')
         self.destdir = os.path.join(INSTALLROOT, 'buildtest')
-        # Create dummy "release" to copy to netinstall directory
-        os.mkdir(FTPDIR)
-        f = open(os.path.join(FTPDIR, 'arelease'), 'w')
-        f.close()
+        # Create dummy "release"
+        reader = builder.ISOReader(ISO_MOUNTPOINT, RELEASEROOT)
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
+        reader.copy()
 
     def tearDown(self):
         self.log.close()
@@ -674,13 +685,16 @@ class ReleaseAssemblerTestCase(unittest.TestCase):
         # Clean up the install root
         if (os.path.exists(INSTALLROOT)):
             shutil.rmtree(INSTALLROOT)
-            
-        if (os.path.exists(FTPDIR)):
-            shutil.rmtree(FTPDIR)
+        
+        # Remove dummy release
+        if (os.path.exists(RELEASEROOT)):
+            shutil.rmtree(RELEASEROOT)
+        if (os.path.exists(CDROM_INF)):
+            os.unlink(CDROM_INF)
 
     def _cbBuild(self, result):
         # Verify that the release data was copied over
-        self.assert_(os.path.exists(os.path.join(self.destdir, 'arelease')))
+        self.assert_(os.path.exists(os.path.join(self.destdir, 'base', 'base.aa')))
 
         # Verify that the package installation script was copied and is 
         # executable
@@ -691,7 +705,7 @@ class ReleaseAssemblerTestCase(unittest.TestCase):
         self.assert_(not os.path.exists(os.path.join(self.destdir, 'local')))
 
     def test_build(self):
-        rib = builder.ReleaseAssembler('6.0', RELEASEROOT, PKGROOT)
+        rib = builder.ReleaseAssembler('6.2', RELEASEROOT, PKGROOT)
         d = rib.build(self.destdir, self.log)
         d.addCallback(self._cbBuild)
         return d
@@ -706,7 +720,7 @@ class ReleaseAssemblerTestCase(unittest.TestCase):
     def test_buildLocalData(self):
         # Copy in a regular file and a directory
         localData = [RELEASEROOT, INSTALL_CFG]
-        rib = builder.ReleaseAssembler('6.0', RELEASEROOT, PKGROOT, localData)
+        rib = builder.ReleaseAssembler('6.2', RELEASEROOT, PKGROOT, localData)
         d = rib.build(self.destdir, self.log)
         d.addCallback(self._cbBuildLocalData)
         return d
@@ -715,12 +729,12 @@ class NetInstallAssemblerTestCase(unittest.TestCase):
     def setUp(self):
         self.log = open(PROCESS_LOG, 'w+')
         self.installs = [builder.InstallAssembler('testinstall', 'Test Install', RELEASEROOT, INSTALL_CFG),]
-        self.releaseInstalls = [builder.ReleaseAssembler('6.0', RELEASEROOT, PKGROOT),]
+        self.releaseInstalls = [builder.ReleaseAssembler('6.2', RELEASEROOT, PKGROOT),]
         self.irb = builder.NetInstallAssembler(INSTALLROOT, self.releaseInstalls, self.installs)
         # Create dummy "release" to copy to netinstall directory
-        os.mkdir(FTPDIR)
-        f = open(os.path.join(FTPDIR, 'arelease'), 'w')
-        f.close()
+        reader = builder.ISOReader(ISO_MOUNTPOINT, RELEASEROOT)
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
+        reader.copy()
     
     def tearDown(self):
         self.log.close()
@@ -732,14 +746,17 @@ class NetInstallAssemblerTestCase(unittest.TestCase):
         # Clean up builder output
         if (os.path.exists(INSTALLROOT)):
             shutil.rmtree(INSTALLROOT)
-            
-        if (os.path.exists(FTPDIR)):
-            shutil.rmtree(FTPDIR)
+
+        # Remove dummy release
+        if (os.path.exists(RELEASEROOT)):
+            shutil.rmtree(RELEASEROOT)
+        if (os.path.exists(CDROM_INF)):
+            os.unlink(CDROM_INF)
 
     def _cbBuild(self, result):
         ## Verify Per-Release Data
         # Verify that the release data was copied over
-        self.assert_(os.path.exists(os.path.join(INSTALLROOT, '6.0', 'arelease')))
+        self.assert_(os.path.exists(os.path.join(INSTALLROOT, '6.2', 'base', 'base.aa')))
 
         tftproot = os.path.join(INSTALLROOT, 'tftproot')
 

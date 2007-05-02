@@ -91,6 +91,9 @@ RELEASE_FTP_PATH = 'R/ftp'
 # Release-relative path to the mfsroot directory
 RELEASE_MFSROOT_PATH = 'R/stage/mfsroot'
 
+# Release-relative path on ISO to directory containing kernel and mfsroot.gz
+ISO_BOOT_PATH = 'boot'
+
 # Default Root Environment
 ROOT_ENV = {
     'USER'      : 'root',
@@ -732,20 +735,33 @@ class ISOReader(object):
         if not os.path.exists(releaseDir):
             raise ISOReaderError, "Release %s specified in %s does not appear to be on the ISO mounted at %s" % (cdRelease, os.path.join(self.mountpoint, 'cdrom.inf'), self.mountpoint)
         
-        # Clean out any old directories in R/ftp directory if they exist
-        distDest = os.path.join(self.releaseroot, RELEASE_FTP_PATH)
-        if (os.path.isdir(distDest)):
-            try:
-                shutil.rmtree(distDest)
-            except shutil.Error, err:
-                raise ISOReaderError, "Error cleaning out old release in %s: %s" % (distDest, err)
+        # Clean out releaseroot
+        if (os.path.exists(self.releaseroot)):
+            shutil.rmtree(self.releaseroot)
+        #distDest = os.path.join(self.releaseroot, RELEASE_FTP_PATH)
+        #if (os.path.isdir(distDest)):
+        #    try:
+        #        shutil.rmtree(distDest)
+        #    except shutil.Error, err:
+        #        raise ISOReaderError, "Error cleaning out old release in %s: %s" % (distDest, err)
         
         try:
-            # Copy all dists from ISO to target
-            utils.copyRecursive(releaseDir, distDest)
-            # TODO copy kernels and mfsroot
+            # Copy all dists, the kernel, and mfsroot from ISO to directories 
+            # in self.releaseroot
+            utils.copyRecursive(releaseDir, os.path.join(self.releaseroot, RELEASE_FTP_PATH))
+            utils.copyRecursive(os.path.join(self.mountpoint, cdRelease, ISO_BOOT_PATH), os.path.join(self.releaseroot, RELEASE_BOOT_PATH))
         except utils.Error, err:
             raise ISOReaderError, "Error copying files from ISO mounted at %s to release at %s: %s" % (self.mountpoint, self.releaseroot, err)
+        
+        # Move mfsroot to expected location in releaseroot
+        mfssrc = os.path.join(self.releaseroot, RELEASE_BOOT_PATH, 'mfsroot.gz')
+        mfsdest = os.path.join(self.releaseroot, RELEASE_MFSROOT_PATH, 'mfsroot.gz')
+        try:
+            if (not os.path.isdir(os.path.dirname(mfsdest))):
+                os.makedirs(os.path.dirname(mfsdest))
+            shutil.move(mfssrc, mfsdest)
+        except Exception, e:
+            raise ISOReaderError, "Error moving mfsroot %s to %s: %s" % (mfssrc, mfsdest, e)
 
 class PackageChrootAssembler(object):
     """
