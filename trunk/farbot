@@ -359,8 +359,8 @@ class PackageBuildRunner(BuildRunner):
 
             # Clean out any existing package chroot
             if (os.path.exists(self.pkgroot)):
-                bctx = BuildContext("Cleaning out package chroot \"%s\"" % release.pkgroot, logPath)
-                eu = utils.ExecutionUnit(bctx, defer.execute, shutil.rmtree, release.pkgroot, ignore_errors=True)
+                pctx = BuildContext("Cleaning out package chroot \"%s\"" % release.pkgroot, logPath)
+                eu = utils.ExecutionUnit(pctx, defer.execute, shutil.rmtree, release.pkgroot, ignore_errors=True)
                 self.oe.appendExecutionUnit(eu)
                 
                 # Now if the chroot still exists, it is becuase there are 
@@ -374,6 +374,11 @@ class PackageBuildRunner(BuildRunner):
                     
                     eu = utils.ExecutionUnit(bctx, defer.execute, shutil.rmtree, release.pkgroot)
                     self.oe.appendExecutionUnit(eu)
+            
+            # Now create a new, empty package chroot
+            pctx = BuildContext("Creating package build chroot \"%s\"" % self.pkgroot, logPath)
+            eu = utils.ExecutionUnit(pctx, threads.deferToThread, os.mkdir, self.pkgroot)
+            self.oe.appendExecutionUnit(eu)
             
             # TODO: Don't hard code dists. Most ports should only need base and 
             # maybe some sources to build. On AMD64 we probably also need the lib32 
