@@ -631,13 +631,13 @@ class ChrootCleaner(object):
         """
         self.chroot = chroot
 
-    def _ebClean(self):
+    def _ebClean(self, failure):
         try:
             failure.raiseException()
         except ChflagsCommandError, e:
             raise ChrootCleanerError, "Error removing file flags in %s: %s" % (self.chroot, e)
         except Exception, e:
-            raise ChrootCleanerError, "Error cleaning %s: %s" (self.chroot, e)
+            raise ChrootCleanerError, "Error cleaning %s: %s" % (self.chroot, e)
         
     def clean(self, log):
         """
@@ -645,16 +645,10 @@ class ChrootCleaner(object):
         @param log: Open log file
         """
         if (os.path.exists(self.chroot)):
-            # On first pass we'll ignore errors in case there are files with flags set
-            d = threads.deferToThread(shutil.rmtree, self.chroot, ignore_errors=True)
-
-            # Now if the chroot still exists, it is becuase there are 
-            # files left over with schg flags set. Remove those flags, 
-            # then try wiping the directory again. This is what is 
-            # currently done in /usr/src/release/Makefile.
+            # Remove all flags on files in the chroot, then delete it all
             if os.path.exists(self.chroot):
                 cc = ChflagsCommand(self.chroot)
-                d.addCallback(lambda _: cc.removeAll(log))
+                d = cc.removeAll(log)
                 d.addCallback(lambda _: threads.deferToThread(shutil.rmtree, self.chroot))
         
             # Now create new empty directory
@@ -1186,7 +1180,7 @@ class NetInstallAssembler(object):
         # matter where we get it, really. However, there are some differences between
         # where releases store the generic kernel, so we try to impedence match.
         release = self.releaseAssemblers[0]
-        source = os.path.join(release.releaseroot, RELEASE_CD_PATH, 'boot')
+        source = os.path.join(release.cdroot, 'boot')
         dest = os.path.join(self.tftproot, os.path.basename(source))
 
         # Copy it

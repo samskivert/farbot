@@ -445,10 +445,20 @@ class ChrootCleanerTestCase(unittest.TestCase):
     
     def _dirCreated(self, result):
         self.assert_(os.path.isdir(RELEASEROOT))
+        self.assertEquals(len(os.listdir(RELEASEROOT)), 0)
     
     def test_cleanNonexistent(self):
         # Make sure we don't choke if the chroot doesn't already exist, and 
-        # that a new one gets created
+        # that a new empty one gets created
+        d = self.cleaner.clean(self.log)
+        d.addCallback(self._dirCreated)
+        return d
+    
+    def test_clean(self):
+        # Now try the same thing with a chroot that isn't empty
+        reader = builder.ISOReader(ISO_MOUNTPOINT, RELEASEROOT)
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
+        reader.copy()
         d = self.cleaner.clean(self.log)
         d.addCallback(self._dirCreated)
         return d
@@ -518,31 +528,26 @@ class ISOReaderTestCase(unittest.TestCase):
         if (os.path.exists(RELEASEROOT)):
             shutil.rmtree(RELEASEROOT)
     
-    # XXX this type of test should exist somewhere
-    #def test_wrongRelease(self):
-    #    rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.0-RELEASE'})
-    #    self.assertRaises(builder.ISOReaderError, self.reader.copy)
-    
     def test_copy(self):
         # Try copying the dists from the CD into the release root
         self.reader.copy()
         distdir = os.path.join(RELEASEROOT, builder.RELEASE_CD_PATH, '6.2-RELEASE')
+        bootdir = os.path.join(RELEASEROOT, builder.RELEASE_CD_PATH, 'boot')
         self.assert_(os.path.exists(os.path.join(distdir, 'base', 'base.aa')))
         self.assert_(os.path.exists(os.path.join(distdir, 'base', 'base.ab')))
         self.assert_(os.path.exists(os.path.join(distdir, 'base', 'base.ac')))
         self.assert_(os.path.exists(os.path.join(distdir, 'src', 'swtf.aa')))
         self.assert_(os.path.exists(os.path.join(distdir, 'src', 'swtf.ab')))
         self.assert_(os.path.exists(os.path.join(distdir, 'src', 'szomg.aa')))
-        self.assert_(os.path.exists(os.path.join(distdir, 'src', 'szomg.ab')))        
+        self.assert_(os.path.exists(os.path.join(distdir, 'src', 'szomg.ab')))
+        self.assert_(os.path.exists(os.path.join(bootdir, 'mfsroot.gz')))
+        self.assert_(os.path.exists(os.path.join(bootdir, 'kernel', 'kernel')))
 
 class PackageChrootAssemblerTestCase(unittest.TestCase):
     def setUp(self):
-        # Create dummy "release" containing the binaries in R/cdrom/disc1/6.2-RELEASE
-        reader = builder.ISOReader(ISO_MOUNTPOINT, RELEASEROOT)
-        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
-        reader.copy()
         self.assembler = builder.PackageChrootAssembler(RELEASEROOT, PKGROOT)
         self.log = open(PROCESS_LOG, 'w+')
+        self.dists = {'base' : ['base'], 'src' : ['szomg', 'swtf']}
     
     def tearDown(self):
         self.log.close()
@@ -554,20 +559,24 @@ class PackageChrootAssemblerTestCase(unittest.TestCase):
             shutil.rmtree(PKGROOT)
         if (os.path.exists(RELEASEROOT)):
             shutil.rmtree(RELEASEROOT)
+        if (os.path.exists(CDROM_INF)):
+            os.unlink(CDROM_INF)
     
     def _extractResult(self, result):
-        self.assertEquals(result, [(True, 0), (True, 0), (True, 0)])
+        self.assertEquals(result, [(True, None), (True, 0), (True, 0), (True, 0)])
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'src', 'wtf.c')))
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'src', 'zomg.c')))
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'bin', 'foo.sh')))
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'bin', 'bar.sh')))
 
-    #def test_extract(self):
-    #    # Try actually extracting a fake base dist into the chroot.
-    #    dists = {'base' : ['base'], 'src' : ['szomg', 'swtf']}
-    #    d = self.assembler.extract(dists, self.log)
-    #    d.addCallback(self._extractResult)
-    #    return d
+    def test_extract(self):
+        # Try actually extracting a fake base dist into the chroot.
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
+        reader = builder.ISOReader(ISO_MOUNTPOINT, RELEASEROOT)
+        reader.copy()
+        d = self.assembler.extract(self.dists, self.log)
+        d.addCallback(self._extractResult)
+        return d
 
 class PackageBuilderTestCase(unittest.TestCase):
     def setUp(self):
@@ -728,7 +737,7 @@ class ReleaseAssemblerTestCase(unittest.TestCase):
         self.assert_(os.path.exists(os.path.join(self.destdir, 'local', os.path.basename(INSTALL_CFG))))
 
         # Verify that the localdata directory was copied
-        self.assert_(os.path.exists(os.path.join(self.destdir, 'local', os.path.basename(RELEASEROOT), 'R', 'ftp', 'arelease')))
+        self.assert_(os.path.exists(os.path.join(self.destdir, 'local', RELEASEROOT, builder.RELEASE_CD_PATH, '6.2-RELEASE', 'base', 'base.aa')))
 
     def test_buildLocalData(self):
         # Copy in a regular file and a directory
