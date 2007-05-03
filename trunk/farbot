@@ -265,7 +265,7 @@ class ReleaseBuildRunner(BuildRunner):
                 # Copy distribution sets to release directory
                 isoReader = builder.ISOReader(mountpoint, release.releaseroot)
                 bctx = BuildContext("%s release copying to %s" % (release.getSectionName(), release.releaseroot), logPath)
-                eu = utils.ExecutionUnit(bctx, isoReader.copy)
+                eu = utils.ExecutionUnit(bctx, isoReader.copy, buildLog)
                 self.oe.appendExecutionUnit(eu)
             
             else:
@@ -356,13 +356,6 @@ class PackageBuildRunner(BuildRunner):
             logPath = os.path.join(release.buildroot, 'packaging.log')
             buildLog = open(logPath, 'w', 0)
             self.logs.append(buildLog)
-
-            
-            
-            # Now create a new, empty package chroot
-            pctx = BuildContext("Creating package build chroot \"%s\"" % self.pkgroot, logPath)
-            eu = utils.ExecutionUnit(pctx, threads.deferToThread, os.mkdir, self.pkgroot)
-            self.oe.appendExecutionUnit(eu)
             
             # TODO: Don't hard code dists. Most ports should only need base and 
             # maybe some sources to build. On AMD64 we probably also need the lib32 

@@ -701,24 +701,30 @@ class ISOReader(object):
             contents of the ISO are copied to RELEASE_CD_PATH in this directory
         """
         self.mountpoint = mountpoint
-        self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
+        self.releaseroot = releaseroot
+        self.cdroot = os.path.join(self.releaseroot, RELEASE_CD_PATH)
     
-    def copy(self):
-        """
-        Copy release from ISO to target directory.
-        """
-        # XXX Let's use ChrootCleaner to just nuke the entire releaseroot 
-        # directory
-        if (os.path.exists(self.cdroot)):
-            try:
-                shutil.rmtree(self.cdroot)
-            except Exception, e:
-                raise ISOReaderError, "Error cleaning old CD directory %s: %s" % (self.cdroot, e)
-        
+    def _ebCopy(self, failure):
         try:
-            utils.copyRecursive(self.mountpoint, self.cdroot)
+            failure.raiseException()
+        except ChrootCleanerError, e:
+            raise ISOReaderError, "Error cleaning chroot %s: %s" % (self.releaseroot, e)
         except utils.Error, e:
             raise ISOReaderError, "Error copying contents of ISO at %s to %s: %s" % (self.mountpoint, self.cdroot, e)
+    
+    def copy(self, log):
+        """
+        Copy release from ISO to target directory.
+        @param log: Open log file
+        """
+        # Clean out release
+        cc = ChrootCleaner(self.releaseroot)
+        d = cc.clean(log)
+
+        # Now do the copy
+        d.addCallback(lambda _: threads.deferToThread(utils.copyRecursive, self.mountpoint, self.cdroot))
+        d.addErrback(self._ebCopy)
+        return d
 
 class PackageChrootAssembler(object):
     """
