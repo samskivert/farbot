@@ -357,23 +357,7 @@ class PackageBuildRunner(BuildRunner):
             buildLog = open(logPath, 'w', 0)
             self.logs.append(buildLog)
 
-            # Clean out any existing package chroot
-            if (os.path.exists(self.pkgroot)):
-                pctx = BuildContext("Cleaning out package chroot \"%s\"" % release.pkgroot, logPath)
-                eu = utils.ExecutionUnit(pctx, defer.execute, shutil.rmtree, release.pkgroot, ignore_errors=True)
-                self.oe.appendExecutionUnit(eu)
-                
-                # Now if the chroot still exists, it is becuase there are 
-                # files left over with schg flags set. Remove those flags, 
-                # then try wiping the directory again. This is what is 
-                # currently done in /usr/src/release/Makefile.
-                if os.path.exists(release.pkgroot):
-                    cc = builder.ChflagsCommand(release.pkgroot)
-                    eu = utils.ExecutionUnit(bctx, cc.removeAll, buildLog)
-                    self.oe.appendExecutionUnit(eu)
-                    
-                    eu = utils.ExecutionUnit(bctx, defer.execute, shutil.rmtree, release.pkgroot)
-                    self.oe.appendExecutionUnit(eu)
+            
             
             # Now create a new, empty package chroot
             pctx = BuildContext("Creating package build chroot \"%s\"" % self.pkgroot, logPath)
@@ -391,7 +375,7 @@ class PackageBuildRunner(BuildRunner):
             # Populate a new package chroot from the release binaries we built
             # or extracted from an ISO.
             pctx = BuildContext("Extracting release binaries to \"%s\"" % (release.pkgroot), logPath)
-            assembler = builder.PackageChrootAssembler(os.path.join(release.releaseroot, builder.RELEASE_FTP_PATH), release.pkgroot)
+            assembler = builder.PackageChrootAssembler(release.releaseroot, release.pkgroot)
             eu = utils.ExecutionUnit(pctx, assembler.extract, dists, buildLog)
             self.oe.appendExecutionUnit(eu)
 
