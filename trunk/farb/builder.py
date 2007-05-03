@@ -55,9 +55,6 @@ MOUNT_PATH = '/sbin/mount'
 # umount(8) path
 UMOUNT_PATH = '/sbin/umount'
 
-# pkg_delete(1) path
-PKG_DELETE_PATH = '/usr/sbin/pkg_delete'
-
 # portsnap(8) path
 PORTSNAP_PATH = '/usr/sbin/portsnap'
 
