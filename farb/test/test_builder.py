@@ -35,7 +35,7 @@ from twisted.trial import unittest
 from twisted.internet import reactor, defer
 
 import farb
-from farb import builder
+from farb import builder, utils
 
 # Useful Constants
 from farb.test import DATA_DIR, CMD_DIR, rewrite_config
@@ -421,6 +421,8 @@ class ChrootCleanerTestCase(unittest.TestCase):
             os.unlink(PROCESS_LOG)
         if (os.path.exists(RELEASEROOT)):
             shutil.rmtree(RELEASEROOT)
+        if (os.path.exists(CDROM_INF)):
+            os.unlink(CDROM_INF)
     
     def _dirCreated(self, result):
         self.assert_(os.path.isdir(RELEASEROOT))
@@ -435,9 +437,8 @@ class ChrootCleanerTestCase(unittest.TestCase):
     
     def test_clean(self):
         # Now try the same thing with a chroot that isn't empty
-        reader = builder.ISOReader(ISO_MOUNTPOINT, RELEASEROOT)
         rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
-        reader.copy()
+        utils.copyRecursive(ISO_MOUNTPOINT, os.path.join(RELEASEROOT, builder.RELEASE_CD_PATH))
         d = self.cleaner.clean(self.log)
         d.addCallback(self._dirCreated)
         return d
@@ -507,9 +508,7 @@ class ISOReaderTestCase(unittest.TestCase):
         if (os.path.exists(RELEASEROOT)):
             shutil.rmtree(RELEASEROOT)
     
-    def test_copy(self):
-        # Try copying the dists from the CD into the release root
-        self.reader.copy()
+    def _copyResult(self, result):
         distdir = os.path.join(RELEASEROOT, builder.RELEASE_CD_PATH, '6.2-RELEASE')
         bootdir = os.path.join(RELEASEROOT, builder.RELEASE_CD_PATH, 'boot')
         self.assert_(os.path.exists(os.path.join(distdir, 'base', 'base.aa')))
@@ -521,12 +520,21 @@ class ISOReaderTestCase(unittest.TestCase):
         self.assert_(os.path.exists(os.path.join(distdir, 'src', 'szomg.ab')))
         self.assert_(os.path.exists(os.path.join(bootdir, 'mfsroot.gz')))
         self.assert_(os.path.exists(os.path.join(bootdir, 'kernel', 'kernel')))
+    
+    def test_copy(self):
+        # Try copying the dists from the CD into the release root
+        d = self.reader.copy(self.log)
+        d.addCallback(self._copyResult)
+        return d
 
 class PackageChrootAssemblerTestCase(unittest.TestCase):
     def setUp(self):
         self.assembler = builder.PackageChrootAssembler(RELEASEROOT, PKGROOT)
         self.log = open(PROCESS_LOG, 'w+')
         self.dists = {'base' : ['base'], 'src' : ['szomg', 'swtf']}
+        # Copy in a release to RELEASEROOT
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
+        utils.copyRecursive(ISO_MOUNTPOINT, os.path.join(RELEASEROOT, builder.RELEASE_CD_PATH))
     
     def tearDown(self):
         self.log.close()
@@ -550,9 +558,6 @@ class PackageChrootAssemblerTestCase(unittest.TestCase):
 
     def test_extract(self):
         # Try actually extracting a fake base dist into the chroot.
-        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
-        reader = builder.ISOReader(ISO_MOUNTPOINT, RELEASEROOT)
-        reader.copy()
         d = self.assembler.extract(self.dists, self.log)
         d.addCallback(self._extractResult)
         return d
@@ -610,9 +615,8 @@ class InstallAssemblerTestCase(unittest.TestCase):
         os.mkdir(self.destdir)
         
         # Create dummy "release" containing the kernel and mfsroot needed
-        reader = builder.ISOReader(ISO_MOUNTPOINT, RELEASEROOT)
         rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
-        reader.copy()
+        utils.copyRecursive(ISO_MOUNTPOINT, os.path.join(RELEASEROOT, builder.RELEASE_CD_PATH))
 
     def tearDown(self):
         self.log.close()
@@ -672,9 +676,8 @@ class ReleaseAssemblerTestCase(unittest.TestCase):
         self.log = open(PROCESS_LOG, 'w+')
         self.destdir = os.path.join(INSTALLROOT, 'buildtest')
         # Create dummy "release"
-        reader = builder.ISOReader(ISO_MOUNTPOINT, RELEASEROOT)
         rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
-        reader.copy()
+        utils.copyRecursive(ISO_MOUNTPOINT, os.path.join(RELEASEROOT, builder.RELEASE_CD_PATH))
 
     def tearDown(self):
         self.log.close()
@@ -733,9 +736,8 @@ class NetInstallAssemblerTestCase(unittest.TestCase):
         self.releaseInstalls = [builder.ReleaseAssembler('6.2', RELEASEROOT, PKGROOT),]
         self.irb = builder.NetInstallAssembler(INSTALLROOT, self.releaseInstalls, self.installs)
         # Create dummy "release" to copy to netinstall directory
-        reader = builder.ISOReader(ISO_MOUNTPOINT, RELEASEROOT)
         rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
-        reader.copy()
+        utils.copyRecursive(ISO_MOUNTPOINT, os.path.join(RELEASEROOT, builder.RELEASE_CD_PATH))
     
     def tearDown(self):
         self.log.close()
