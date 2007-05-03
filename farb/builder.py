@@ -76,23 +76,11 @@ FREEBSD_PORTS_PATH = '/usr/ports'
 # Relative path of newvers.sh file in the FreeBSD CVS repository
 NEWVERS_PATH = 'src/sys/conf/newvers.sh'
 
-# Release-relative path to the boot directory
-RELEASE_BOOT_PATH = 'R/stage/trees/base/boot'
+# Release root-relative path to the contents of the first install CD
+RELEASE_CD_PATH = 'R/cdrom/disc1'
 
-# Release-relative path to the package directory
+# Package chroot-relative path to the package directory
 RELEASE_PACKAGE_PATH = 'usr/ports/packages'
-
-# Release-relative path to the generic kernel directory (6.1+ only)
-RELEASE_GENERIC_KERNEL_PATH = 'R/stage/kernels/GENERIC'
-
-# Release-relative path to the ftp installation data directory
-RELEASE_FTP_PATH = 'R/ftp'
-
-# Release-relative path to the mfsroot directory
-RELEASE_MFSROOT_PATH = 'R/stage/mfsroot'
-
-# Release-relative path on ISO to directory containing kernel and mfsroot.gz
-ISO_BOOT_PATH = 'boot'
 
 # Default Root Environment
 ROOT_ENV = {
@@ -151,6 +139,12 @@ class ReleaseAssembleError(farb.FarbError):
     pass
 
 class NetInstallAssembleError(farb.FarbError):
+    pass
+
+class CDReleaseError(farb.FarbError):
+    pass
+
+class ChrootCleanerError(farb.FarbError):
     pass
 
 class LoggingProcessProtocol(protocol.ProcessProtocol):
@@ -625,6 +619,54 @@ class ChflagsCommand(object):
         
         return d
 
+class ChrootCleaner(object):
+    """
+    Delete a chroot directory completely, then create a new empty directory in 
+    its place
+    """
+    def __init__(self, chroot):
+        """
+        Create a new ChrootCleaner
+        @param chroot Directory that needs to be wiped out
+        """
+        self.chroot = chroot
+
+    def _ebClean(self):
+        try:
+            failure.raiseException()
+        except ChflagsCommandError, e:
+            raise ChrootCleanerError, "Error removing file flags in %s: %s" % (self.chroot, e)
+        except Exception, e:
+            raise ChrootCleanerError, "Error cleaning %s: %s" (self.chroot, e)
+        
+    def clean(self, log):
+        """
+        Recursively remove all files from self.chroot
+        @param log: Open log file
+        """
+        if (os.path.exists(self.chroot)):
+            # On first pass we'll ignore errors in case there are files with flags set
+            d = threads.deferToThread(shutil.rmtree, self.chroot, ignore_errors=True)
+
+            # Now if the chroot still exists, it is becuase there are 
+            # files left over with schg flags set. Remove those flags, 
+            # then try wiping the directory again. This is what is 
+            # currently done in /usr/src/release/Makefile.
+            if os.path.exists(self.chroot):
+                cc = ChflagsCommand(self.chroot)
+                d.addCallback(lambda _: cc.removeAll(log))
+                d.addCallback(lambda _: threads.deferToThread(shutil.rmtree, self.chroot))
+        
+            # Now create new empty directory
+            d.addCallback(lambda _: os.mkdir(self.chroot))
+        
+        # If the chroot isn't there, all we need to do is create it
+        else:
+            d = threads.deferToThread(os.mkdir, self.chroot)
+
+        d.addErrback(self._ebClean)
+        return d
+
 class ReleaseBuilder(object):
     makeTarget = ('release',)
     defaultMakeOptions = {
@@ -691,89 +733,45 @@ class ReleaseBuilder(object):
 
 class ISOReader(object):
     """
-    Copy a binary FreeBSD release from a mounted CD image into a build chroot. 
-    NB: this makes some assumptions about how FreeBSD install CDs are laid out, 
-    and what distribution sets are available on them. It may not work with 
-    FreeBSD releases older than 5.5 or newer than 6.2.
-    """    
+    Copy a binary FreeBSD release from a mounted CD image into a build chroot's
+        RELEASE_CD_PATH. 
+    """
     def __init__(self, mountpoint, releaseroot):
         """
-        Create a new ISOExtractor instance
+        Create a new ISOReader instance
         @param mountpoint: Mount point of FreeBSD install ISO
-        @param releaseroot Release directory to copy the release to. The dists   
-            all go to releaseroot/RELEASE_FTP_PATH.
+        @param releaseroot Release directory to copy the release to. The full 
+            contents of the ISO are copied to RELEASE_CD_PATH in this directory
         """
         self.mountpoint = mountpoint
-        self.releaseroot = releaseroot
-    
-    def _getCDRelease(self):
-        # Get the release name from the ISO's cdrom.inf file
-        infFile = os.path.join(self.mountpoint, 'cdrom.inf')
-        if not os.path.exists(infFile):
-            raise ISOReaderError, "No cdrom.inf file on ISO mounted at %s. Is this a CD image for FreeBSD >= 2.1.5?" % (self.mountpoint)
-
-        # First line in cdrom.inf should look like: CD_VERSION = x.y-RELEASE
-        fileObj = open(infFile, 'r')
-        line = fileObj.readline()
-        fileObj.close()
-        
-        line = line.strip()
-        splitString = line.split(' = ')
-        if (len(splitString) != 2 or splitString[0] != 'CD_VERSION'):
-            raise ISOReaderError, "cdrom.inf file on ISO mounted at %s has unrecognized first line: %s" % (self.mountpoint, line)
-        
-        return splitString[1]
+        self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
     
     def copy(self):
         """
         Copy release from ISO to target directory.
         """
-        cdRelease = self._getCDRelease()
-        # Make sure the release we got from cdrom.inf matches the release on
-        # the ISO.
-        releaseDir = os.path.join(self.mountpoint, cdRelease)
-        if not os.path.exists(releaseDir):
-            raise ISOReaderError, "Release %s specified in %s does not appear to be on the ISO mounted at %s" % (cdRelease, os.path.join(self.mountpoint, 'cdrom.inf'), self.mountpoint)
-        
-        # Clean out releaseroot
-        if (os.path.exists(self.releaseroot)):
-            shutil.rmtree(self.releaseroot)
-        #distDest = os.path.join(self.releaseroot, RELEASE_FTP_PATH)
-        #if (os.path.isdir(distDest)):
-        #    try:
-        #        shutil.rmtree(distDest)
-        #    except shutil.Error, err:
-        #        raise ISOReaderError, "Error cleaning out old release in %s: %s" % (distDest, err)
+        if (os.path.exists(self.cdroot)):
+            try:
+                shutil.rmtree(self.cdroot)
+            except Exception, e:
+                raise ISOReaderError, "Error cleaning old CD directory %s: %s" % (self.cdroot, e)
         
         try:
-            # Copy all dists, the kernel, and mfsroot from ISO to directories 
-            # in self.releaseroot
-            utils.copyRecursive(releaseDir, os.path.join(self.releaseroot, RELEASE_FTP_PATH))
-            utils.copyRecursive(os.path.join(self.mountpoint, cdRelease, ISO_BOOT_PATH), os.path.join(self.releaseroot, RELEASE_BOOT_PATH))
-        except utils.Error, err:
-            raise ISOReaderError, "Error copying files from ISO mounted at %s to release at %s: %s" % (self.mountpoint, self.releaseroot, err)
-        
-        # Move mfsroot to expected location in releaseroot
-        mfssrc = os.path.join(self.releaseroot, RELEASE_BOOT_PATH, 'mfsroot.gz')
-        mfsdest = os.path.join(self.releaseroot, RELEASE_MFSROOT_PATH, 'mfsroot.gz')
-        try:
-            if (not os.path.isdir(os.path.dirname(mfsdest))):
-                os.makedirs(os.path.dirname(mfsdest))
-            shutil.move(mfssrc, mfsdest)
-        except Exception, e:
-            raise ISOReaderError, "Error moving mfsroot %s to %s: %s" % (mfssrc, mfsdest, e)
+            utils.copyRecursive(self.mountpoint, self.cdroot)
+        except utils.Error, e:
+            raise ISOReaderError, "Error copying contents of ISO at %s to %s: %s" % (self.mountpoint, self.cdroot, e)
 
 class PackageChrootAssembler(object):
     """
     Extract release binaries into a chroot in which packages can be built.
     """
-    def __init__(self, releasedir, chroot):
+    def __init__(self, releaseroot, chroot):
         """
         Create a new PackageChrootAssembler instance
-        @param releasedir: Directory that contains the archived release
+        @param releaseroot: Directory that contains built release in R/
         @param chroot: Chroot directory to install to
         """
-        self.releasedir = releasedir
+        self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
         self.chroot = chroot
     
     def _ebExtractError(self, failure):
@@ -817,10 +815,14 @@ class PackageChrootAssembler(object):
             containing the same string as the key.
         @param log: Open log file
         """
-        # Extract each dist in the chroot
         deferreds = []
+        # Clean out chroot
+        cc = ChrootCleaner(self.chroot)
+        deferreds.append(cc.clean(log))
+        
+        # Extract each dist in the chroot
         for key in dists.iterkeys():
-            distdir = os.path.join(self.releasedir, key)
+            distdir = os.path.join(self.cdroot, os.path.join(self.cdroot, _getCDRelease(self.cdroot)), key)
             for distname in dists[key]:
                 # Just to make things difficult, not all dists extract relative 
                 # to /. The source distribution sets, for instance, should be 
@@ -911,14 +913,11 @@ class InstallAssembler(object):
         #
         
         # Contains shared release boot files
-        self.bootRoot = os.path.join(self.releaseroot, RELEASE_BOOT_PATH)
+        self.bootRoot = os.path.join(self.releaseroot, RELEASE_CD_PATH, 'boot')
         # Shared release mfsroot
-        self.mfsCompressed = os.path.join(self.releaseroot, RELEASE_MFSROOT_PATH, 'mfsroot.gz')
-        # Pre-6.0 releases store the kernel in the RELEASE_BOOT_PATH
-        # Post-6.0 releases store it in RELEASE_GENERIC_KERNEL_PATH
+        self.mfsCompressed = os.path.join(self.bootRoot, 'mfsroot.gz')
+        # Directory containing generic kernel and its modules
         self.kernel = os.path.join(self.bootRoot, 'kernel')
-        if (not os.path.exists(os.path.join(self.kernel, 'kernel'))):
-            self.kernel = os.path.join(self.releaseroot, RELEASE_GENERIC_KERNEL_PATH)
 
     def _ebInstallError(self, failure):
         try:
@@ -1040,7 +1039,7 @@ class ReleaseAssembler(object):
         @param localData: List of file and directory paths to copy to installRoot/local.
         """
         self.name = name
-        self.releaseroot = releaseroot
+        self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
         self.pkgroot = pkgroot
         self.localData = localData
 
@@ -1068,7 +1067,7 @@ class ReleaseAssembler(object):
         @param log: Open log file.
         """
         # Copy the installation data
-        d = threads.deferToThread(utils.copyRecursive, os.path.join(self.releaseroot, RELEASE_FTP_PATH), destdir, symlinks=True)
+        d = threads.deferToThread(utils.copyRecursive, os.path.join(self.cdroot, _getCDRelease(self.cdroot)), destdir, symlinks=True)
 
         # If there are packages, copy those too
         packagedir = os.path.join(self.pkgroot, RELEASE_PACKAGE_PATH)
@@ -1187,18 +1186,11 @@ class NetInstallAssembler(object):
         # matter where we get it, really. However, there are some differences between
         # where releases store the generic kernel, so we try to impedence match.
         release = self.releaseAssemblers[0]
-        source = os.path.join(release.releaseroot, RELEASE_BOOT_PATH)
+        source = os.path.join(release.releaseroot, RELEASE_CD_PATH, 'boot')
         dest = os.path.join(self.tftproot, os.path.basename(source))
 
         # Copy it
         d = threads.deferToThread(utils.copyRecursive, source, dest, symlinks=True)
-
-        # Pre-6.0 releases store the kernel in the RELEASE_BOOT_PATH -- it will be
-        # copied in with the boot/ directory.
-        # Post-6.0 releases store it in RELEASE_GENERIC_KERNEL_PATH.
-        if (not os.path.exists(os.path.join(source, 'kernel', 'kernel'))):
-            kernelFile = os.path.join(release.releaseroot, RELEASE_GENERIC_KERNEL_PATH, 'kernel')
-            d.addCallback(lambda _: threads.deferToThread(utils.copyWithOwnership, kernelFile, os.path.join(dest, 'kernel')))
 
         # Configure it
         d.addCallback(lambda _: threads.deferToThread(self._doConfigureBootLoader, dest))
@@ -1222,3 +1214,21 @@ class NetInstallAssembler(object):
         d.addErrback(self._ebBuild)
 
         return d
+
+def _getCDRelease(cdroot):
+    # Get the release name from the cdrom.inf file in cdroot
+    infFile = os.path.join(cdroot, 'cdrom.inf')
+    if not os.path.exists(infFile):
+        raise CDReleaseError, "No cdrom.inf file in %s. Is this a disc 1 root directory for FreeBSD >= 2.1.5?" % (cdroot)
+
+    # First line in cdrom.inf should look like: CD_VERSION = x.y-RELEASE
+    fileObj = open(infFile, 'r')
+    line = fileObj.readline()
+    fileObj.close()
+
+    line = line.strip()
+    splitString = line.split(' = ')
+    if (len(splitString) != 2 or splitString[0] != 'CD_VERSION'):
+        raise CDReleaseError, "cdrom.inf file in %s has unrecognized first line: %s" % (cdroot, line)
+
+    return splitString[1]

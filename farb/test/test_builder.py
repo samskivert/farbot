@@ -431,6 +431,28 @@ class MDConfigCommandTestCase(unittest.TestCase):
         d.addCallback(self._cbAttachDetachResult)
         return d
 
+class ChrootCleanerTestCase(unittest.TestCase):
+    def setUp(self):
+        self.log = open(PROCESS_LOG, 'w+')
+        self.cleaner = builder.ChrootCleaner(RELEASEROOT)
+    
+    def tearDown(self):
+        self.log.close()
+        if (os.path.exists(PROCESS_LOG)):
+            os.unlink(PROCESS_LOG)
+        if (os.path.exists(RELEASEROOT)):
+            shutil.rmtree(RELEASEROOT)
+    
+    def _dirCreated(self, result):
+        self.assert_(os.path.isdir(RELEASEROOT))
+    
+    def test_cleanNonexistent(self):
+        # Make sure we don't choke if the chroot doesn't already exist, and 
+        # that a new one gets created
+        d = self.cleaner.clean(self.log)
+        d.addCallback(self._dirCreated)
+        return d
+
 class ReleaseBuilderTestCase(unittest.TestCase):
     def setUp(self):
         self.builder = builder.ReleaseBuilder(CVSROOT, CVSTAG, RELEASEROOT, makecds=True)
@@ -496,41 +518,30 @@ class ISOReaderTestCase(unittest.TestCase):
         if (os.path.exists(RELEASEROOT)):
             shutil.rmtree(RELEASEROOT)
     
-    def test_getCDRelease(self):
-        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
-        self.assertEquals(self.reader._getCDRelease(), '6.2-RELEASE')
-    
-    def test_badCDInf(self):
-        # Make sure we have an exception when CD_VERSION line looks wrong
-        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'hi I am a CD!'})
-        self.assertRaises(builder.ISOReaderError, self.reader._getCDRelease)
-    
-    def test_missingCDInf(self):
-        # Also make sure we get an exception also when there is no cdrom.inf
-        self.assertRaises(builder.ISOReaderError, self.reader._getCDRelease)
-    
-    def test_wrongRelease(self):
-        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.0-RELEASE'})
-        self.assertRaises(builder.ISOReaderError, self.reader.copy)
+    # XXX this type of test should exist somewhere
+    #def test_wrongRelease(self):
+    #    rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.0-RELEASE'})
+    #    self.assertRaises(builder.ISOReaderError, self.reader.copy)
     
     def test_copy(self):
-        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
         # Try copying the dists from the CD into the release root
         self.reader.copy()
-        ftpdir = os.path.join(RELEASEROOT, builder.RELEASE_FTP_PATH)
-        self.assert_(os.path.exists(os.path.join(ftpdir, 'base', 'base.aa')))
-        self.assert_(os.path.exists(os.path.join(ftpdir, 'base', 'base.ab')))
-        self.assert_(os.path.exists(os.path.join(ftpdir, 'base', 'base.ac')))
-        self.assert_(os.path.exists(os.path.join(ftpdir, 'src', 'swtf.aa')))
-        self.assert_(os.path.exists(os.path.join(ftpdir, 'src', 'swtf.ab')))
-        self.assert_(os.path.exists(os.path.join(ftpdir, 'src', 'szomg.aa')))
-        self.assert_(os.path.exists(os.path.join(ftpdir, 'src', 'szomg.ab')))        
+        distdir = os.path.join(RELEASEROOT, builder.RELEASE_CD_PATH, '6.2-RELEASE')
+        self.assert_(os.path.exists(os.path.join(distdir, 'base', 'base.aa')))
+        self.assert_(os.path.exists(os.path.join(distdir, 'base', 'base.ab')))
+        self.assert_(os.path.exists(os.path.join(distdir, 'base', 'base.ac')))
+        self.assert_(os.path.exists(os.path.join(distdir, 'src', 'swtf.aa')))
+        self.assert_(os.path.exists(os.path.join(distdir, 'src', 'swtf.ab')))
+        self.assert_(os.path.exists(os.path.join(distdir, 'src', 'szomg.aa')))
+        self.assert_(os.path.exists(os.path.join(distdir, 'src', 'szomg.ab')))        
 
 class PackageChrootAssemblerTestCase(unittest.TestCase):
     def setUp(self):
-        # For the sake of testing, we'll extract the dists straight off of the 
-        # "ISO" rather than from releaseroot/R/ftp
-        self.assembler = builder.PackageChrootAssembler(os.path.join(ISO_MOUNTPOINT, '6.2-RELEASE'), PKGROOT)
+        # Create dummy "release" containing the binaries in R/cdrom/disc1/6.2-RELEASE
+        reader = builder.ISOReader(ISO_MOUNTPOINT, RELEASEROOT)
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
+        reader.copy()
+        self.assembler = builder.PackageChrootAssembler(RELEASEROOT, PKGROOT)
         self.log = open(PROCESS_LOG, 'w+')
     
     def tearDown(self):
@@ -541,6 +552,8 @@ class PackageChrootAssemblerTestCase(unittest.TestCase):
             os.unlink(PROCESS_OUT)
         if (os.path.exists(PKGROOT)):
             shutil.rmtree(PKGROOT)
+        if (os.path.exists(RELEASEROOT)):
+            shutil.rmtree(RELEASEROOT)
     
     def _extractResult(self, result):
         self.assertEquals(result, [(True, 0), (True, 0), (True, 0)])
@@ -549,12 +562,12 @@ class PackageChrootAssemblerTestCase(unittest.TestCase):
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'bin', 'foo.sh')))
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'bin', 'bar.sh')))
 
-    def test_extract(self):
-        # Try actually extracting a fake base dist into the chroot.
-        dists = {'base' : ['base'], 'src' : ['szomg', 'swtf']}
-        d = self.assembler.extract(dists, self.log)
-        d.addCallback(self._extractResult)
-        return d
+    #def test_extract(self):
+    #    # Try actually extracting a fake base dist into the chroot.
+    #    dists = {'base' : ['base'], 'src' : ['szomg', 'swtf']}
+    #    d = self.assembler.extract(dists, self.log)
+    #    d.addCallback(self._extractResult)
+    #    return d
 
 class PackageBuilderTestCase(unittest.TestCase):
     def setUp(self):
@@ -782,3 +795,21 @@ class NetInstallAssemblerTestCase(unittest.TestCase):
         d = self.irb.build(self.log)
         d.addCallback(self._cbBuild)
         return d
+
+class GetCDReleaseTestCase(unittest.TestCase):
+    def tearDown(self):
+        if (os.path.exists(CDROM_INF)):
+            os.unlink(CDROM_INF)
+    
+    def test_getCDRelease(self):
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
+        self.assertEquals(builder._getCDRelease(os.path.dirname(CDROM_INF)), '6.2-RELEASE')
+    
+    def test_badCDInf(self):
+        # Make sure we have an exception when CD_VERSION line looks wrong
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'hi I am a CD!'})
+        self.assertRaises(builder.CDReleaseError, builder._getCDRelease, os.path.dirname(CDROM_INF))
+    
+    def test_missingCDInf(self):
+        # Also make sure we get an exception also when there is no cdrom.inf
+        self.assertRaises(builder.CDReleaseError, builder._getCDRelease, os.path.dirname(CDROM_INF))
