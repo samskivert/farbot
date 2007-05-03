@@ -111,9 +111,6 @@ class MDConfigCommandError(CommandError):
 class MakeCommandError(CommandError):
     pass
 
-class PkgDeleteCommandError(CommandError):
-    pass
-
 class PortsnapCommandError(CommandError):
     pass
 
@@ -521,37 +518,6 @@ class MakeCommand(object):
         reactor.spawnProcess(protocol, runCmd, args=argv, env=ROOT_ENV)
 
         return d
-        
-class PkgDeleteCommand(object):
-    """
-    pkg_delete(1) command context
-    """
-    def __init__(self, chrootdir):
-        """
-        Create a new PkgDeleteCommand instance
-        @param chrootdir: Chroot directory to run pkg_delete in
-        """
-        self.chrootdir = chrootdir
-    
-    def _ebPkgDelete(self, failure):
-        # Provide more specific exception type
-        failure.trap(CommandError)
-        raise PkgDeleteCommandError, failure.value
-    
-    def deleteAll(self, log):
-        """
-        Run pkg_delete -a to remove all packages in this 
-        PkgDeleteCommand's chroot
-        @param log: Open log file
-        """
-        d = defer.Deferred()
-        d.addErrback(self._ebPkgDelete)
-        protocol = LoggingProcessProtocol(d, log)
-        # Create command argv and run it.
-        argv = [CHROOT_PATH, self.chrootdir, PKG_DELETE_PATH, '-a']
-        reactor.spawnProcess(protocol, CHROOT_PATH, args=argv, env=ROOT_ENV)
-        
-        return d
 
 class PortsnapCommand(object):
     """
@@ -744,6 +710,8 @@ class ISOReader(object):
         """
         Copy release from ISO to target directory.
         """
+        # XXX Let's use ChrootCleaner to just nuke the entire releaseroot 
+        # directory
         if (os.path.exists(self.cdroot)):
             try:
                 shutil.rmtree(self.cdroot)

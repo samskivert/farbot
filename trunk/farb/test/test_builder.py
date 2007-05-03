@@ -288,25 +288,6 @@ class MakeCommandTestCase(unittest.TestCase):
         d.addCallback(self._makeChrootResult)
         return d
 
-class PkgDeleteCommandTestCase(unittest.TestCase):
-	def setUp(self):
-	    self.log = open(PROCESS_LOG, 'w+')
-	
-	def tearDown(self):
-	    self.log.close()
-		os.unlink(PROCESS_LOG)
-	
-	def _chrootResult(self, result):
-		self.log.seek(0)
-		self.assertEquals('-a', self.log.read().splitlines()[1])
-		self.assertEquals(result, 0)
-	
-	def test_deleteAll(self):
-		pdc = builder.PkgDeleteCommand('/nonexistant')
-		d = pdc.deleteAll(self.log)
-		d.addCallback(self._chrootResult)
-		return d
-
 class PortsnapCommandTestCase(unittest.TestCase):
 	def setUp(self):
 	    self.log = open(PROCESS_LOG, 'w+')
