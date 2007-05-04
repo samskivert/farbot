@@ -722,7 +722,7 @@ class ISOReader(object):
         d = cc.clean(log)
 
         # Now do the copy
-        d.addCallback(lambda _: threads.deferToThread(utils.copyRecursive, self.mountpoint, self.cdroot))
+        d.addCallback(lambda _: threads.deferToThread(utils.copyRecursive, self.mountpoint, self.cdroot, symlinks=True))
         d.addErrback(self._ebCopy)
         return d
 
@@ -739,19 +739,22 @@ class PackageChrootAssembler(object):
         self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
         self.chroot = chroot
     
-    def _ebExtractError(self, failure):
-        # Provide a more specific exception
-        failure.trap(CommandError)
-        raise PackageChrootAsssemblerError, failure.value
+    def _ebExtractError(self, failure):        
+        try:
+            failure.raiseException()
+        except ChrootCleanerError, e:
+            raise PackageChrootAssemblerError, "Error cleaning chroot %s: %s" % (self.chroot, e)
+        except Exception, e:
+            raise PackageChrootAssemblerError, "Error extracting release from %s to %s: %s" % (self.cdroot, self.chroot, e)
     
     def _cbExtractDist(self, distdir, distname, target, log):
         # Extract a distribution set into the chroot with tar.
         d = defer.Deferred()
         protocol = LoggingProcessProtocol(d, log)
-        argv = [TAR_PATH, '--unlink', '-xpzf', '-', '-C', target]
+        argv = [TAR_PATH, '--unlink', '-xpvzf', '-', '-C', target]
         
         # Create target directory if it isn't already there
-        if not os.path.exists(target):
+        if (not os.path.exists(target)):
             os.makedirs(target)
         
         # Spawn a process to run tar, keeping the IProcessTransport 
@@ -770,21 +773,10 @@ class PackageChrootAssembler(object):
         
         return d
     
-    def extract(self, dists, log):
-        """
-        Extract the release into a chroot
-        @param dists: Dictionary of distribution sets to extract. The key is a 
-            string corresponding to the name of the dist, and the value is an 
-            array of the subdists in that directory. For dists that don't have 
-            a lot of subdists, this value will probably just be an array 
-            containing the same string as the key.
-        @param log: Open log file
-        """
+    def _cbExtractAll(self, clean, dists, log):
+        # The clean argument is what is returned by the chroot cleaner. It 
+        # should be None, and doesn't seem necessary to worry about
         deferreds = []
-        # Clean out chroot
-        cc = ChrootCleaner(self.chroot)
-        deferreds.append(cc.clean(log))
-        
         # Extract each dist in the chroot
         for key in dists.iterkeys():
             distdir = os.path.join(self.cdroot, os.path.join(self.cdroot, _getCDRelease(self.cdroot)), key)
@@ -802,10 +794,28 @@ class PackageChrootAssembler(object):
                     target = os.path.join(self.chroot, 'usr', 'src')
                 else:
                     target = self.chroot
-                
+            
                 deferreds.append(self._cbExtractDist(distdir, distname, target, log))
-        
+    
         d = defer.DeferredList(deferreds, fireOnOneErrback=True)
+        return d
+    
+    def extract(self, dists, log):
+        """
+        Extract the release into a chroot
+        @param dists: Dictionary of distribution sets to extract. The key is a 
+            string corresponding to the name of the dist, and the value is an 
+            array of the subdists in that directory. For dists that don't have 
+            a lot of subdists, this value will probably just be an array 
+            containing the same string as the key.
+        @param log: Open log file
+        """
+        # Clean out chroot
+        cc = ChrootCleaner(self.chroot)
+        d = cc.clean(log)
+        
+        # Then extract all dists
+        d.addCallback(self._cbExtractAll, dists, log)
         d.addErrback(self._ebExtractError)
         return d
 

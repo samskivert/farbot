@@ -520,9 +520,19 @@ class ISOReaderTestCase(unittest.TestCase):
         self.assert_(os.path.exists(os.path.join(distdir, 'src', 'szomg.ab')))
         self.assert_(os.path.exists(os.path.join(bootdir, 'mfsroot.gz')))
         self.assert_(os.path.exists(os.path.join(bootdir, 'kernel', 'kernel')))
+        self.assert_(not os.path.exists(os.path.join(RELEASEROOT, 'afile')))
     
     def test_copy(self):
         # Try copying the dists from the CD into the release root
+        d = self.reader.copy(self.log)
+        d.addCallback(self._copyResult)
+        return d
+    
+    def test_copyReplace(self):
+        # Now try copying when there is already something in RELEASEROOT
+        os.mkdir(RELEASEROOT)
+        f = open(os.path.join(RELEASEROOT, 'afile'), 'w')
+        f.close()
         d = self.reader.copy(self.log)
         d.addCallback(self._copyResult)
         return d
@@ -550,14 +560,24 @@ class PackageChrootAssemblerTestCase(unittest.TestCase):
             os.unlink(CDROM_INF)
     
     def _extractResult(self, result):
-        self.assertEquals(result, [(True, None), (True, 0), (True, 0), (True, 0)])
+        self.assertEquals(result, [(True, 0), (True, 0), (True, 0)])
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'src', 'wtf.c')))
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'src', 'zomg.c')))
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'bin', 'foo.sh')))
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'bin', 'bar.sh')))
+        self.assert_(not os.path.exists(os.path.join(PKGROOT, 'afile')))
 
     def test_extract(self):
         # Try actually extracting a fake base dist into the chroot.
+        d = self.assembler.extract(self.dists, self.log)
+        d.addCallback(self._extractResult)
+        return d
+    
+    def test_extractReplace(self):
+        # Try extracting when the chroot already exists
+        os.mkdir(PKGROOT)
+        f = open(os.path.join(PKGROOT, 'afile'), 'w')
+        f.close()
         d = self.assembler.extract(self.dists, self.log)
         d.addCallback(self._extractResult)
         return d
