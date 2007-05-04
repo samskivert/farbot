@@ -432,7 +432,7 @@ class PackageBuildRunner(BuildRunner):
                     buildoptions.update(package.BuildOptions.Options)
 
                 # Add a package builder to the OrderedExecutor
-                pb = builder.PackageBuilder(release.releaseroot, package.port, buildoptions)
+                pb = builder.PackageBuilder(release.pkgroot, package.port, buildoptions)
                 eu = utils.ExecutionUnit(pctx, pb.build, buildLog)
                 self.oe.appendExecutionUnit(eu)
 
@@ -550,9 +550,9 @@ class NetInstallAssemblerRunner(BuildRunner):
         for releaseName, release in liveReleases.iteritems():
                 # Instantiate the release assembler
                 if (len(release.localdata)):
-                    ra = builder.ReleaseAssembler(releaseName, release.releaseroot, localData = release.localdata)
+                    ra = builder.ReleaseAssembler(releaseName, release.releaseroot, release.pkgroot, localData = release.localdata)
                 else:
-                    ra = builder.ReleaseAssembler(releaseName, release.releaseroot)
+                    ra = builder.ReleaseAssembler(releaseName, release.releaseroot, release.pkgroot)
 
                 releaseAssemblers.append(ra)
 
