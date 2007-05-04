@@ -291,7 +291,7 @@ class ReleaseBuildRunner(BuildRunner):
         try:            
             bctx = failure.value.executionContext
             failure.value.originalFailure.raiseException()
-        except (builder.ReleaseBuildError, builder.BinaryChrootBuildError), e:
+        except (builder.ReleaseBuildError, builder.ISOReaderError), e:
             raise builder.ReleaseBuildError, "%s failed: %s.\nFor more information, refer to the release build log \"%s\"" % (bctx.description, e, bctx.logPath)
         except builder.CVSCommandError, e:
             raise builder.ReleaseBuildError, "%s failed, cvs\nreturned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
