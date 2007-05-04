@@ -402,13 +402,13 @@ class PackageBuildRunner(BuildRunner):
             # Mount distfiles cache directory in chroot if configured, creating
             # the mount point if necessary.
             if self.distfilescache:
-                mntpoint = os.path.join(release.releaseroot, 'usr', 'ports', 'distfiles')
+                mntpoint = os.path.join(release.pkgroot, 'usr', 'ports', 'distfiles')
                 if (not os.path.exists(mntpoint)):
                     pctx = BuildContext("creating \"%s\" directory" % (mntpoint), logPath)
                     eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, mntpoint)
                     self.oe.appendExecutionUnit(eu)
                 
-                pctx = BuildContext("Mount nullfs in \"%s\"" % (release.releaseroot), logPath)
+                pctx = BuildContext("Mount nullfs in \"%s\"" % (release.pkgroot), logPath)
                 nullfs = builder.MountCommand(self.distfilescache, mntpoint, fstype='nullfs')
                 self.distfilesmounts[nullfs] = buildLog
                 eu = utils.ExecutionUnit(pctx, nullfs.mount, buildLog)
