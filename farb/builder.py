@@ -79,6 +79,12 @@ RELEASE_CD_PATH = 'R/cdrom/disc1'
 # Package chroot-relative path to the package directory
 RELEASE_PACKAGE_PATH = 'usr/ports/packages'
 
+# Path to root of filesystem. This is mostly here to override in unit tests
+ROOT_PATH = '/'
+
+# Releative path for /etc/resolv.conf
+RESOLV_CONF = 'etc/resolv.conf'
+
 # Default Root Environment
 ROOT_ENV = {
     'USER'      : 'root',
@@ -816,6 +822,9 @@ class PackageChrootAssembler(object):
         
         # Then extract all dists
         d.addCallback(self._cbExtractAll, dists, log)
+        
+        # Add /etc/resolv.conf to chroot
+        d.addCallback(lambda _: threads.deferToThread(utils.copyWithOwnership, os.path.join(ROOT_PATH, RESOLV_CONF), os.path.join(self.chroot, RESOLV_CONF)))
         d.addErrback(self._ebExtractError)
         return d
 

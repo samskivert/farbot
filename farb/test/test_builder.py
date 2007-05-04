@@ -67,6 +67,7 @@ TAR_PATH = os.path.join(CMD_DIR, 'tar.sh')
 CHFLAGS_PATH = os.path.join(CMD_DIR, 'chflags.sh')
 ECHO_PATH = '/bin/echo'
 SH_PATH = '/bin/sh'
+ROOT_PATH = os.path.join(DATA_DIR, 'fake_root')
 
 # Reach in and tweak various path constants
 builder.FREEBSD_REL_PATH = FREEBSD_REL_PATH
@@ -77,6 +78,7 @@ builder.UMOUNT_PATH = UMOUNT_PATH
 builder.PORTSNAP_PATH = PORTSNAP_PATH
 builder.TAR_PATH = TAR_PATH
 builder.CHFLAGS_PATH = CHFLAGS_PATH
+builder.ROOT_PATH = ROOT_PATH
 
 class LoggingProcessProtocolTestCase(unittest.TestCase):
     def setUp(self):
@@ -560,11 +562,11 @@ class PackageChrootAssemblerTestCase(unittest.TestCase):
             os.unlink(CDROM_INF)
     
     def _extractResult(self, result):
-        self.assertEquals(result, [(True, 0), (True, 0), (True, 0)])
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'src', 'wtf.c')))
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'src', 'zomg.c')))
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'bin', 'foo.sh')))
         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'bin', 'bar.sh')))
+        self.assert_(os.path.exists(os.path.join(PKGROOT, builder.RESOLV_CONF)))
         self.assert_(not os.path.exists(os.path.join(PKGROOT, 'afile')))
 
     def test_extract(self):
