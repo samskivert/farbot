@@ -270,7 +270,7 @@ class ReleaseBuildRunner(BuildRunner):
             
             else:
                 # Instantiate our builder
-                releaseBuilder = builder.ReleaseBuilder(release.cvsroot, release.cvstag, release.releaseroot)
+                releaseBuilder = builder.ReleaseBuilder(release.cvsroot, release.cvstag, release.releaseroot, release.installcds)
 
                 # Add our release builder to the OrderedExecutor
                 bctx = BuildContext("%s release build" % release.getSectionName(), logPath)
