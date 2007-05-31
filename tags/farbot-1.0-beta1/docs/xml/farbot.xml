@@ -1,0 +1,677 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+"http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+<book>
+  <bookinfo>
+    <title>farbot: FreeBSD Automated Release 'Bot</title>
+
+    <legalnotice>
+      <para>The content of this guide is the original work of Three Rings
+      Design, Inc. All rights reserved.</para>
+
+      <para>The XML and CSS used to generate this guide is based on the work
+      of Will Barton and Michael Maibaum, as contributed to the DarwinPorts
+      Project under the 3 clause BSD license. Their copyright remains.</para>
+    </legalnotice>
+
+    <copyright>
+      <year>2006</year>
+      
+      <year>2007</year>
+
+      <holder>Three Rings Design, Inc.</holder>
+    </copyright>
+
+    <copyright>
+      <year>2002</year>
+
+      <year>2003</year>
+
+      <year>2004</year>
+
+      <holder>The OpenDarwin Project</holder>
+    </copyright>
+  </bookinfo>
+
+  <preface>
+    <title>About farbot</title>
+
+    <para>farbot was written by Landon Fuller and Jonathan Le Plastrier for
+    the purpose of automating the process of building FreeBSD Jumpstart
+    [netboot] install releases. It handles the building of the releases,
+    builds any packages you wish to install, configures the bootloader, and
+    constructs the NFS exported directory structure needed for a netinstall,
+    all from a simple configuration file. We encourage you to submit any patch
+    you think would be useful. You may also join the <ulink
+    url="https://dpw.threerings.net/mailman/listinfo/farbot">farbot mailing
+    list</ulink>.</para>
+  </preface>
+
+  <chapter>
+    <title>Installing and Using farbot</title>
+
+    <sect1>
+      <title>Installation</title>
+
+      <sect2>
+        <title>Prerequisites</title>
+
+        <para>farbot depends on the following components:</para>
+
+        <itemizedlist>
+          <listitem>
+            <para><ulink url="http://www.python.org/">Python
+            2.4</ulink></para>
+          </listitem>
+
+          <listitem>
+            <para><ulink url="http://twistedmatrix.com">Twisted Networking
+            Framework</ulink></para>
+          </listitem>
+
+          <listitem>
+            <para><ulink url="http://www.zope.org/Members/fdrake/zconfig/">
+            Zconfig</ulink></para>
+          </listitem>
+
+          <listitem>
+            <para><ulink url="http://www.freebsd.org">FreeBSD</ulink> is
+            required to actually build installations. If you wish to build one
+            or more releases from source rather than using a binary release 
+            from an ISO image, the system running farbot must have full 
+            sources installed in <filename>/usr/src</filename>, and <filename>
+            /usr/obj</filename> must be populated from a "make buildworld" run 
+            on sources matching the currently running kernel. 
+            </para>
+          </listitem>
+        </itemizedlist>
+      </sect2>
+
+      <sect2>
+        <title>Installing with the Python Distutils</title>
+
+        <para>farbot uses the standard Python distutils. To install, simply
+        run <filename>setup.py</filename>: <programlisting>./setup.py install</programlisting></para>
+
+        <para>The farbot library will be installed in the Python site-packages
+        directory. The <filename>farbot</filename> command line tool will be
+        installed in the Python-specified bin directory. An example
+        configuration file, <filename>farbot.conf</filename>, is supplied with
+        the source distribution.</para>
+      </sect2>
+    </sect1>
+
+    <sect1>
+      <title>Configuring farbot</title>
+
+      <sect2>
+        <title>Introduction</title>
+
+        <para>The farbot configuration file is composed of five different
+        section types: <itemizedlist>
+            <listitem>
+              <simpara>Releases Configuration</simpara>
+            </listitem>
+
+            <listitem>
+              <simpara>Partitions Configuration</simpara>
+            </listitem>
+
+            <listitem>
+              <simpara>PackageSets Configuration</simpara>
+            </listitem>
+
+            <listitem>
+              <simpara>Installations Configuration</simpara>
+            </listitem>
+          </itemizedlist> The configuration uses an Apache-style
+        syntax.</para>
+      </sect2>
+
+      <sect2>
+        <title>Releases Configuration</title>
+
+        <simpara>The <computeroutput>Releases</computeroutput> section defines
+        at least one <computeroutput>Release</computeroutput> within a farbot
+        configuration file.</simpara>
+
+        <sect3>
+          <title>Releases Configuration Options</title>
+
+          <variablelist>
+            <varlistentry>
+              <term>BuildRoot</term>
+
+              <listitem>
+                <simpara>Used as the working directory for release builds. A
+                per release directory is added by farbot at build
+                time.</simpara>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term>InstallRoot</term>
+
+              <listitem>
+                <simpara>Installation clients will load installation data from
+                this directory. This directory will end up being NFS and TFTP
+                exported.</simpara>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term>NFSHost</term>
+
+              <listitem>
+                <simpara>The IP address/FQDN of the machine that will be
+                acting as an NFS server for the installation files.</simpara>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+
+          <sect4>
+            <title>Release Configuration Options</title>
+
+            <variablelist>
+              <varlistentry>
+                <term>&lt;Release Name&gt;</term>
+
+                <listitem>
+                  <simpara>The <computeroutput>Release</computeroutput>
+                  section must be named. <remark><emphasis>ex: &lt;Release
+                  6.0&gt;</emphasis></remark></simpara>
+                </listitem>
+              </varlistentry>
+
+              <varlistentry>
+                <term>CVSRoot</term>
+
+                <listitem>
+                  <simpara>The FreeBSD CVS repository mirror. This option may 
+                  be omitted if <computeroutput>BinaryRelease</computeroutput>
+                  and <computeroutput>UsePortsnap</computeroutput> are both 
+                  true. <remark>ex: /home/ncvs</remark>
+                  </simpara>
+                </listitem>
+              </varlistentry>
+
+              <varlistentry>
+                <term>CVSTag</term>
+
+                <listitem>
+                  <simpara>The CVS tag for this release. This option is only 
+                  needed if <computeroutput>BinaryRelease</computeroutput> is 
+                  not set to true. <remark>ex: RELENG_6_0</remark></simpara>
+                </listitem>
+              </varlistentry>
+              
+              <varlistentry>
+                <term>BinaryRelease</term>
+                
+                <listitem>
+                  <simpara>Use binaries from a FreeBSD CD ISO rather than 
+                  building the release from source. Default is false.</simpara>
+                </listitem>
+              </varlistentry>
+              
+              <varlistentry>
+                <term>ISO</term>
+                
+                <listitem>
+                  <simpara>Path to FreeBSD release CD ISO file to extract from 
+                  if <computeroutput>BinaryRelease</computeroutput> is true. 
+                  <remark>ex: /export/freebsd/6.2-RELEASE-i386-disc1.iso
+                  </remark></simpara>
+                </listitem>
+              </varlistentry>
+              
+              <varlistentry>
+                <term>UsePortsnap</term>
+                
+                <listitem>
+                  <simpara>If true, use <computeroutput>portsnap
+                  </computeroutput> rather than <computeroutput>cvs
+                  </computeroutput> for extracting an up-to-date ports tree into
+                  the chroot used for building packages. The server running 
+                  farbot must be running FreeBSD 5.5 or later to use this 
+                  option, as earlier versions do not include <computeroutput>
+                  portsnap</computeroutput> in the base system. Default value 
+                  is false.</simpara>
+                </listitem>
+              </varlistentry>
+
+              <varlistentry>
+                <term>LocalData</term>
+
+                <listitem>
+                  <simpara>Custom files to be made available at install time
+                  via the NFS mout in the path
+                  <filename>/dist/local</filename>.</simpara>
+                </listitem>
+              </varlistentry>
+
+              <varlistentry>
+                <term>InstallCDs</term>
+
+                <listitem>
+                  <simpara>Whether to create ISO install images from the 
+                  release built by farbot. Defaults to false, and is ignored if
+                  <computeroutput>BinaryRelease</computeroutput> is true.
+                  </simpara>
+                </listitem>
+              </varlistentry>
+
+              <varlistentry>
+                <term>PackageBuildOptions</term>
+
+                <listitem>
+                  <simpara>An optional list of options to pass to every
+                  package build for this release. BuildOptions for a given
+                  package override this global setting..
+                  <remark>ex:</remark></simpara>
+
+                  <programlisting>&lt;PackageBuildOptions&gt;
+    WITHOUT_X11  true
+&lt;/PackageBuildOptions&gt;</programlisting>
+                </listitem>
+              </varlistentry>
+            </variablelist>
+          </sect4>
+        </sect3>
+      </sect2>
+
+      <sect2>
+        <title>Partitions Configuration</title>
+
+        <simpara>The <computeroutput>Partitions</computeroutput> section
+        defines at least one <computeroutput>PartitionMap</computeroutput>
+        with at least one <computeroutput>Partition</computeroutput> within a
+        farbot configuration file.</simpara>
+
+        <sect3>
+          <title>PartitionMap Configuration Options</title>
+
+          <variablelist>
+            <varlistentry>
+              <term>&lt;PartitionMap Name&gt;</term>
+
+              <listitem>
+                <simpara>The <computeroutput>PartitionMap</computeroutput>
+                section must be named. <remark><emphasis>ex: &lt;PartitionMap
+                Standard&gt;</emphasis></remark></simpara>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+
+          <sect4>
+            <title>Partition Configuration Options</title>
+
+            <variablelist>
+              <varlistentry>
+                <term>Mount</term>
+
+                <listitem>
+                  <simpara>Mount point for this partition. <remark>ex:
+                  /usr</remark></simpara>
+                </listitem>
+              </varlistentry>
+
+              <varlistentry>
+                <term>Size</term>
+
+                <listitem>
+                  <simpara>The size of this partition. <remark>ex:
+                  512MB</remark></simpara>
+                </listitem>
+              </varlistentry>
+
+              <varlistentry>
+                <term>Type</term>
+
+                <listitem>
+                  <simpara>Type of filesystem. <remark>ex:
+                  ufs</remark></simpara>
+                </listitem>
+              </varlistentry>
+
+              <varlistentry>
+                <term>SoftUpdates</term>
+
+                <listitem>
+                  <simpara>Whether to enable soft updates on this
+                  filesystem.</simpara>
+                </listitem>
+              </varlistentry>
+            </variablelist>
+          </sect4>
+        </sect3>
+      </sect2>
+
+      <sect2>
+        <title>PackageSets Configuration</title>
+
+        <simpara>The <computeroutput>PackageSets</computeroutput> section
+        defines at least one <computeroutput>PackageSets</computeroutput>
+        within a farbot configuration file.</simpara>
+        
+        <sect3>
+          <title>PackageSets Configuration Options</title>
+          
+          <variablelist>
+            <varlistentry>
+              <term>DistfilesCache</term>
+              
+              <listitem>
+                <simpara>Optional directory for persistent storage of port 
+                distfiles between builds. Setting this option will obviate the 
+                need to re-download the same distfiles for each builds and for 
+                different releases, and provide a place to store distfiles 
+                which cannot be automatically fetched by the ports system.
+                </simpara>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+        </sect3>
+
+        <sect3>
+          <title>PackageSet Configuration Options</title>
+
+          <variablelist>
+            <varlistentry>
+              <term>&lt;PackageSet Name&gt;</term>
+
+              <listitem>
+                <simpara>The <computeroutput>PackageSet</computeroutput>
+                section must be named. <remark><emphasis>ex: &lt;PackageSet
+                Base&gt;</emphasis></remark></simpara>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+
+          <sect4>
+            <title>Package Configuration Options</title>
+
+            <variablelist>
+              <varlistentry>
+                <term>Port</term>
+
+                <listitem>
+                  <simpara>The category and name of this port. <remark>ex:
+                  security/sudo</remark></simpara>
+                </listitem>
+              </varlistentry>
+
+              <varlistentry>
+                <term>Package</term>
+
+                <listitem>
+                  <simpara>Optional: The package name of this port, if it
+                  differs from the port name. <remark>ex:
+                  mysql50-server</remark></simpara>
+                </listitem>
+              </varlistentry>
+
+              <varlistentry>
+                <term>BuildOptions</term>
+
+                <listitem>
+                  <simpara>An optional list of options to pass to the package
+                  build. <remark>ex:</remark></simpara>
+
+                  <programlisting>&lt;BuildOptions&gt;
+    WITH_COLLATION  latin1_general_ci
+    WITH_OPTION  true
+&lt;/BuildOptions&gt;</programlisting>
+                </listitem>
+              </varlistentry>
+            </variablelist>
+          </sect4>
+        </sect3>
+      </sect2>
+
+      <sect2>
+        <title>Installations Configuration</title>
+
+        <simpara>The <computeroutput>Installations</computeroutput> section
+        defines at least one <computeroutput>Installation</computeroutput>
+        within a farbot configuration file.</simpara>
+
+        <sect3>
+          <title>Installation Configuration Options</title>
+
+          <variablelist>
+            <varlistentry>
+              <term>&lt;Installation Name&gt;</term>
+
+              <listitem>
+                <simpara>The <computeroutput>Installation</computeroutput>
+                section must be named. <remark><emphasis>ex: &lt;Installation
+                Database&gt;</emphasis></remark></simpara>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term>Description</term>
+
+              <listitem>
+                <simpara>A human-readable description for this installation,
+                used in the installation-selection boot menu generated by
+                farbot.</simpara>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term>Release</term>
+
+              <listitem>
+                <simpara>A <computeroutput>Release</computeroutput> name
+                defined in the <computeroutput>Releases</computeroutput>
+                section above. There may only be one release per
+                installation.</simpara>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term>PackageSet</term>
+
+              <listitem>
+                <simpara>A list of <computeroutput>PackageSet</computeroutput>
+                names as defined in the
+                <computeroutput>PackageSets</computeroutput>
+                section.</simpara>
+              </listitem>
+            </varlistentry>
+
+            <varlistentry>
+              <term>NetworkDevice</term>
+
+              <listitem>
+                <simpara>The network device to mount the the NFS root from.
+                <remark>ex: em0</remark></simpara>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+
+          <sect4>
+            <title>Disk Section Options</title>
+
+            <variablelist>
+              <varlistentry>
+                <term>&lt;Disk Name&gt;</term>
+
+                <listitem>
+                  <simpara>A disk name that matches the corresponding system
+                  disk for the following
+                  <computeroutput>PartitionMap</computeroutput>. <remark>ex:
+                  ad0</remark></simpara>
+                </listitem>
+              </varlistentry>
+
+              <varlistentry>
+                <term>PartitionMap</term>
+
+                <listitem>
+                  <simpara>A <computeroutput>PartitionMap</computeroutput>
+                  name as defined in the
+                  <computeroutput>Partitions</computeroutput> section above.
+                  Only list one <computeroutput>PartitionMap</computeroutput>
+                  per disk.</simpara>
+                </listitem>
+              </varlistentry>
+            </variablelist>
+          </sect4>
+
+          <sect4>
+            <title>PostInstall Section Options</title>
+
+            <variablelist>
+              <varlistentry>
+                <term>Command</term>
+
+                <listitem>
+                  <simpara>A command to be run from
+                  <filename>/dist/local</filename> after the installation
+                  boots for the first time. See LocalData above.</simpara>
+                </listitem>
+              </varlistentry>
+            </variablelist>
+          </sect4>
+        </sect3>
+      </sect2>
+
+      <sect2>
+        <title>Example Configuration File</title>
+
+        <simpara>An example configuration follows. The same configuration file
+        is included with the distribution as
+        <filename>farbot.conf</filename>.</simpara>
+
+        <programlisting>
+<xi:include href="../../farbot.conf" parse="text" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+        </programlisting>
+      </sect2>
+    </sect1>
+
+    <sect1>
+      <title>Configuring the Installation Host</title>
+
+      <para>In addition to configuring farbot, the following services will be
+      required on the imaging server:</para>
+
+      <itemizedlist>
+        <listitem>
+          <para>NFS</para>
+        </listitem>
+
+        <listitem>
+          <para>DHCP</para>
+        </listitem>
+
+        <listitem>
+          <para>TFTP</para>
+        </listitem>
+      </itemizedlist>
+
+      <sect2>
+        <title>NFS</title>
+
+        <para>You must export the tftproot, and any release installation
+        directories. The following <filename>/etc/exports</filename> file
+        corresponds to the provided farbot.conf:</para>
+
+        <programlisting>/export/freebsd/netinstall/tftproot /export/freebsd/netinstall/6.1 /export/freebsd/netinstall/6-stable -ro -maproot=root -network 1
+0.0.50.0 -mask 255.255.255.0</programlisting>
+      </sect2>
+
+      <sect2>
+        <title>DHCP</title>
+
+        <para>A simple <filename>dhcpd.conf</filename> that directs clients to
+        the generated tftproot:</para>
+
+        <programlisting># dhcpd.conf
+#
+# Sample configuration file for ISC dhcpd
+#
+
+# option definitions common to all supported networks...
+default-lease-time 600;
+max-lease-time 7200;
+
+# If this DHCP server is the official DHCP server for the local
+# network, the authoritative directive should be uncommented.
+authoritative;
+
+# ad-hoc DNS update scheme - set to "none" to disable dynamic DNS updates.
+ddns-update-style none;
+
+option subnet-mask 255.255.255.0;
+option routers 10.0.50.1;
+filename "/boot/pxeboot";
+
+subnet 10.0.50.0 netmask 255.255.255.0 {
+  range 10.0.50.10 10.0.50.60;
+  next-server 10.0.50.1;
+  option root-path "/export/freebsd/netinstall/tftproot";
+}</programlisting>
+      </sect2>
+
+      <sect2>
+        <title>TFTP</title>
+
+        <para>The following must be added to
+        <filename>/etc/inetd.conf</filename> to support tftp access to the
+        netbooting client:</para>
+
+        <programlisting>tftp    dgram   udp     wait    root    /usr/libexec/tftpd      tftpd -l -s /export/freebsd/netinstall/tftproot</programlisting>
+      </sect2>
+    </sect1>
+
+    <sect1>
+      <title>Running farbot</title>
+
+      <simpara>Help is available by running <filename>farbot
+      -h</filename>:</simpara>
+
+      <programlisting>Usage: ./farbot [-h] [-o] [-f config file] [-r action]
+    -h             Print usage (this message)
+    -o             Do one action only.  Do not continue after &lt;action&gt;
+    -f &lt;config&gt;    Use configuration file &lt;config&gt;
+    -r &lt;action&gt;    Execute &lt;action&gt;
+
+Supported actions:
+    release        Build all defined releases, build all packages, and build the
+                   network installation root
+    package        Build all defined packages, and build the network 
+                   installation root (requires a release build)
+    install        Build the network installation root (requires package and 
+                   release builds)</programlisting>
+
+      <sect2>
+        <title>Build all defined releases and packages, and setup the
+        installation root</title>
+
+        <programlisting>./farbot -f farbot.conf -r release</programlisting>
+      </sect2>
+
+      <sect2>
+        <title>Rebuild just the installation configuration, using already
+        built releases and packages</title>
+
+        <programlisting>./farbot -f farbot.conf -r install</programlisting>
+      </sect2>
+    </sect1>
+  </chapter>
+
+  <chapter>
+    <title>Installing FreeBSD using farbot</title>
+
+    <sect1>
+      <title>Introduction</title>
+
+      <simpara>Go through an example installation, showing a screen shot of
+      the bootloader and explaining where errors could occur, possibly a FAQ
+      of common errors.</simpara>
+    </sect1>
+  </chapter>
+</book>
