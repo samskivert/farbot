@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# farbctl vi:ts=4:sw=4:expandtab:
+# farbot vi:ts=4:sw=4:expandtab:
 #
 # Copyright (c) 2006 Three Rings Design, Inc.
 # All rights reserved.
@@ -47,15 +47,18 @@ class Main(object):
     doAllActions = True
 
     def usage(self):
-        print "Usage: %s [-h] [-f config file] [-r action]" % sys.argv[0]
+        print "Usage: %s [-h] [-o] [-f config file] [-r action]" % sys.argv[0]
         print "    -h             Print usage (this message)"
-        print "    -f <config>    Use configuration file"
-        print "    -r <action>    Execute <action>"
         print "    -o             Do one action only.  Do not continue after <action>"
+        print "    -f <config>    Use configuration file <config>"
+        print "    -r <action>    Execute <action>"
         print "\nSupported actions:"
-        print "    release        Build all defined releases, build all packages, and build the network installation root"
-        print "    package        Build all defined packages, and build the network installation root (requires a release build)"
-        print "    install        Build the network installation root (requires package and release builds)"
+        print "    release        Build all defined releases, build all packages, and build the"
+        print "                   network installation root"
+        print "    package        Build all defined packages, and build the network"
+        print "                   installation root (requires a release build)"
+        print "    install        Build the network installation root (requires package and"
+        print "                   release builds)"
 
     def _ebReleaseBuild(self, failure):
         # Just print the failure and exit
