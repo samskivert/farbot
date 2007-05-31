@@ -16,6 +16,8 @@
 
     <copyright>
       <year>2006</year>
+      
+      <year>2007</year>
 
       <holder>Three Rings Design, Inc.</holder>
     </copyright>
@@ -74,10 +76,12 @@
 
           <listitem>
             <para><ulink url="http://www.freebsd.org">FreeBSD</ulink> is
-            required to actually build installations. The system running farbot
-            must have full sources installed in <filename>/usr/src</filename>, 
-            and <filename>/usr/obj</filename> must be populated from a "make 
-            buildworld" run on sources matching the currently running kernel. 
+            required to actually build installations. If you wish to build one
+            or more releases from source rather than using a binary release 
+            from an ISO image, the system running farbot must have full 
+            sources installed in <filename>/usr/src</filename>, and <filename>
+            /usr/obj</filename> must be populated from a "make buildworld" run 
+            on sources matching the currently running kernel. 
             </para>
           </listitem>
         </itemizedlist>
@@ -183,8 +187,11 @@
                 <term>CVSRoot</term>
 
                 <listitem>
-                  <simpara>The FreeBSD CVS repository mirror. <remark>ex:
-                  /home/ncvs</remark></simpara>
+                  <simpara>The FreeBSD CVS repository mirror. This option may 
+                  be omitted if <computeroutput>BinaryRelease</computeroutput>
+                  and <computeroutput>UsePortsnap</computeroutput> are both 
+                  true. <remark>ex: /home/ncvs</remark>
+                  </simpara>
                 </listitem>
               </varlistentry>
 
@@ -192,8 +199,44 @@
                 <term>CVSTag</term>
 
                 <listitem>
-                  <simpara>The CVS tag for this release. <remark>ex:
-                  RELENG_6_0</remark></simpara>
+                  <simpara>The CVS tag for this release. This option is only 
+                  needed if <computeroutput>BinaryRelease</computeroutput> is 
+                  not set to true. <remark>ex: RELENG_6_0</remark></simpara>
+                </listitem>
+              </varlistentry>
+              
+              <varlistentry>
+                <term>BinaryRelease</term>
+                
+                <listitem>
+                  <simpara>Use binaries from a FreeBSD CD ISO rather than 
+                  building the release from source. Default is false.</simpara>
+                </listitem>
+              </varlistentry>
+              
+              <varlistentry>
+                <term>ISO</term>
+                
+                <listitem>
+                  <simpara>Path to FreeBSD release CD ISO file to extract from 
+                  if <computeroutput>BinaryRelease</computeroutput> is true. 
+                  <remark>ex: /export/freebsd/6.2-RELEASE-i386-disc1.iso
+                  </remark></simpara>
+                </listitem>
+              </varlistentry>
+              
+              <varlistentry>
+                <term>UsePortsnap</term>
+                
+                <listitem>
+                  <simpara>If true, use <computeroutput>portsnap
+                  </computeroutput> rather than <computeroutput>cvs
+                  </computeroutput> for extracting an up-to-date ports tree into
+                  the chroot used for building packages. The server running 
+                  farbot must be running FreeBSD 5.5 or later to use this 
+                  option, as earlier versions do not include <computeroutput>
+                  portsnap</computeroutput> in the base system. Default value 
+                  is false.</simpara>
                 </listitem>
               </varlistentry>
 
@@ -211,7 +254,10 @@
                 <term>InstallCDs</term>
 
                 <listitem>
-                  <simpara>Whether to create ISO install images.</simpara>
+                  <simpara>Whether to create ISO install images from the 
+                  release built by farbot. Defaults to false, and is ignored if
+                  <computeroutput>BinaryRelease</computeroutput> is true.
+                  </simpara>
                 </listitem>
               </varlistentry>
 
@@ -307,6 +353,25 @@
         <simpara>The <computeroutput>PackageSets</computeroutput> section
         defines at least one <computeroutput>PackageSets</computeroutput>
         within a farbot configuration file.</simpara>
+        
+        <sect3>
+          <title>PackageSets Configuration Options</title>
+          
+          <variablelist>
+            <varlistentry>
+              <term>DistfilesCache</term>
+              
+              <listitem>
+                <simpara>Optional directory for persistent storage of port 
+                distfiles between builds. Setting this option will obviate the 
+                need to re-download the same distfiles for each builds and for 
+                different releases, and provide a place to store distfiles 
+                which cannot be automatically fetched by the ports system.
+                </simpara>
+              </listitem>
+            </varlistentry>
+          </variablelist>
+        </sect3>
 
         <sect3>
           <title>PackageSet Configuration Options</title>
@@ -481,130 +546,9 @@
         is included with the distribution as
         <filename>farbot.conf</filename>.</simpara>
 
-        <programlisting>#
-# Releases
-#
-&lt;Releases&gt;
-        # Release Build Working Directory
-        BuildRoot       /export/freebsd/build
-
-        # Install/NFS Directory
-        # Clients will load installation data from this directory
-        InstallRoot     /export/freebsd/netinstall
-
-        # NFS/TFTP Server Host/IP
-        # The host exporting the installation data.
-        # Should probably be the local machine
-        NFSHost         jumpstart.example.org
-
-        &lt;Release 6.1&gt;
-                # FreeBSD CVS Repository Mirror
-                CVSRoot         /home/ncvs
-                # Release Tag
-                CVSTag          RELENG_6_1
-
-                # LocalData will be copied into the release
-                # distribution. These files will be available at
-                # install time via the NFS mount, in the path /dist/local
-                LocalData       /export/freebsd/postinst
-
-                # Enable creation of ISO install images
-                # Requires cdrtools
-                InstallCDs      True
-        &lt;/Release&gt;
-
-        &lt;Release 6-STABLE&gt;
-                # FreeBSD CVS Repository Mirror
-                CVSRoot /home/ncvs
-                # Release Tag
-                CVSTag  RELENG_6
-        &lt;/Release&gt;
-&lt;/Releases&gt;
-
-#
-# Partition Maps
-#
-&lt;Partitions&gt;
-        &lt;PartitionMap Standard&gt;
-                &lt;Partition 1&gt;
-                        Mount           /
-                        Size            512MB
-                        Type            ufs
-                        SoftUpdates     no
-                &lt;/Partition&gt;
-
-                &lt;Partition 2&gt;
-                        Size            4GB
-                        Type            swap
-                &lt;/Partition&gt;
-
-                &lt;Partition 3&gt;
-                        Mount           /var
-                        Size            10GB
-                        Type            ufs
-                &lt;/Partition&gt;
-
-                &lt;Partition 4&gt;
-                        Mount           /tmp
-                        Size            1GB
-                        Type            ufs
-                &lt;/Partition&gt;
-
-                &lt;Partition 5&gt;
-                        # All remaining space
-                        Mount           /usr
-                        Size            0GB
-                        Type            ufs
-                &lt;/Partition&gt;
-        &lt;/PartitionMap&gt;
-&lt;/Partitions&gt;
-
-#
-# Package Sets
-#
-&lt;PackageSets&gt;
-        &lt;PackageSet Base&gt;
-                &lt;Package&gt;
-                        Port            security/sudo
-                &lt;/Package&gt;
-        &lt;/PackageSet&gt;
-        &lt;PackageSet Database&gt;
-                &lt;Package&gt;
-                        Port            databases/mysql50-server
-                        # If your build options modify the name
-                        # of the resulting package, use the Package
-                        # option to define the correct name.
-                        #Package                mysql50-server
-                        &lt;BuildOptions&gt;
-                                WITH_COLLATION  latin1_general_ci
-                        &lt;/BuildOptions&gt;
-                &lt;/Package&gt;
-        &lt;/PackageSet&gt;
-&lt;/PackageSets&gt;
-
-
-#
-# Installation Types
-#
-&lt;Installations&gt;
-        &lt;Installation Standard&gt;
-                # Human-readable Description.
-                # Used in the installation-selection boot menu
-                Description     Standard Installation
-                Release         6.0
-                PackageSet      Base
-                PackageSet      Database
-                NetworkDevice   em0
-                &lt;Disk ad0&gt;
-                        PartitionMap    Standard
-                &lt;/Disk&gt;
-                &lt;PostInstall&gt;
-                        Command /dist/local/postinst/local.sh database
-                        Command /dist/local/postinst/cleanup.sh everything
-                &lt;/PostInstall&gt;
-        &lt;/Installation&gt;
-&lt;/Installations&gt;
-                </programlisting>
+        <programlisting>
+<xi:include href="../../farbot.conf" parse="text" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+        </programlisting>
       </sect2>
     </sect1>
 
@@ -689,17 +633,19 @@ subnet 10.0.50.0 netmask 255.255.255.0 {
       <simpara>Help is available by running <filename>farbot
       -h</filename>:</simpara>
 
-      <programlisting>Usage: ./farbot [-h] [-f config file] [-r action]
+      <programlisting>Usage: ./farbot [-h] [-o] [-f config file] [-r action]
     -h             Print usage (this message)
-    -f &lt;config&gt;    Use configuration file
+    -o             Do one action only.  Do not continue after &lt;action&gt;
+    -f &lt;config&gt;    Use configuration file &lt;config&gt;
     -r &lt;action&gt;    Execute &lt;action&gt;
 
 Supported actions:
-  release        Build all defined releases, build all packages, and build 
-                         the network installation root
-  package       Build all defined packages, and build the network installation 
-                         root (requires a release build)
-  install           Build the network installation root (requires package and release builds)</programlisting>
+    release        Build all defined releases, build all packages, and build the
+                   network installation root
+    package        Build all defined packages, and build the network 
+                   installation root (requires a release build)
+    install        Build the network installation root (requires package and 
+                   release builds)</programlisting>
 
       <sect2>
         <title>Build all defined releases and packages, and setup the
