@@ -418,11 +418,13 @@ class PackageBuildRunner(BuildRunner):
                 eu = utils.ExecutionUnit(pctx, nullfs.mount, buildLog)
                 self.oe.appendExecutionUnit(eu)
                 
-            # Make the packages directory
-            if (not os.path.exists(release.packagedir)):
-                pctx = BuildContext("creating \"%s\" directory" % (release.packagedir), logPath)
-                eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, release.packagedir)
-                self.oe.appendExecutionUnit(eu)
+            # Make the packages directory. Like the distfiles directory above, 
+            # this will always need to be created. Checking for its existence 
+            # could lead to problems if that check is done before a deferred 
+            # process deletes the pkgroot.
+            pctx = BuildContext("creating \"%s\" directory" % (release.packagedir), logPath)
+            eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, release.packagedir)
+            self.oe.appendExecutionUnit(eu)
 
             # Fire off a builder for each package
             for package in release.packages:
