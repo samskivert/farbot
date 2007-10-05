@@ -1,6 +1,6 @@
 # __init__.py vi:ts=4:sw=4:expandtab:
 #
-# Copyright (c) 2006 Three Rings Design, Inc.
+# Copyright (c) 2006-2007 Three Rings Design, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,7 +36,7 @@ __version__ = '0.1'
 __license__ = 'BSD License'
 __author__ = 'Three Rings Design, Inc.'
 __author_email__ = 'dpw@threerings.net'
-__copyright__ = 'Copyright (C) 2006 Three Rings Design, Inc. All rights reserved.'
+__copyright__ = 'Copyright (C) 2006-2007 Three Rings Design, Inc. All rights reserved.'
 
 # Useful Constants
 LOG_NAME = 'farb:'

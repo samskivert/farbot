@@ -1,6 +1,6 @@
 # sysinstall.py vi:ts=4:sw=4:expandtab:
 #
-# Copyright (c) 2006 Three Rings Design, Inc.
+# Copyright (c) 2006-2007 Three Rings Design, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -120,6 +120,7 @@ class DistSetConfig(ConfigSection):
         'dists',        # Install these distribution sets
     )
     # Distribution sets are currently hardcoded
+    # XXX: Add lib32 if on amd64?
     dists = 'base kernels GENERIC SMP doc games manpages catpages proflibs dict info src sbase scontrib scrypto sgnu setc sgames sinclude skrb5 slib slibexec srelease sbin ssecure ssbin sshare ssys subin susbin stools srescue'
 
     # Section commands

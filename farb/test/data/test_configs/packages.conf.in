@@ -84,11 +84,3 @@
 		</Disk>
 	</Installation>
 </Installations>
-
-<Logging>
-	<logfile>
-		# Log debug messages to stdout
-		Level debug
-		Path STDOUT
-	</logfile>
-</Logging>

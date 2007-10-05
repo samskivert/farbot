@@ -90,9 +90,4 @@
         <multisection type="Installation" name="+" attribute="Installation" required="yes"/>
     </sectiontype>
     <section type="Installations" name="*" attribute="Installations" required="no"/>
-
-    <!-- Logging Configuration -->
-    <import package="ZConfig.components.logger"/>
-    <sectiontype name="Logging" extends="eventlog"/>
-    <section type="Logging" name="*" attribute="Logging" required="yes"/>
 </schema>
