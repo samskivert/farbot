@@ -1,0 +1,93 @@
+<!--
+    ZConfig Configuration Schema for FARB
+    farb_conf.xml vi:ts=4:sw=4:expandtab
+-->
+<schema prefix="farb.config">
+    <sectiontype name="PackageBuildOptions" keytype="string">
+        <key name="+" datatype="string" attribute="Options" required="yes"/>
+    </sectiontype>
+    
+    <!-- Release Configuration -->
+    <sectiontype name="Release" datatype=".release_handler">
+        <key name="CVSRoot" datatype="existing-directory" required="no"/>
+        <key name="CVSTag" datatype="string" required="no"/>
+        <key name="InstallCDs" datatype="boolean" required="no" default="false"/>
+        <!-- Could not find a way to reuse BuildOptions here -->
+        <section type="PackageBuildOptions" name="*" attribute="PackageBuildOptions" required="no"/>
+        <multikey name="LocalData" datatype="existing-path" required="no"/>
+        <key name="BinaryRelease" datatype="boolean" required="no" default="false"/>
+        <key name="ISO" datatype="string" required="no"/>
+        <key name="UsePortsnap" datatype="boolean" required="no"/>
+    </sectiontype>
+
+    <sectiontype name="Releases" datatype=".releases_handler">
+        <key name="BuildRoot" datatype="existing-directory" required="yes"/>
+        <key name="InstallRoot" datatype="existing-directory" required="yes"/>
+        <key name="NFSHost" datatype="ipaddr-or-hostname" required="yes"/>
+        <multisection type="Release" name="+" attribute="Release" required="yes"/>
+    </sectiontype>
+    <section type="Releases" name="*" attribute="Releases" required="yes"/>
+
+    <!-- Partitioning Schema -->
+    <sectiontype name="Partition" datatype=".partition_handler">
+        <key name="Type" datatype="string" required="yes"/>
+        <key name="Size" datatype="byte-size" required="yes"/>
+        <key name="Mount" datatype="string" required="no"/>
+        <key name="SoftUpdates" datatype="boolean" default="true" required="no"/>
+    </sectiontype>
+
+    <sectiontype name="PartitionMap">
+        <multisection type="Partition" name="+" attribute="Partition" required="yes"/>
+    </sectiontype>
+    
+    <sectiontype name="Partitions">
+        <multisection type="PartitionMap" name="+" attribute="PartitionMap" required="yes"/>
+    </sectiontype>
+    <section type="Partitions" name="*" attribute="Partitions" required="no"/>
+
+    <!-- Packaging Schema -->
+    <sectiontype name="BuildOptions" keytype="string">
+        <key name="+" datatype="string" attribute="Options" required="yes"/>
+    </sectiontype>
+
+    <sectiontype name="Package" datatype=".package_handler">
+        <key name="Port" datatype="string" required="yes"/>
+        <key name="Package" datatype="string" required="no"/>
+        <section type="BuildOptions" name="*" attribute="BuildOptions" required="no"/>
+    </sectiontype>
+
+    <sectiontype name="PackageSet">
+        <multisection type="Package" name="*" attribute="Package" required="yes"/>
+    </sectiontype>
+
+    <sectiontype name="PackageSets">
+        <key name="DistfilesCache" datatype="string" required="no"/>
+        <multisection type="PackageSet" name="*" attribute="PackageSet" required="yes"/>
+    </sectiontype>
+    <section type="PackageSets" name="*" attribute="PackageSets" required="no"/>
+
+    <!-- Installation Configuration -->
+    <sectiontype name="Disk">
+        <key name="PartitionMap" datatype="string" required="yes"/>
+    </sectiontype>
+
+    <sectiontype name="PostInstall">
+        <multikey name="Command" datatype="string" required="yes"/>
+    </sectiontype>
+
+    <sectiontype name="Installation">
+        <key name="Description" datatype="string" required="yes"/>
+        <key name="Release" datatype="string" required="yes"/>
+        <key name="Hostname" datatype="dotted-name" required="no" default="install"/>
+        <key name="Domain" datatype="dotted-name" required="no" default="example.com"/>
+        <key name="NetworkDevice" datatype="string" required="yes"/>
+        <multikey name="PackageSet" datatype="string" required="no"/>
+        <multisection type="Disk" name="+" attribute="Disk" required="no"/>
+        <section type="PostInstall" name="*" attribute="PostInstall" required="no"/>
+    </sectiontype>
+
+    <sectiontype name="Installations">
+        <multisection type="Installation" name="+" attribute="Installation" required="yes"/>
+    </sectiontype>
+    <section type="Installations" name="*" attribute="Installations" required="no"/>
+</schema>

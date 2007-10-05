@@ -1,0 +1,86 @@
+#
+# Releases
+#
+<Releases>
+	# Release Build Working Directory
+	BuildRoot @BUILDROOT@
+
+	# Net Install/NFS Directory 
+	InstallRoot @BUILDROOT@
+
+	# Host for NFS Server (Probably this machine)
+	NFSHost	10.0.50.1
+
+	<Release 6.0>
+		# FreeBSD CVS Repository Mirror
+		CVSRoot	@CVSROOT@
+		# Release Tag
+		CVSTag	@TAG1@
+	</Release>
+
+	<Release 6-STABLE>
+		# FreeBSD CVS Repository Mirror
+		CVSRoot	@CVSROOT@
+		# Release Tag
+		CVSTag	@TAG2@
+	</Release>
+</Releases>
+
+#
+# Package Sets
+#
+<PackageSets>
+	<PackageSet Base>
+		<Package>
+			Port            security/sudo 
+		</Package>
+		<Package>
+			Port            test/override
+			Package		overwrote
+		</Package>
+	</PackageSet>
+	<PackageSet Database>
+		<Package>
+			Port            databases/mysql50-server
+			<BuildOptions>
+				WITH_COLLATION	UTF8
+			</BuildOptions>
+		</Package>
+	</PackageSet>
+</PackageSets>
+
+
+#
+# Installation Types
+#
+<Installations>
+	<Installation Standard>
+		Description	Standard Installation
+		Release		6.0
+		NetworkDevice	em0
+		PackageSet      Base
+		PackageSet      Database
+		<Disk ad0>
+			PartitionMap	Standard
+		</Disk>
+	</Installation>
+	<Installation Router>
+		Description	Router
+		Release		6.0
+		NetworkDevice	em0
+		PackageSet      Base
+		<Disk ad0>
+			PartitionMap	Standard
+		</Disk>
+	</Installation>
+	<Installation Other>
+		Description	The Other
+		Release	        6-STABLE
+		NetworkDevice	em0
+		PackageSet      Base
+		PackageSet      Database
+		<Disk ad0>
+			PartitionMap	Standard
+		</Disk>
+	</Installation>
+</Installations>

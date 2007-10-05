@@ -1,0 +1,17 @@
+- More granularity of builds. Allow rebuilding of individual releases, 
+  individual packagesets for a release, and even individual packages.
+- Make it possible to install a functional ports tree into releases. 
+- Create options to define what to include in a release: minimal system, X,
+  ports, sources, kernel source only, etc.
+- Give option of dumping built packages in a directory that is shared via
+  http/ftp so it can be used for binary package updates on running systems with 
+  portupgrade -P.
+- Add paging to bootloader menu so we can have more than 8 or so installation
+  types.
+- Allow customization of install from bootloader menu: give user option to
+  select release, packagesets, disk layout, etc. as an alternative to
+  pre-configured installations in farbot configuration file.
+- Add an option for per port distfiles which can be copied from some location.
+  This way the distfiles cache given by the DistfilesCache option in PackageSets
+  can be periodically cleaned out without fear of accidentally deleting some
+  distfile that can't be automatically downloaded (e.g. diablo-jdk).
