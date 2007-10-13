@@ -32,7 +32,6 @@
 import os, shutil
 
 from twisted.trial import unittest
-from twisted.internet import reactor, defer
 
 from farb import utils
 

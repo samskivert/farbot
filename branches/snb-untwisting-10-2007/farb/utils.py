@@ -27,7 +27,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from twisted.internet import reactor, defer
 import shutil, os, stat
 
 class ExecutionFailureContext(object):

@@ -27,12 +27,13 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from twisted.internet import reactor, defer, protocol, threads
-from twisted.python import threadable
-threadable.init()
-
-import os, re, gzip, shutil, exceptions, glob
 import cStringIO
+import exceptions
+import glob
+import os
+import re
+import shutil
+import subprocess
 
 import farb
 from farb import utils
@@ -147,35 +148,6 @@ class CDReleaseError(farb.FarbError):
 class ChrootCleanerError(farb.FarbError):
     pass
 
-class LoggingProcessProtocol(protocol.ProcessProtocol):
-    """
-    make(1) process protocol
-    """
-    def __init__(self, deferred, log):
-        """
-        @param deferred: Deferred to call with process return code
-        @param log: Open log file
-        """
-        self.log = log
-        self.d = deferred
-
-    def outReceived(self, data):
-        self.log.write(data)
-
-    def errReceived(self, data):
-        self.log.write(data)
-
-    def connectionMade(self):
-        # We're not interested in writing to stdin
-        self.transport.closeStdin()
-
-    def processEnded(self, status):
-        if (status.value.exitCode == 0):
-            self.d.callback(status.value.exitCode)
-        else:
-            self.d.errback(CommandError(status.value.exitCode))
-
-
 class NCVSBuildnameProcessProtocol(protocol.ProcessProtocol):
     """
     FreeBSD CVS newvers.sh information extraction.
@@ -186,11 +158,7 @@ class NCVSBuildnameProcessProtocol(protocol.ProcessProtocol):
     _buffer = ''
     delimiter = '\n'
 
-    def __init__(self, deferred):
-        """
-        @param deferred: Deferred to call with process return code
-        """
-        self.d = deferred
+    def __init__(self):
         self.shVarRegex = re.compile(r'^([A-Za-z]+)="([A-Za-z0-9\.\-]+)"')
         self.fbsdRevision = None
         self.fbsdBranch = None
@@ -217,12 +185,10 @@ class NCVSBuildnameProcessProtocol(protocol.ProcessProtocol):
 
     def processEnded(self, status):
         if (status.value.exitCode != 0):
-            self.d.errback(CVSCommandError('cvs(1) returned %d' % status.value.exitCode))
-            return
+            raise CVSCommandError, 'cvs(1) returned %d' % status.value.exitCode
 
         if (not self.fbsdRevision or not self.fbsdBranch):
-            self.d.errback(NCVSParseError('Could not parse both REVISION and BRANCH variables'))
-            return
+            raise NCVSParseError, 'Could not parse both REVISION and BRANCH variables'
 
         self.d.callback(self.fbsdRevision+ '-' + self.fbsdBranch)
 
@@ -307,11 +273,6 @@ class CVSCommand(object):
         """
         self.repository = repository
 
-    def _ebCVS(self, failure):
-        # Provide a more specific exception type
-        failure.trap(CommandError)
-        raise CVSCommandError, failure.value
-
     def checkout(self, release, module, destination, log):
         """
         Run cvs(1) checkout
@@ -320,25 +281,14 @@ class CVSCommand(object):
         @param destination: destination for the checkout 
         @param log: Open log file
         """
-
-        # Create command argv
-        d = defer.Deferred()
-        d.addErrback(self._ebCVS)
-        protocol = LoggingProcessProtocol(d, log)
+        # Create command argv, and run it
         argv = [CVS_PATH, '-R', '-d', self.repository, 'checkout', '-r', release, '-d', destination, module]
-
-        reactor.spawnProcess(protocol, CVS_PATH, args=argv, env=ROOT_ENV)
-
-        return d
+        _runCommand(argv, log, CVSCommandError, ROOT_ENV)
 
 class MountCommand(object):
     """
     mount(8)/umount(8) command context
     """
-    # Work around mount/umount() race condition
-    # in FreeBSD 6.0's vfs code.
-    mountLock = defer.DeferredLock()
-
     def __init__(self, device, mountpoint, fstype=None):
         """
         Create a new MountCommand instance
@@ -351,19 +301,6 @@ class MountCommand(object):
         self.mountpoint = mountpoint
         self.fstype = fstype
 
-
-    def _ebMount(self, failure):
-        # Release the lock
-        self.mountLock.release()
-
-        # Provide a more specific exception type
-        failure.trap(CommandError)
-        raise MountCommandError, failure.value
-
-    def _cbReleaseMountLock(self, result):
-        self.mountLock.release()
-        return result
-
     def mount(self, log):
         """
         Run mount(8)
@@ -371,19 +308,13 @@ class MountCommand(object):
         """
 
         # Create command argv
-        d = defer.Deferred()
-        d.addErrback(self._ebMount)
-        protocol = LoggingProcessProtocol(d, log)
         if (self.fstype):
             argv = [MOUNT_PATH, '-t', self.fstype, self.device, self.mountpoint]
         else:
             argv = [MOUNT_PATH, self.device, self.mountpoint]
 
-        lock = self.mountLock.acquire()
-        lock.addCallback(lambda _: reactor.spawnProcess(protocol, MOUNT_PATH, args=argv, env=ROOT_ENV))
-        d.addCallback(self._cbReleaseMountLock)
-
-        return d
+        # And run it
+        _runCommand(argv, log, ROOT_ENV, MountCommandError)
 
     def umount(self, log):
         """
@@ -391,17 +322,10 @@ class MountCommand(object):
         @param log: Open log file
         """
 
-        # Create command argv
-        d = defer.Deferred()
-        d.addErrback(self._ebMount)
-        protocol = LoggingProcessProtocol(d, log)
+        # Create command argv and execute
         argv = [UMOUNT_PATH, self.mountpoint]
+        _runCommand(argv, log, ROOT_ENV, MountCommandError)
 
-        lock = self.mountLock.acquire()
-        lock.addCallback(lambda _: reactor.spawnProcess(protocol, UMOUNT_PATH, args=argv, env=ROOT_ENV))
-        d.addCallback(self._cbReleaseMountLock)
-
-        return d
 
 class MDMountCommand(MountCommand):
     """
@@ -1216,3 +1140,19 @@ def _getCDRelease(cdroot):
         raise CDReleaseError, "cdrom.inf file in %s has unrecognized first line: %s" % (cdroot, line)
 
     return splitString[1]
+
+def _runCommand(argv, log, env=ROOT_ENV, exception):
+    """
+    Run a command, logging its output to a file. Raise an exception if it has an
+    exit code of anything other than 0.
+    @param argv: List containing path of command, followed by its arguments
+    @param log: Open log file
+    @param env: Dictionary of the environment to run the command under. Defaults 
+        to ROOT_ENV
+    @param exception: Type of exception to throw if command returns a value 
+        other than zero
+    """
+    process = subprocess.Popen(argv, stdout=log, stderr=log, env=env)
+    retval = process.wait()
+    if retval != 0:
+        raise exception, "Command %s returned with exit code %d; see log file %s for details" % (argv[0], retval, log)
