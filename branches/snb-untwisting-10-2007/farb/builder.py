@@ -148,76 +148,6 @@ class CDReleaseError(farb.FarbError):
 class ChrootCleanerError(farb.FarbError):
     pass
 
-class NCVSBuildnameProcessProtocol(protocol.ProcessProtocol):
-    """
-    FreeBSD CVS newvers.sh information extraction.
-
-    Extracts the release build name from a copy of newvers.sh written by
-    cvs(1) to stdout.
-    """
-    _buffer = ''
-    delimiter = '\n'
-
-    def __init__(self):
-        self.shVarRegex = re.compile(r'^([A-Za-z]+)="([A-Za-z0-9\.\-]+)"')
-        self.fbsdRevision = None
-        self.fbsdBranch = None
-
-    def outReceived(self, data):
-        """
-        Searches a shell script for lines matching VARIABLE=VALUE, 
-        looking for the FreeBSD revision and branch variable assignments
-        Uses line-oriented input buffering.
-        """
-        # Split the input into lines
-        lines = (self._buffer + data).split(self.delimiter)
-        # Pop the last (potentially incomplete) line
-        self._buffer = lines.pop(-1)
-
-        # Search for the revision and branch variables
-        for line in lines:
-            vmatch = re.search(self.shVarRegex, line)
-            if (vmatch):
-                if (vmatch.group(1) == 'REVISION'):
-                    self.fbsdRevision = vmatch.group(2)
-                elif (vmatch.group(1) == 'BRANCH'):
-                    self.fbsdBranch = vmatch.group(2)
-
-    def processEnded(self, status):
-        if (status.value.exitCode != 0):
-            raise CVSCommandError, 'cvs(1) returned %d' % status.value.exitCode
-
-        if (not self.fbsdRevision or not self.fbsdBranch):
-            raise NCVSParseError, 'Could not parse both REVISION and BRANCH variables'
-
-        self.d.callback(self.fbsdRevision+ '-' + self.fbsdBranch)
-
-class MDConfigProcessProtocol(protocol.ProcessProtocol):
-    """
-    FreeBSD mdconfig(1) protocol.
-    Attach and detach vnode md(4) devices.
-    """
-    _buffer = ''
-
-    def __init__(self, deferred):
-        """
-        @param deferred: Deferred to call with process return code
-        """
-        self.d = deferred
-
-    def outReceived(self, data):
-        """
-        mdconfig(1) will output the md(4) device name
-        """
-        self._buffer = self._buffer.join(data)
-
-    def processEnded(self, status):
-        if (status.value.exitCode != 0):
-            self.d.errback(MDConfigCommandError('mdconfig returned %d' % status.value.exitCode))
-            return
-
-        self.d.callback(self._buffer.rstrip('\n'))
-
 class MDConfigCommand(object):
     """
     mdconfig(8) command context
@@ -230,37 +160,28 @@ class MDConfigCommand(object):
         self.file = file
         self.md = None
 
-    def _cbAttached(self, result):
-        self.md = result
-
-    def attach(self):
+    def attach(self, log):
         """
         Attach the file to an md(4) device
         """
-        assert(self.md == None)
+        if self.md:
+            raise MDConfigCommandError, "Cannot attach md device for %s because it has already been attached" % self.file
 
-        # Create command argv
+        # Create command argv, and run it. Save the device name mdconfig prints
         argv = [MDCONFIG_PATH, '-a', '-t', 'vnode', '-f', self.file]
-        d = defer.Deferred()
-        protocol = MDConfigProcessProtocol(d)
-        reactor.spawnProcess(protocol, MDCONFIG_PATH, args=argv, env=ROOT_ENV)
-        d.addCallback(self._cbAttached)
+        device = _runCommand(argv, log, MDConfigCommandError, ROOT_ENV, True)
+        self.md = device.rstrip('\n')
 
-        return d
-
-    def detach(self):
+    def detach(self, log):
         """
         Attach the file to an md(4) device
         """
-        assert(self.md)
+        if self.md == None:
+            raise MDConfigCommandError, "Cannot detach md device for %s because it doesn't exist" % self.file
 
-        # Create command argv
+        # Create command argv, then run it
         argv = [MDCONFIG_PATH, '-d', '-u', self.md]
-        d = defer.Deferred()
-        protocol = MDConfigProcessProtocol(d)
-        reactor.spawnProcess(protocol, MDCONFIG_PATH, args=argv, env=ROOT_ENV)
-
-        return d
+        _runCommand(argv, log, MDConfigCommandError, ROOT_ENV)
 
 class CVSCommand(object):
     """
@@ -314,7 +235,7 @@ class MountCommand(object):
             argv = [MOUNT_PATH, self.device, self.mountpoint]
 
         # And run it
-        _runCommand(argv, log, ROOT_ENV, MountCommandError)
+        _runCommand(argv, log, MountCommandError, ROOT_ENV)
 
     def umount(self, log):
         """
@@ -324,7 +245,7 @@ class MountCommand(object):
 
         # Create command argv and execute
         argv = [UMOUNT_PATH, self.mountpoint]
-        _runCommand(argv, log, ROOT_ENV, MountCommandError)
+        _runCommand(argv, log, MountCommandError, ROOT_ENV)
 
 
 class MDMountCommand(MountCommand):
@@ -342,60 +263,26 @@ class MDMountCommand(MountCommand):
         self.mdc = mdc
         super(MDMountCommand, self).__init__(None, mountpoint, fstype)
 
-    def _ebUnmount(self, failure):
-        # Provide a more specific exception type
-        failure.trap(CommandError)
-        raise MountCommandError, failure.value
-
-    def _cbUnmount(self, result):
-        """
-        Device unmounted, detach it
-        """
-        d = self.mdc.detach()
-        d.addCallback(self._cbDetach, result)
-
-        return d
-
-    def _cbAttach(self, result, log):
-        """
-        Device attached, mount it
-        """
-        # build the device path
-        self.device = os.path.join('/dev/', self.mdc.md)
-        return super(MDMountCommand, self).mount(log)
-
-    def _cbDetach(self, result, mountExitCode):
-        # Return the mount(8) exit code
-        return mountExitCode
-
     def mount(self, log):
         """
         Attach the device, run mount(8)
         @param log: Open log file
         """
-
-        # Attach the image. Let the caller
-        # handle MDConfigCommand exceptions
+        # Attach the image. Let the caller handle MDConfigCommand exceptions 
         # directly
-        d = self.mdc.attach()
-        d.addCallback(self._cbAttach, log)
-
-        return d
+        self.mdc.attach(log)
+        # Build the device path and mount it
+        self.device = os.path.join('/dev/', self.mdc.md)
+        super(MDMountCommand, self).mount(log)
 
     def umount(self, log):
         """
         Run unmount(8), detach the image.
         @param log: Open log file
         """
-
-        # Unmount the image, detach it on success.
-        #
-        # Clean up the CommandError exception
-        # on failure.
-        d = super(MDMountCommand, self).umount(log)
-        d.addCallbacks(self._cbUnmount, self._ebUnmount)
-
-        return d
+        # Unmount and detach the image
+        super(MDMountCommand, self).umount(log)
+        self.mdc.detach(log)
 
 class MakeCommand(object):
     """
@@ -414,11 +301,6 @@ class MakeCommand(object):
         self.options = options
         self.chrootdir = chrootdir
 
-    def _ebMake(self, failure):
-        # Provide a more specific exception type
-        failure.trap(CommandError)
-        raise MakeCommandError, failure.value
-
     def make(self, log):
         """
         Run make(1)
@@ -426,9 +308,6 @@ class MakeCommand(object):
         """
 
         # Create command argv
-        d = defer.Deferred()
-        d.addErrback(self._ebMake)
-        protocol = LoggingProcessProtocol(d, log)
         argv = [MAKE_PATH, '-C', self.directory]
         if self.chrootdir:
             runCmd = CHROOT_PATH
@@ -442,32 +321,21 @@ class MakeCommand(object):
 
         for option, value in self.options.items():
             argv.append("%s=%s" % (option, value))
-        reactor.spawnProcess(protocol, runCmd, args=argv, env=ROOT_ENV)
-
-        return d
+        
+        # Run it
+        _runCommand(argv, log, MakeCommandError, ROOT_ENV)
 
 class PortsnapCommand(object):
     """
     portsnap(8) command context
     """
-    def _ebPortsnap(self, failure):
-        # Provide a more specific exception type
-        failure.trap(CommandError)
-        raise PortsnapCommandError, failure.value
-
     def fetch(self, log):
         """
         Run portsnap(8) fetch to get an up-to-date ports tree snapshot
         @param log: Open log file
         """
-        d = defer.Deferred()
-        d.addErrback(self._ebPortsnap)
-        protocol = LoggingProcessProtocol(d, log)
         argv = [PORTSNAP_PATH, 'fetch']
-
-        reactor.spawnProcess(protocol, PORTSNAP_PATH, args=argv, env=ROOT_ENV, usePTY=True)
-
-        return d
+        _runCommand(argv, log, PortsnapCommandError, ROOT_ENV)
 
     def extract(self, destination, log):
         """
@@ -475,14 +343,8 @@ class PortsnapCommand(object):
         @param destination: Ports directory to extract to
         @param log: Open log file
         """
-        d = defer.Deferred()
-        d.addErrback(self._ebPortsnap)
-        protocol = LoggingProcessProtocol(d, log)
         argv = [PORTSNAP_PATH, '-p', destination, 'extract']
-
-        reactor.spawnProcess(protocol, PORTSNAP_PATH, args=argv, env=ROOT_ENV)
-
-        return d
+        _runCommand(argv, log, PortsnapCommandError, ROOT_ENV)
 
 class ChflagsCommand(object):
     """
@@ -495,22 +357,13 @@ class ChflagsCommand(object):
         """
         self.path = path
     
-    def _ebChflags(self, failure):
-        failure.trap(CommandError)
-        raise ChflagsCommandError, failure.value
-    
     def removeAll(self, log):
         """
         Recursively remove all flags from self.path
         @param log: Open log file
         """
-        d = defer.Deferred()
-        d.addErrback(self._ebChflags)
-        protocol = LoggingProcessProtocol(d, log)
         argv = [CHFLAGS_PATH, '-R', '0', self.path]
-        reactor.spawnProcess(protocol, CHFLAGS_PATH, args=argv, env=ROOT_ENV)
-        
-        return d
+        _runCommand(argv, log, ChflagsCommandError, ROOT_ENV)
 
 class ChrootCleaner(object):
     """
@@ -523,15 +376,7 @@ class ChrootCleaner(object):
         @param chroot Directory that needs to be wiped out
         """
         self.chroot = chroot
-
-    def _ebClean(self, failure):
-        try:
-            failure.raiseException()
-        except ChflagsCommandError, e:
-            raise ChrootCleanerError, "Error removing file flags in %s: %s" % (self.chroot, e)
-        except Exception, e:
-            raise ChrootCleanerError, "Error cleaning %s: %s" % (self.chroot, e)
-        
+    
     def clean(self, log):
         """
         Recursively remove all files from self.chroot
@@ -541,18 +386,17 @@ class ChrootCleaner(object):
             # Remove all flags on files in the chroot, then delete it all
             if os.path.exists(self.chroot):
                 cc = ChflagsCommand(self.chroot)
-                d = cc.removeAll(log)
-                d.addCallback(lambda _: threads.deferToThread(shutil.rmtree, self.chroot))
+                cc.removeAll(log)
+                try:
+                    shutil.rmtree(self.chroot)
+                except Exception, e:
+                    raise ChrootCleanerError, "Error cleaning %s: %s" % (self.chroot, e)
         
-            # Now create new empty directory
-            d.addCallback(lambda _: os.mkdir(self.chroot))
-        
-        # If the chroot isn't there, all we need to do is create it
-        else:
-            d = threads.deferToThread(os.mkdir, self.chroot)
-
-        d.addErrback(self._ebClean)
-        return d
+        # Now create new empty directory
+        try:
+            os.mkdir(self.chroot)
+        except Exception, e:
+            raise ChrootCleanerError, "Could not create new chroot directory %s: %s" % (self.chroot, e)
 
 class ReleaseBuilder(object):
     makeTarget = ('release',)
@@ -578,45 +422,65 @@ class ReleaseBuilder(object):
         self.chroot = chroot
         self.makecds = makecds
 
-    def _ebBuildError(self, failure):
-        try:
-            failure.raiseException()
-        except CVSCommandError, e:
-            raise ReleaseBuildError, "An error occured extracting the release name from \"%s\": %s" % (self.cvsroot, e)
-        except MakeCommandError, e:
-            raise ReleaseBuildError, "An error occured building the release, make command returned: %s" % (e)
+    def _getBuildName(self, log):
+        """
+        Extracts the release build name from a copy of newvers.sh written by
+        cvs(1) to stdout.
+        @param log: Open log file
+        @return A string containing the FreeBSD revision and branch connected 
+            with a -, e.g. 6.0-RELEASE-p4
+        """
+        shVarRegex = re.compile(r'^([A-Za-z]+)="([A-Za-z0-9\.\-]+)"')
+        fbsdRevision = None
+        fbsdBranch = None
+        
+        argv = [CVS_PATH, '-R', '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH]
+        buffer = _runCommand(argv, log, CVSCommandError, ROOT_ENV, True)
+        
+        # Split the input into lines
+        lines = buffer.split('\n')
 
-    def _doBuild(self, buildname, log):
-        makeOptions = self.defaultMakeOptions.copy()
-        makeOptions['CHROOTDIR'] = self.chroot
-        makeOptions['CVSROOT'] = self.cvsroot
-        makeOptions['RELEASETAG'] = self.cvstag
-        makeOptions['BUILDNAME'] = buildname
-
-        if (self.makecds == True):
-            makeOptions['MAKE_ISOS'] = 'yes'
-
-        makecmd = MakeCommand(FREEBSD_REL_PATH, self.makeTarget, makeOptions)
-        d = makecmd.make(log)
-
-        return d
+        # Search for the revision and branch variables
+        for line in lines:
+            vmatch = re.search(shVarRegex, line)
+            if (vmatch):
+                if (vmatch.group(1) == 'REVISION'):
+                    fbsdRevision = vmatch.group(2)
+                elif (vmatch.group(1) == 'BRANCH'):
+                    fbsdBranch = vmatch.group(2)
+        
+        if (not fbsdRevision or not fbsdBranch):
+            raise NCVSParseError
+        
+        return fbsdRevision + '-' + fbsdBranch
 
     def build(self, log):
         """
         Build the release
         @param log: Open log file
-        @return Returns a deferred that will be called when make(1) completes
         """
-
         # Grab the correct buildname from CVS
-        d = defer.Deferred()
-        pp = NCVSBuildnameProcessProtocol(d)
-
-        # Kick off the build once we get the release name from CVS
-        d.addCallback(self._doBuild, log)
-        d.addErrback(self._ebBuildError)
-        reactor.spawnProcess(pp, CVS_PATH, args=[CVS_PATH, '-R', '-d', self.cvsroot, 'co', '-p', '-r', self.cvstag, NEWVERS_PATH], env=ROOT_ENV)
-        return d
+        try:
+            buildname = self._getBuildName(log)
+        except CVSCommandError, e:
+            raise ReleaseBuildError, "An error occurred with cvs while trying to find release name to build: %s" % (e)
+        except NCVSParseError, e:
+            raise ReleaseBuildError, "Could not parse build name from newvers.sh in cvs repository \"%s\" while building release" % (self.cvsroot)
+        
+        makeOptions = self.defaultMakeOptions.copy()
+        makeOptions['CHROOTDIR'] = self.chroot
+        makeOptions['CVSROOT'] = self.cvsroot
+        makeOptions['RELEASETAG'] = self.cvstag
+        makeOptions['BUILDNAME'] = buildname
+        if (self.makecds == True):
+            makeOptions['MAKE_ISOS'] = 'yes'
+        
+        # Then try to run make
+        try:
+            makecmd = MakeCommand(FREEBSD_REL_PATH, self.makeTarget, makeOptions)
+            makecmd.make(log)
+        except MakeCommandError, e:
+            raise ReleaseBuildError, "An error with make occurred while building the release: %s" % (e)
 
 class ISOReader(object):
     """
@@ -634,494 +498,490 @@ class ISOReader(object):
         self.releaseroot = releaseroot
         self.cdroot = os.path.join(self.releaseroot, RELEASE_CD_PATH)
     
-    def _ebCopy(self, failure):
-        try:
-            failure.raiseException()
-        except ChrootCleanerError, e:
-            raise ISOReaderError, "Error cleaning chroot %s: %s" % (self.releaseroot, e)
-        except utils.Error, e:
-            raise ISOReaderError, "Error copying contents of ISO at %s to %s: %s" % (self.mountpoint, self.cdroot, e)
-    
     def copy(self, log):
         """
         Copy release from ISO to target directory.
         @param log: Open log file
         """
         # Clean out release
-        cc = ChrootCleaner(self.releaseroot)
-        d = cc.clean(log)
+        try:
+            cc = ChrootCleaner(self.releaseroot)
+            cc.clean(log)
+        except ChrootCleanerError, e:
+            raise ISOReaderError, "Error cleaning chroot %s: %s" % (self.releaseroot, e)
 
         # Now do the copy
-        d.addCallback(lambda _: threads.deferToThread(utils.copyRecursive, self.mountpoint, self.cdroot, symlinks=True))
-        d.addErrback(self._ebCopy)
-        return d
-
-class PackageChrootAssembler(object):
-    """
-    Extract release binaries into a chroot in which packages can be built.
-    """
-    def __init__(self, releaseroot, chroot):
-        """
-        Create a new PackageChrootAssembler instance
-        @param releaseroot: Directory that contains built release in R/
-        @param chroot: Chroot directory to install to
-        """
-        self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
-        self.chroot = chroot
-    
-    def _ebExtractError(self, failure):        
         try:
-            failure.raiseException()
-        except ChrootCleanerError, e:
-            raise PackageChrootAssemblerError, "Error cleaning chroot %s: %s" % (self.chroot, e)
-        except Exception, e:
-            raise PackageChrootAssemblerError, "Error extracting release from %s to %s: %s" % (self.cdroot, self.chroot, e)
-    
-    def _cbExtractDist(self, distdir, distname, target, log):
-        # Extract a distribution set into the chroot with tar.
-        d = defer.Deferred()
-        protocol = LoggingProcessProtocol(d, log)
-        argv = [TAR_PATH, '--unlink', '-xpvzf', '-', '-C', target]
-        
-        # Create target directory if it isn't already there
-        if (not os.path.exists(target)):
-            os.makedirs(target)
-        
-        # Spawn a process to run tar, keeping the IProcessTransport 
-        # providing object it returns so we can write to the process'
-        # stdin using IProcessTransport.writeToChild()
-        pt = reactor.spawnProcess(protocol, TAR_PATH, args=argv, env=ROOT_ENV)
-        
-        path = os.path.join(distdir, distname)
-        files = glob.glob(path + '.??')
-        for filename in files:
-            file = open(filename, 'rb')
-            pt.writeToChild(0, file.read())
-            file.close()
-        
-        pt.closeStdin()
-        
-        return d
-    
-    def _cbExtractAll(self, clean, dists, log):
-        # The clean argument is what is returned by the chroot cleaner. It 
-        # should be None, and doesn't seem necessary to worry about
-        deferreds = []
-        # Extract each dist in the chroot
-        for key in dists.iterkeys():
-            distdir = os.path.join(self.cdroot, os.path.join(self.cdroot, _getCDRelease(self.cdroot)), key)
-            for distname in dists[key]:
-                # Just to make things difficult, not all dists extract relative 
-                # to /. The source distribution sets, for instance, should be 
-                # extracted in /usr/src/. 
-                # TODO: I'd love to handle this a better way, and I don't know 
-                # what releases of FreeBSD are this way (all of them?). It 
-                # would be a good idea to handle other distribution sets that 
-                # have this fun property (e.g. kernels extract to /boot). See 
-                # Distribution structs near the top of 
-                # /usr/src/usr.sbin/sysinstall/dist.c
-                if key == 'src':
-                    target = os.path.join(self.chroot, 'usr', 'src')
-                else:
-                    target = self.chroot
-            
-                deferreds.append(self._cbExtractDist(distdir, distname, target, log))
-    
-        d = defer.DeferredList(deferreds, fireOnOneErrback=True)
-        return d
-    
-    def extract(self, dists, log):
-        """
-        Extract the release into a chroot
-        @param dists: Dictionary of distribution sets to extract. The key is a 
-            string corresponding to the name of the dist, and the value is an 
-            array of the subdists in that directory. For dists that don't have 
-            a lot of subdists, this value will probably just be an array 
-            containing the same string as the key.
-        @param log: Open log file
-        """
-        # Clean out chroot
-        cc = ChrootCleaner(self.chroot)
-        d = cc.clean(log)
-        
-        # Then extract all dists
-        d.addCallback(self._cbExtractAll, dists, log)
-        
-        # Add /etc/resolv.conf to chroot
-        d.addCallback(lambda _: threads.deferToThread(utils.copyWithOwnership, os.path.join(ROOT_PATH, RESOLV_CONF), os.path.join(self.chroot, RESOLV_CONF)))
-        d.addErrback(self._ebExtractError)
-        return d
+            utils.copyRecursive(self.mountpoint, self.cdroot, symlinks=True)
+        except utils.Error, e:
+            raise ISOReaderError, "Error copying contents of ISO at %s to %s: %s" % (self.mountpoint, self.cdroot, e)
 
-class PackageBuilder(object):
-    """
-    Build a package from a FreeBSD port
-    """
-    makeTarget = ('deinstall', 'clean', 'package-recursive')
-    defaultMakeOptions = {
-        'PACKAGE_BUILDING'  : 'yes',
-        'BATCH'             : 'yes',
-        'NOCLEANDEPENDS'    : 'yes'
-    }
-
-    """
-    Build a FreeBSD Package 
-    """
-    def __init__(self, pkgroot, port, buildOptions=None):
-        """
-        Create a new PackageBuilder instance.
-
-        @param pkgroot: Chroot directory where packages will be built
-        @param port: Port to build
-        @param buildOptions: Build options for the package
-        """
-        self.pkgroot = pkgroot
-        self.port = port
-        self.buildOptions = buildOptions
-
-    def _ebBuildError(self, failure):
-        try:
-            failure.raiseException()
-        except MakeCommandError, e:
-            raise PackageBuildError, "An error occured building the port \"%s\", make command returned: %s" % (self.port, e)
-
-    def build(self, log):
-        """
-        Build the package 
-        @param log: Open log file
-        @return Returns a deferred that will be called when make(1) completes
-        """
-
-        # Load up a deferred with the right call backs and return it
-        # ready to be spawned
-        makeOptions = self.defaultMakeOptions.copy()
-        makeOptions.update(self.buildOptions)
-        makecmd = MakeCommand(os.path.join(FREEBSD_PORTS_PATH, self.port), self.makeTarget, makeOptions, self.pkgroot)
-        d = makecmd.make(log)
-        d.addErrback(self._ebBuildError)
-        return d
-
-class InstallAssembler(object):
-    """
-    Assemble an installation configuration
-    """
-    def __init__(self, name, description, releaseroot, installConfigPath):
-        """
-        @param name: A unique name for this install instance 
-        @param description: A human-readable description of this install type
-        @param releaseroot: Directory containing the release binaries
-        @param installConfigFile: The complete path to this installation's install.cfg
-        """
-        self.name = name
-        self.description = description
-        self.releaseroot = releaseroot
-        self.installConfigSource = installConfigPath
-        
-        #
-        # Source Paths
-        #
-        
-        # Contains shared release boot files
-        self.bootRoot = os.path.join(self.releaseroot, RELEASE_CD_PATH, 'boot')
-        # Shared release mfsroot
-        self.mfsCompressed = os.path.join(self.bootRoot, 'mfsroot.gz')
-        # Directory containing generic kernel and its modules
-        self.kernel = os.path.join(self.bootRoot, 'kernel')
-
-    def _ebInstallError(self, failure):
-        try:
-            failure.raiseException()
-        except MDConfigCommandError, e:
-            raise InstallAssembleError, "An error occured operating on the mfsroot \"%s\": %s" % (self.mfsOutput, e)
-        except MountCommandError, e:
-            raise InstallAssembleError, "An error occured mounting \"%s\": %s" % (self.mfsOutput, e)
-        except exceptions.IOError, e:
-            raise InstallAssembleError, "An I/O error occured: %s" % e
-        except Exception, e:
-            raise InstallAssembleError, "An error occured: %s" % e
-
-    def _decompressMFSRoot(self, mfsOutput):
-    	"""
-    	Synchronous decompression/writing of mfsroot file
-    	(Not worth making async, so run in a thread)
-    	"""
-    	compressedFile = gzip.GzipFile(self.mfsCompressed, 'rb')
-    	outputFile = open(mfsOutput, 'wb')
-    	while (True):
-    		data = compressedFile.read(1024)
-    		if (not data):
-    			break
-    		outputFile.write(data)
-
-        return mfsOutput
-
-    def _cbMountMFSRoot(self, mfsOutput, mountPoint, log):
-    	"""
-    	Once the MFS root has been decompressed,
-    	mount it
-    	"""
-    	mdconfig = MDConfigCommand(mfsOutput)
-    	# Create the mount point, if necessary
-    	if (not os.path.exists(mountPoint)):
-    		os.mkdir(mountPoint)
-    	self.mdmount = MDMountCommand(mdconfig, mountPoint)
-    	return self.mdmount.mount(log)
-
-    def _cbCopyKernel(self, result, destdir):
-        """
-        Copy the kernel directory to the install-specific directory
-        (Synchronous)
-        """
-        dest = os.path.join(destdir, 'kernel')
-        d = threads.deferToThread(utils.copyRecursive, self.kernel, dest, symlinks=True)
-        return d
-
-    def _doWriteBootConf(self, destdir):
-        """
-        Write the per-install bootloader configuration file
-        """
-        subst = {}
-        subst['bootdir'] = os.path.basename(destdir)
-
-        output = open(os.path.join(destdir, 'boot.conf'), 'w')
-        template = open(farb.BOOT_CONF_TMPL, 'r')
-
-        for line in template:
-            output.write(line % (subst))
-
-        output.close()
-        template.close()
-        
-    def build(self, destdir, log):
-        """
-        Build the MFSRoot, build the boot loader configuration, and copy the kernel.
-        @param destdir: The installation-specific boot-loader directory
-        @param log: Open log file
-        @return Returns a deferred
-        """
-
-        #
-        # Destination Paths
-        #
-        # Path to installation-specific mfsroot
-        mfsOutput = os.path.join(destdir, "mfsroot")
-        # Temporary mount point for the mfsroot image
-        mountPoint = os.path.join(destdir, "mnt")
-        # Write the install.cfg to the mfsroot mount point
-        installConfigDest = os.path.join(mountPoint, 'install.cfg')
-
-        # Create the destdir, if necessary
-        if (not os.path.exists(destdir)):
-            os.mkdir(destdir)
-
-        # Write the uncompressed mfsroot file
-        d = threads.deferToThread(self._decompressMFSRoot, mfsOutput)
-        # Mount the mfsroot once it has been decompressed
-        d.addErrback(self._ebInstallError)
-        d.addCallback(self._cbMountMFSRoot, mountPoint, log)
-
-        # Copy the install.cfg to the attached md device
-        d.addCallback(lambda _: shutil.copy2(self.installConfigSource, installConfigDest))
-
-        # Unmount/detach md device
-        d.addCallback(lambda _: self.mdmount.umount(log))
-
-        # Copy the kernel
-        d.addCallback(self._cbCopyKernel, destdir)
-
-        # Write boot.conf
-        d.addCallback(lambda _: threads.deferToThread(self._doWriteBootConf, destdir))
-        
-        return d
-
-
-class ReleaseAssembler(object):
-    """
-    Assemble the per-release installation data directory.
-    """
-    def __init__(self, name, releaseroot, pkgroot, localData = []):
-        """
-        Initialize the ReleaseAssembler
-        @param name: A unique name for this release
-        @param releaseroot: Directory containing the release binaries
-        @param pkgroot: Chroot directory where packages were built
-        @param localData: List of file and directory paths to copy to installRoot/local.
-        """
-        self.name = name
-        self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
-        self.pkgroot = pkgroot
-        self.localData = localData
-
-    def _cbCopyLocal(self, result, source, dest):
-        if (os.path.isdir(source)):
-            d = threads.deferToThread(utils.copyRecursive, source, os.path.join(dest, os.path.basename(source)), symlinks=True)
-        else:
-            d = threads.deferToThread(utils.copyWithOwnership, source, dest)
-
-        return d
-
-    def _ebBuild(self, failure):
-        try:
-            failure.raiseException()
-        except exceptions.IOError, e:
-            raise ReleaseAssembleError, "An I/O error occured: %s" % e
-        except Exception, e:
-            raise ReleaseAssembleError, "An error occured: %s" % e
-
-    def build(self, destdir, log):
-        """
-        Create the install root, copy in the release data,
-        write out the bootloader configuration and kernels.
-        @param destdir: Per-release installation data directory.
-        @param log: Open log file.
-        """
-        # Copy the installation data
-        d = threads.deferToThread(utils.copyRecursive, os.path.join(self.cdroot, _getCDRelease(self.cdroot)), destdir, symlinks=True)
-
-        # If there are packages, copy those too
-        packagedir = os.path.join(self.pkgroot, RELEASE_PACKAGE_PATH)
-        if (os.path.exists(packagedir)):
-            d.addCallback(lambda _: threads.deferToThread(utils.copyRecursive, packagedir, os.path.join(destdir, 'packages'), symlinks=True))
-
-        # Copy in any local data
-        if (len(self.localData)):
-            # Create the local directory
-            localdir = os.path.join(destdir, 'local')
-            d.addCallback(lambda _: os.mkdir(localdir))
-
-            for path in self.localData:
-                d.addCallback(self._cbCopyLocal, path, localdir)
-
-        # Add the FarBot package installer script and make it executable
-        d.addCallback(lambda _: threads.deferToThread(utils.copyWithOwnership, farb.INSTALL_PACKAGE_SH, destdir))
-        d.addCallback(lambda _: os.chmod(os.path.join(destdir, os.path.basename(farb.INSTALL_PACKAGE_SH)), 0755))
-
-        return d
-
-class NetInstallAssembler(object):
-    """
-    Assemble the netinstall directory, including the tftproot,
-    using the supplied release and install assemblers.
-    """
-    def __init__(self, installroot, releaseAssemblers, installAssemblers):
-        """
-        Initialize the InstallRootBuilder
-        @param installroot: Network install/boot directory.
-        @param releaseAssemblers: List of ReleaseAssembler instances.
-        @param installAssemblers: List of InstallAssembler instances.
-        """
-        self.installroot = installroot
-        self.tftproot = os.path.join(installroot, 'tftproot')
-        self.releaseAssemblers = releaseAssemblers
-        self.installAssemblers = installAssemblers
-
-    def _ebBuild(self, failure):
-        """
-        Called if any deferred in the DeferredList
-        fails. Handles the original exception.
-        """
-        try:
-            failure.value.subFailure.raiseException()
-        except exceptions.IOError, e:
-            raise NetInstallAssembleError, "An I/O error occured: %s" % e
-        except exceptions.OSError, e:
-            raise NetInstallAssembleError, "An OS error occured: %s" % e
-        except Exception, e:
-            raise NetInstallAssembleError, "An error occured: %s" % e
-
-    def _doConfigureBootLoader(self, destdir):
-        """
-        Write out the forth for the boot loader installation menu
-        """
-        subst = {}
-
-        # Format Strings
-        variableFormat = 'variable %s\n'
-        menuItemFormat = 'printmenuitem ."  %s" %s !\n'
-        ifBlockFormat = 'dup %s @ = if\ns" /%s/boot.conf" read-conf\n0 boot-conf exit\nthen\n'
-
-        # Output
-        variables = cStringIO.StringIO()
-        menuItems = cStringIO.StringIO()
-        ifBlocks = cStringIO.StringIO()
-
-        # Generate the code blocks
-        for install in self.installAssemblers:
-            # Variable declaration
-            variableName = install.name + '_key'
-            variables.write(variableFormat % (variableName))
-
-            # Menu item
-            menuItems.write(menuItemFormat % (install.description, variableName))
-
-            # if block
-            ifBlocks.write(ifBlockFormat % (variableName, install.name))
-
-        # Write out the netinstall.4th file
-        subst['variables'] = variables.getvalue()
-        subst['menuitems'] = menuItems.getvalue()
-        subst['ifblocks'] = ifBlocks.getvalue()
-        output = open(os.path.join(destdir, 'netinstall.4th'), 'w')
-        template = open(farb.NETINSTALL_FORTH_TMPL, 'r')
-
-        for line in template:
-            output.write(line % (subst))
-
-        output.close()
-        template.close()
-
-        # Copy in our loader.conf and loader.rc
-        utils.copyWithOwnership(farb.LOADER_CONF, destdir)
-        utils.copyWithOwnership(farb.LOADER_RC, destdir)
-
-    def build(self, log):
-        """
-        Create the install root, copy in the release data,
-        write out the bootloader configuration and kernels.
-        @param log: Open log file.
-        """
-        deferreds = []
-
-        # Create the installation root, if necessary
-        if (not os.path.exists(self.installroot)):
-            os.mkdir(self.installroot)
-
-        # Create the tftproot, if necessary
-        if (not os.path.exists(self.tftproot)):
-            os.mkdir(self.tftproot)
-
-        # Copy over the shared boot loader and kernel. Lacking any better heuristic, we
-        # grab the boot loader from the first release provided -- shouldn't
-        # matter where we get it, really. However, there are some differences between
-        # where releases store the generic kernel, so we try to impedence match.
-        release = self.releaseAssemblers[0]
-        source = os.path.join(release.cdroot, 'boot')
-        dest = os.path.join(self.tftproot, os.path.basename(source))
-
-        # Copy it
-        d = threads.deferToThread(utils.copyRecursive, source, dest, symlinks=True)
-
-        # Configure it
-        d.addCallback(lambda _: threads.deferToThread(self._doConfigureBootLoader, dest))
-        deferreds.append(d)
-
-        # Assemble the release data
-        for release in self.releaseAssemblers:
-            destdir = os.path.join(self.installroot, release.name)
-
-            d = release.build(destdir, log)
-            deferreds.append(d)
-
-        # Assemble the installation data
-        for install in self.installAssemblers:
-            destdir = os.path.join(self.tftproot, install.name)
-
-            d = install.build(destdir, log)
-            deferreds.append(d)
-
-        d = defer.DeferredList(deferreds, fireOnOneErrback=True)
-        d.addErrback(self._ebBuild)
-
-        return d
+# class PackageChrootAssembler(object):
+#     """
+#     Extract release binaries into a chroot in which packages can be built.
+#     """
+#     def __init__(self, releaseroot, chroot):
+#         """
+#         Create a new PackageChrootAssembler instance
+#         @param releaseroot: Directory that contains built release in R/
+#         @param chroot: Chroot directory to install to
+#         """
+#         self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
+#         self.chroot = chroot
+#     
+#     def _ebExtractError(self, failure):        
+#         try:
+#             failure.raiseException()
+#         except ChrootCleanerError, e:
+#             raise PackageChrootAssemblerError, "Error cleaning chroot %s: %s" % (self.chroot, e)
+#         except Exception, e:
+#             raise PackageChrootAssemblerError, "Error extracting release from %s to %s: %s" % (self.cdroot, self.chroot, e)
+#     
+#     def _cbExtractDist(self, distdir, distname, target, log):
+#         # Extract a distribution set into the chroot with tar.
+#         d = defer.Deferred()
+#         protocol = LoggingProcessProtocol(d, log)
+#         argv = [TAR_PATH, '--unlink', '-xpvzf', '-', '-C', target]
+#         
+#         # Create target directory if it isn't already there
+#         if (not os.path.exists(target)):
+#             os.makedirs(target)
+#         
+#         # Spawn a process to run tar, keeping the IProcessTransport 
+#         # providing object it returns so we can write to the process'
+#         # stdin using IProcessTransport.writeToChild()
+#         pt = reactor.spawnProcess(protocol, TAR_PATH, args=argv, env=ROOT_ENV)
+#         
+#         path = os.path.join(distdir, distname)
+#         files = glob.glob(path + '.??')
+#         for filename in files:
+#             file = open(filename, 'rb')
+#             pt.writeToChild(0, file.read())
+#             file.close()
+#         
+#         pt.closeStdin()
+#         
+#         return d
+#     
+#     def _cbExtractAll(self, clean, dists, log):
+#         # The clean argument is what is returned by the chroot cleaner. It 
+#         # should be None, and doesn't seem necessary to worry about
+#         deferreds = []
+#         # Extract each dist in the chroot
+#         for key in dists.iterkeys():
+#             distdir = os.path.join(self.cdroot, os.path.join(self.cdroot, _getCDRelease(self.cdroot)), key)
+#             for distname in dists[key]:
+#                 # Just to make things difficult, not all dists extract relative 
+#                 # to /. The source distribution sets, for instance, should be 
+#                 # extracted in /usr/src/. 
+#                 # TODO: I'd love to handle this a better way, and I don't know 
+#                 # what releases of FreeBSD are this way (all of them?). It 
+#                 # would be a good idea to handle other distribution sets that 
+#                 # have this fun property (e.g. kernels extract to /boot). See 
+#                 # Distribution structs near the top of 
+#                 # /usr/src/usr.sbin/sysinstall/dist.c
+#                 if key == 'src':
+#                     target = os.path.join(self.chroot, 'usr', 'src')
+#                 else:
+#                     target = self.chroot
+#             
+#                 deferreds.append(self._cbExtractDist(distdir, distname, target, log))
+#     
+#         d = defer.DeferredList(deferreds, fireOnOneErrback=True)
+#         return d
+#     
+#     def extract(self, dists, log):
+#         """
+#         Extract the release into a chroot
+#         @param dists: Dictionary of distribution sets to extract. The key is a 
+#             string corresponding to the name of the dist, and the value is an 
+#             array of the subdists in that directory. For dists that don't have 
+#             a lot of subdists, this value will probably just be an array 
+#             containing the same string as the key.
+#         @param log: Open log file
+#         """
+#         # Clean out chroot
+#         cc = ChrootCleaner(self.chroot)
+#         d = cc.clean(log)
+#         
+#         # Then extract all dists
+#         d.addCallback(self._cbExtractAll, dists, log)
+#         
+#         # Add /etc/resolv.conf to chroot
+#         d.addCallback(lambda _: threads.deferToThread(utils.copyWithOwnership, os.path.join(ROOT_PATH, RESOLV_CONF), os.path.join(self.chroot, RESOLV_CONF)))
+#         d.addErrback(self._ebExtractError)
+#         return d
+# 
+# class PackageBuilder(object):
+#     """
+#     Build a package from a FreeBSD port
+#     """
+#     makeTarget = ('deinstall', 'clean', 'package-recursive')
+#     defaultMakeOptions = {
+#         'PACKAGE_BUILDING'  : 'yes',
+#         'BATCH'             : 'yes',
+#         'NOCLEANDEPENDS'    : 'yes'
+#     }
+# 
+#     """
+#     Build a FreeBSD Package 
+#     """
+#     def __init__(self, pkgroot, port, buildOptions=None):
+#         """
+#         Create a new PackageBuilder instance.
+# 
+#         @param pkgroot: Chroot directory where packages will be built
+#         @param port: Port to build
+#         @param buildOptions: Build options for the package
+#         """
+#         self.pkgroot = pkgroot
+#         self.port = port
+#         self.buildOptions = buildOptions
+# 
+#     def _ebBuildError(self, failure):
+#         try:
+#             failure.raiseException()
+#         except MakeCommandError, e:
+#             raise PackageBuildError, "An error occured building the port \"%s\", make command returned: %s" % (self.port, e)
+# 
+#     def build(self, log):
+#         """
+#         Build the package 
+#         @param log: Open log file
+#         @return Returns a deferred that will be called when make(1) completes
+#         """
+# 
+#         # Load up a deferred with the right call backs and return it
+#         # ready to be spawned
+#         makeOptions = self.defaultMakeOptions.copy()
+#         makeOptions.update(self.buildOptions)
+#         makecmd = MakeCommand(os.path.join(FREEBSD_PORTS_PATH, self.port), self.makeTarget, makeOptions, self.pkgroot)
+#         d = makecmd.make(log)
+#         d.addErrback(self._ebBuildError)
+#         return d
+# 
+# class InstallAssembler(object):
+#     """
+#     Assemble an installation configuration
+#     """
+#     def __init__(self, name, description, releaseroot, installConfigPath):
+#         """
+#         @param name: A unique name for this install instance 
+#         @param description: A human-readable description of this install type
+#         @param releaseroot: Directory containing the release binaries
+#         @param installConfigFile: The complete path to this installation's install.cfg
+#         """
+#         self.name = name
+#         self.description = description
+#         self.releaseroot = releaseroot
+#         self.installConfigSource = installConfigPath
+#         
+#         #
+#         # Source Paths
+#         #
+#         
+#         # Contains shared release boot files
+#         self.bootRoot = os.path.join(self.releaseroot, RELEASE_CD_PATH, 'boot')
+#         # Shared release mfsroot
+#         self.mfsCompressed = os.path.join(self.bootRoot, 'mfsroot.gz')
+#         # Directory containing generic kernel and its modules
+#         self.kernel = os.path.join(self.bootRoot, 'kernel')
+# 
+#     def _ebInstallError(self, failure):
+#         try:
+#             failure.raiseException()
+#         except MDConfigCommandError, e:
+#             raise InstallAssembleError, "An error occured operating on the mfsroot \"%s\": %s" % (self.mfsOutput, e)
+#         except MountCommandError, e:
+#             raise InstallAssembleError, "An error occured mounting \"%s\": %s" % (self.mfsOutput, e)
+#         except exceptions.IOError, e:
+#             raise InstallAssembleError, "An I/O error occured: %s" % e
+#         except Exception, e:
+#             raise InstallAssembleError, "An error occured: %s" % e
+# 
+#     def _decompressMFSRoot(self, mfsOutput):
+#       """
+#       Synchronous decompression/writing of mfsroot file
+#       (Not worth making async, so run in a thread)
+#       """
+#       compressedFile = gzip.GzipFile(self.mfsCompressed, 'rb')
+#       outputFile = open(mfsOutput, 'wb')
+#       while (True):
+#           data = compressedFile.read(1024)
+#           if (not data):
+#               break
+#           outputFile.write(data)
+# 
+#         return mfsOutput
+# 
+#     def _cbMountMFSRoot(self, mfsOutput, mountPoint, log):
+#       """
+#       Once the MFS root has been decompressed,
+#       mount it
+#       """
+#       mdconfig = MDConfigCommand(mfsOutput)
+#       # Create the mount point, if necessary
+#       if (not os.path.exists(mountPoint)):
+#           os.mkdir(mountPoint)
+#       self.mdmount = MDMountCommand(mdconfig, mountPoint)
+#       return self.mdmount.mount(log)
+# 
+#     def _cbCopyKernel(self, result, destdir):
+#         """
+#         Copy the kernel directory to the install-specific directory
+#         (Synchronous)
+#         """
+#         dest = os.path.join(destdir, 'kernel')
+#         d = threads.deferToThread(utils.copyRecursive, self.kernel, dest, symlinks=True)
+#         return d
+# 
+#     def _doWriteBootConf(self, destdir):
+#         """
+#         Write the per-install bootloader configuration file
+#         """
+#         subst = {}
+#         subst['bootdir'] = os.path.basename(destdir)
+# 
+#         output = open(os.path.join(destdir, 'boot.conf'), 'w')
+#         template = open(farb.BOOT_CONF_TMPL, 'r')
+# 
+#         for line in template:
+#             output.write(line % (subst))
+# 
+#         output.close()
+#         template.close()
+#         
+#     def build(self, destdir, log):
+#         """
+#         Build the MFSRoot, build the boot loader configuration, and copy the kernel.
+#         @param destdir: The installation-specific boot-loader directory
+#         @param log: Open log file
+#         @return Returns a deferred
+#         """
+# 
+#         #
+#         # Destination Paths
+#         #
+#         # Path to installation-specific mfsroot
+#         mfsOutput = os.path.join(destdir, "mfsroot")
+#         # Temporary mount point for the mfsroot image
+#         mountPoint = os.path.join(destdir, "mnt")
+#         # Write the install.cfg to the mfsroot mount point
+#         installConfigDest = os.path.join(mountPoint, 'install.cfg')
+# 
+#         # Create the destdir, if necessary
+#         if (not os.path.exists(destdir)):
+#             os.mkdir(destdir)
+# 
+#         # Write the uncompressed mfsroot file
+#         d = threads.deferToThread(self._decompressMFSRoot, mfsOutput)
+#         # Mount the mfsroot once it has been decompressed
+#         d.addErrback(self._ebInstallError)
+#         d.addCallback(self._cbMountMFSRoot, mountPoint, log)
+# 
+#         # Copy the install.cfg to the attached md device
+#         d.addCallback(lambda _: shutil.copy2(self.installConfigSource, installConfigDest))
+# 
+#         # Unmount/detach md device
+#         d.addCallback(lambda _: self.mdmount.umount(log))
+# 
+#         # Copy the kernel
+#         d.addCallback(self._cbCopyKernel, destdir)
+# 
+#         # Write boot.conf
+#         d.addCallback(lambda _: threads.deferToThread(self._doWriteBootConf, destdir))
+#         
+#         return d
+# 
+# 
+# class ReleaseAssembler(object):
+#     """
+#     Assemble the per-release installation data directory.
+#     """
+#     def __init__(self, name, releaseroot, pkgroot, localData = []):
+#         """
+#         Initialize the ReleaseAssembler
+#         @param name: A unique name for this release
+#         @param releaseroot: Directory containing the release binaries
+#         @param pkgroot: Chroot directory where packages were built
+#         @param localData: List of file and directory paths to copy to installRoot/local.
+#         """
+#         self.name = name
+#         self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
+#         self.pkgroot = pkgroot
+#         self.localData = localData
+# 
+#     def _cbCopyLocal(self, result, source, dest):
+#         if (os.path.isdir(source)):
+#             d = threads.deferToThread(utils.copyRecursive, source, os.path.join(dest, os.path.basename(source)), symlinks=True)
+#         else:
+#             d = threads.deferToThread(utils.copyWithOwnership, source, dest)
+# 
+#         return d
+# 
+#     def _ebBuild(self, failure):
+#         try:
+#             failure.raiseException()
+#         except exceptions.IOError, e:
+#             raise ReleaseAssembleError, "An I/O error occured: %s" % e
+#         except Exception, e:
+#             raise ReleaseAssembleError, "An error occured: %s" % e
+# 
+#     def build(self, destdir, log):
+#         """
+#         Create the install root, copy in the release data,
+#         write out the bootloader configuration and kernels.
+#         @param destdir: Per-release installation data directory.
+#         @param log: Open log file.
+#         """
+#         # Copy the installation data
+#         d = threads.deferToThread(utils.copyRecursive, os.path.join(self.cdroot, _getCDRelease(self.cdroot)), destdir, symlinks=True)
+# 
+#         # If there are packages, copy those too
+#         packagedir = os.path.join(self.pkgroot, RELEASE_PACKAGE_PATH)
+#         if (os.path.exists(packagedir)):
+#             d.addCallback(lambda _: threads.deferToThread(utils.copyRecursive, packagedir, os.path.join(destdir, 'packages'), symlinks=True))
+# 
+#         # Copy in any local data
+#         if (len(self.localData)):
+#             # Create the local directory
+#             localdir = os.path.join(destdir, 'local')
+#             d.addCallback(lambda _: os.mkdir(localdir))
+# 
+#             for path in self.localData:
+#                 d.addCallback(self._cbCopyLocal, path, localdir)
+# 
+#         # Add the FarBot package installer script and make it executable
+#         d.addCallback(lambda _: threads.deferToThread(utils.copyWithOwnership, farb.INSTALL_PACKAGE_SH, destdir))
+#         d.addCallback(lambda _: os.chmod(os.path.join(destdir, os.path.basename(farb.INSTALL_PACKAGE_SH)), 0755))
+# 
+#         return d
+# 
+# class NetInstallAssembler(object):
+#     """
+#     Assemble the netinstall directory, including the tftproot,
+#     using the supplied release and install assemblers.
+#     """
+#     def __init__(self, installroot, releaseAssemblers, installAssemblers):
+#         """
+#         Initialize the InstallRootBuilder
+#         @param installroot: Network install/boot directory.
+#         @param releaseAssemblers: List of ReleaseAssembler instances.
+#         @param installAssemblers: List of InstallAssembler instances.
+#         """
+#         self.installroot = installroot
+#         self.tftproot = os.path.join(installroot, 'tftproot')
+#         self.releaseAssemblers = releaseAssemblers
+#         self.installAssemblers = installAssemblers
+# 
+#     def _ebBuild(self, failure):
+#         """
+#         Called if any deferred in the DeferredList
+#         fails. Handles the original exception.
+#         """
+#         try:
+#             failure.value.subFailure.raiseException()
+#         except exceptions.IOError, e:
+#             raise NetInstallAssembleError, "An I/O error occured: %s" % e
+#         except exceptions.OSError, e:
+#             raise NetInstallAssembleError, "An OS error occured: %s" % e
+#         except Exception, e:
+#             raise NetInstallAssembleError, "An error occured: %s" % e
+# 
+#     def _doConfigureBootLoader(self, destdir):
+#         """
+#         Write out the forth for the boot loader installation menu
+#         """
+#         subst = {}
+# 
+#         # Format Strings
+#         variableFormat = 'variable %s\n'
+#         menuItemFormat = 'printmenuitem ."  %s" %s !\n'
+#         ifBlockFormat = 'dup %s @ = if\ns" /%s/boot.conf" read-conf\n0 boot-conf exit\nthen\n'
+# 
+#         # Output
+#         variables = cStringIO.StringIO()
+#         menuItems = cStringIO.StringIO()
+#         ifBlocks = cStringIO.StringIO()
+# 
+#         # Generate the code blocks
+#         for install in self.installAssemblers:
+#             # Variable declaration
+#             variableName = install.name + '_key'
+#             variables.write(variableFormat % (variableName))
+# 
+#             # Menu item
+#             menuItems.write(menuItemFormat % (install.description, variableName))
+# 
+#             # if block
+#             ifBlocks.write(ifBlockFormat % (variableName, install.name))
+# 
+#         # Write out the netinstall.4th file
+#         subst['variables'] = variables.getvalue()
+#         subst['menuitems'] = menuItems.getvalue()
+#         subst['ifblocks'] = ifBlocks.getvalue()
+#         output = open(os.path.join(destdir, 'netinstall.4th'), 'w')
+#         template = open(farb.NETINSTALL_FORTH_TMPL, 'r')
+# 
+#         for line in template:
+#             output.write(line % (subst))
+# 
+#         output.close()
+#         template.close()
+# 
+#         # Copy in our loader.conf and loader.rc
+#         utils.copyWithOwnership(farb.LOADER_CONF, destdir)
+#         utils.copyWithOwnership(farb.LOADER_RC, destdir)
+# 
+#     def build(self, log):
+#         """
+#         Create the install root, copy in the release data,
+#         write out the bootloader configuration and kernels.
+#         @param log: Open log file.
+#         """
+#         deferreds = []
+# 
+#         # Create the installation root, if necessary
+#         if (not os.path.exists(self.installroot)):
+#             os.mkdir(self.installroot)
+# 
+#         # Create the tftproot, if necessary
+#         if (not os.path.exists(self.tftproot)):
+#             os.mkdir(self.tftproot)
+# 
+#         # Copy over the shared boot loader and kernel. Lacking any better heuristic, we
+#         # grab the boot loader from the first release provided -- shouldn't
+#         # matter where we get it, really. However, there are some differences between
+#         # where releases store the generic kernel, so we try to impedence match.
+#         release = self.releaseAssemblers[0]
+#         source = os.path.join(release.cdroot, 'boot')
+#         dest = os.path.join(self.tftproot, os.path.basename(source))
+# 
+#         # Copy it
+#         d = threads.deferToThread(utils.copyRecursive, source, dest, symlinks=True)
+# 
+#         # Configure it
+#         d.addCallback(lambda _: threads.deferToThread(self._doConfigureBootLoader, dest))
+#         deferreds.append(d)
+# 
+#         # Assemble the release data
+#         for release in self.releaseAssemblers:
+#             destdir = os.path.join(self.installroot, release.name)
+# 
+#             d = release.build(destdir, log)
+#             deferreds.append(d)
+# 
+#         # Assemble the installation data
+#         for install in self.installAssemblers:
+#             destdir = os.path.join(self.tftproot, install.name)
+# 
+#             d = install.build(destdir, log)
+#             deferreds.append(d)
+# 
+#         d = defer.DeferredList(deferreds, fireOnOneErrback=True)
+#         d.addErrback(self._ebBuild)
+# 
+#         return d
 
 def _getCDRelease(cdroot):
     # Get the release name from the cdrom.inf file in cdroot
@@ -1141,18 +1001,35 @@ def _getCDRelease(cdroot):
 
     return splitString[1]
 
-def _runCommand(argv, log, env=ROOT_ENV, exception):
+def _runCommand(argv, log, exception, env=ROOT_ENV, returnOut=False):
     """
-    Run a command, logging its output to a file. Raise an exception if it has an
-    exit code of anything other than 0.
+    Run a command, logging its output to an open file. Raise an exception if it 
+    has an exit code of anything other than 0.
     @param argv: List containing path of command, followed by its arguments
-    @param log: Open log file
-    @param env: Dictionary of the environment to run the command under. Defaults 
-        to ROOT_ENV
+    @param log: Open log file where stderr and possibly stdout will be written.
     @param exception: Type of exception to throw if command returns a value 
         other than zero
+    @param env: Dictionary of the environment to run the command under. Defaults 
+        to ROOT_ENV
+    @param returnOut: If true, instead of writing stderr to the file log, the 
+        contents of the commands output will be returned by this function. 
+        Defaults to false.
+    @return A string containing what the command prints to stdout if returnOut 
+        is true. None otherwise.
     """
-    process = subprocess.Popen(argv, stdout=log, stderr=log, env=env)
+    if returnOut:
+        process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=log, env=env)
+    else:
+        process = subprocess.Popen(argv, stdout=log, stderr=log, env=env)
+    
     retval = process.wait()
+    
+    # Read all of what the command wrote to stdout if we set returnOut
+    outputString = None
+    if returnOut:
+        outputString = process.stdout.read()
+        
     if retval != 0:
         raise exception, "Command %s returned with exit code %d; see log file %s for details" % (argv[0], retval, log)
+    
+    return outputString
