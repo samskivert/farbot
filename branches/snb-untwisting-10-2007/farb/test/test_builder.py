@@ -343,51 +343,49 @@ class ISOReaderTestCase(unittest.TestCase):
         self.reader.copy(self.log)
         self._copyResult()
 
-# class PackageChrootAssemblerTestCase(unittest.TestCase):
-#     def setUp(self):
-#         self.assembler = builder.PackageChrootAssembler(RELEASEROOT, PKGROOT)
-#         self.log = open(PROCESS_LOG, 'w+')
-#         self.dists = {'base' : ['base'], 'src' : ['szomg', 'swtf']}
-#         # Copy in a release to RELEASEROOT
-#         rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
-#         utils.copyRecursive(ISO_MOUNTPOINT, os.path.join(RELEASEROOT, builder.RELEASE_CD_PATH))
-#     
-#     def tearDown(self):
-#         self.log.close()
-#         if (os.path.exists(PROCESS_LOG)):
-#             os.unlink(PROCESS_LOG)
-#         if (os.path.exists(PROCESS_OUT)):
-#             os.unlink(PROCESS_OUT)
-#         if (os.path.exists(PKGROOT)):
-#             shutil.rmtree(PKGROOT)
-#         if (os.path.exists(RELEASEROOT)):
-#             shutil.rmtree(RELEASEROOT)
-#         if (os.path.exists(CDROM_INF)):
-#             os.unlink(CDROM_INF)
-#     
-#     def _extractResult(self, result):
-#         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'src', 'wtf.c')))
-#         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'src', 'zomg.c')))
-#         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'bin', 'foo.sh')))
-#         self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'bin', 'bar.sh')))
-#         self.assert_(os.path.exists(os.path.join(PKGROOT, builder.RESOLV_CONF)))
-#         self.assert_(not os.path.exists(os.path.join(PKGROOT, 'afile')))
-# 
-#     def test_extract(self):
-#         # Try actually extracting a fake base dist into the chroot.
-#         d = self.assembler.extract(self.dists, self.log)
-#         d.addCallback(self._extractResult)
-#         return d
-#     
-#     def test_extractReplace(self):
-#         # Try extracting when the chroot already exists
-#         os.mkdir(PKGROOT)
-#         f = open(os.path.join(PKGROOT, 'afile'), 'w')
-#         f.close()
-#         d = self.assembler.extract(self.dists, self.log)
-#         d.addCallback(self._extractResult)
-#         return d
-# 
+class PackageChrootAssemblerTestCase(unittest.TestCase):
+    def setUp(self):
+        self.assembler = builder.PackageChrootAssembler(RELEASEROOT, PKGROOT)
+        self.log = open(PROCESS_LOG, 'w+')
+        self.dists = {'base' : ['base'], 'src' : ['szomg', 'swtf']}
+        # Copy in a release to RELEASEROOT
+        rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = 6.2-RELEASE'})
+        utils.copyRecursive(ISO_MOUNTPOINT, os.path.join(RELEASEROOT, builder.RELEASE_CD_PATH))
+    
+    def tearDown(self):
+        self.log.close()
+        if (os.path.exists(PROCESS_LOG)):
+            os.unlink(PROCESS_LOG)
+        if (os.path.exists(PROCESS_OUT)):
+            os.unlink(PROCESS_OUT)
+        if (os.path.exists(PKGROOT)):
+            shutil.rmtree(PKGROOT)
+        if (os.path.exists(RELEASEROOT)):
+            shutil.rmtree(RELEASEROOT)
+        if (os.path.exists(CDROM_INF)):
+            os.unlink(CDROM_INF)
+    
+    def _extractResult(self):
+        self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'src', 'wtf.c')))
+        self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'src', 'zomg.c')))
+        self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'bin', 'foo.sh')))
+        self.assert_(os.path.exists(os.path.join(PKGROOT, 'usr', 'bin', 'bar.sh')))
+        self.assert_(os.path.exists(os.path.join(PKGROOT, builder.RESOLV_CONF)))
+        self.assert_(not os.path.exists(os.path.join(PKGROOT, 'afile')))
+
+    def test_extract(self):
+        # Try actually extracting a fake base dist into the chroot.
+        self.assembler.extract(self.dists, self.log)
+        self._extractResult()
+    
+    def test_extractReplace(self):
+        # Try extracting when the chroot already exists
+        os.mkdir(PKGROOT)
+        f = open(os.path.join(PKGROOT, 'afile'), 'w')
+        f.close()
+        self.assembler.extract(self.dists, self.log)
+        self._extractResult()
+
 # class PackageBuilderTestCase(unittest.TestCase):
 #     def setUp(self):
 #         buildOptions = {

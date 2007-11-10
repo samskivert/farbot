@@ -121,6 +121,9 @@ class PortsnapCommandError(CommandError):
 class ChflagsCommandError(CommandError):
     pass
 
+class TarCommandError(CommandError):
+    pass
+
 class ReleaseBuildError(farb.FarbError):
     pass
 
@@ -516,102 +519,87 @@ class ISOReader(object):
         except utils.Error, e:
             raise ISOReaderError, "Error copying contents of ISO at %s to %s: %s" % (self.mountpoint, self.cdroot, e)
 
-# class PackageChrootAssembler(object):
-#     """
-#     Extract release binaries into a chroot in which packages can be built.
-#     """
-#     def __init__(self, releaseroot, chroot):
-#         """
-#         Create a new PackageChrootAssembler instance
-#         @param releaseroot: Directory that contains built release in R/
-#         @param chroot: Chroot directory to install to
-#         """
-#         self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
-#         self.chroot = chroot
-#     
-#     def _ebExtractError(self, failure):        
-#         try:
-#             failure.raiseException()
-#         except ChrootCleanerError, e:
-#             raise PackageChrootAssemblerError, "Error cleaning chroot %s: %s" % (self.chroot, e)
-#         except Exception, e:
-#             raise PackageChrootAssemblerError, "Error extracting release from %s to %s: %s" % (self.cdroot, self.chroot, e)
-#     
-#     def _cbExtractDist(self, distdir, distname, target, log):
-#         # Extract a distribution set into the chroot with tar.
-#         d = defer.Deferred()
-#         protocol = LoggingProcessProtocol(d, log)
-#         argv = [TAR_PATH, '--unlink', '-xpvzf', '-', '-C', target]
-#         
-#         # Create target directory if it isn't already there
-#         if (not os.path.exists(target)):
-#             os.makedirs(target)
-#         
-#         # Spawn a process to run tar, keeping the IProcessTransport 
-#         # providing object it returns so we can write to the process'
-#         # stdin using IProcessTransport.writeToChild()
-#         pt = reactor.spawnProcess(protocol, TAR_PATH, args=argv, env=ROOT_ENV)
-#         
-#         path = os.path.join(distdir, distname)
-#         files = glob.glob(path + '.??')
-#         for filename in files:
-#             file = open(filename, 'rb')
-#             pt.writeToChild(0, file.read())
-#             file.close()
-#         
-#         pt.closeStdin()
-#         
-#         return d
-#     
-#     def _cbExtractAll(self, clean, dists, log):
-#         # The clean argument is what is returned by the chroot cleaner. It 
-#         # should be None, and doesn't seem necessary to worry about
-#         deferreds = []
-#         # Extract each dist in the chroot
-#         for key in dists.iterkeys():
-#             distdir = os.path.join(self.cdroot, os.path.join(self.cdroot, _getCDRelease(self.cdroot)), key)
-#             for distname in dists[key]:
-#                 # Just to make things difficult, not all dists extract relative 
-#                 # to /. The source distribution sets, for instance, should be 
-#                 # extracted in /usr/src/. 
-#                 # TODO: I'd love to handle this a better way, and I don't know 
-#                 # what releases of FreeBSD are this way (all of them?). It 
-#                 # would be a good idea to handle other distribution sets that 
-#                 # have this fun property (e.g. kernels extract to /boot). See 
-#                 # Distribution structs near the top of 
-#                 # /usr/src/usr.sbin/sysinstall/dist.c
-#                 if key == 'src':
-#                     target = os.path.join(self.chroot, 'usr', 'src')
-#                 else:
-#                     target = self.chroot
-#             
-#                 deferreds.append(self._cbExtractDist(distdir, distname, target, log))
-#     
-#         d = defer.DeferredList(deferreds, fireOnOneErrback=True)
-#         return d
-#     
-#     def extract(self, dists, log):
-#         """
-#         Extract the release into a chroot
-#         @param dists: Dictionary of distribution sets to extract. The key is a 
-#             string corresponding to the name of the dist, and the value is an 
-#             array of the subdists in that directory. For dists that don't have 
-#             a lot of subdists, this value will probably just be an array 
-#             containing the same string as the key.
-#         @param log: Open log file
-#         """
-#         # Clean out chroot
-#         cc = ChrootCleaner(self.chroot)
-#         d = cc.clean(log)
-#         
-#         # Then extract all dists
-#         d.addCallback(self._cbExtractAll, dists, log)
-#         
-#         # Add /etc/resolv.conf to chroot
-#         d.addCallback(lambda _: threads.deferToThread(utils.copyWithOwnership, os.path.join(ROOT_PATH, RESOLV_CONF), os.path.join(self.chroot, RESOLV_CONF)))
-#         d.addErrback(self._ebExtractError)
-#         return d
-# 
+class PackageChrootAssembler(object):
+    """
+    Extract release binaries into a chroot in which packages can be built.
+    """
+    def __init__(self, releaseroot, chroot):
+        """
+        Create a new PackageChrootAssembler instance
+        @param releaseroot: Directory that contains built release in R/
+        @param chroot: Chroot directory to install to
+        """
+        self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
+        self.chroot = chroot
+    
+    def _extractDist(self, distdir, distname, target, log):
+        # Create target directory if it isn't already there
+        if (not os.path.exists(target)):
+            os.makedirs(target)
+        
+        # Extract a distribution set into the chroot with tar. We use the 
+        # subprocess module directly here rather than the helper function 
+        # _runCommand so we will have control over the process' standard input.
+        argv = [TAR_PATH, '--unlink', '-xpvzf', '-', '-C', target]
+        proc = subprocess.Popen(argv, stdout=log, stderr=log, env=ROOT_ENV, stdin=subprocess.PIPE)
+        
+        path = os.path.join(distdir, distname)
+        files = glob.glob(path + '.??')
+        for filename in files:
+            file = open(filename, 'rb')
+            proc.stdin.write(file.read())
+            file.close()
+        
+        proc.stdin.close()
+        retval = proc.wait()
+        if retval != 0:
+            raise TarCommandError, "%s returned with exit code %d while extracting dist %s; see log file %s for details" % (argv[0], retval, distname, log)
+        
+    def _extractAll(self, dists, log):
+        # Extract each dist in the chroot
+        for key in dists.iterkeys():
+            distdir = os.path.join(self.cdroot, os.path.join(self.cdroot, _getCDRelease(self.cdroot)), key)
+            for distname in dists[key]:
+                # Just to make things difficult, not all dists extract relative 
+                # to /. The source distribution sets, for instance, should be 
+                # extracted in /usr/src/. 
+                # TODO: I'd love to handle this a better way, and I don't know 
+                # what releases of FreeBSD are this way (all of them?). It 
+                # would be a good idea to handle other distribution sets that 
+                # have this fun property (e.g. kernels extract to /boot). See 
+                # Distribution structs near the top of 
+                # /usr/src/usr.sbin/sysinstall/dist.c
+                if key == 'src':
+                    target = os.path.join(self.chroot, 'usr', 'src')
+                else:
+                    target = self.chroot
+            
+                self._extractDist(distdir, distname, target, log)
+    
+    def extract(self, dists, log):
+        """
+        Extract the release into a chroot
+        @param dists: Dictionary of distribution sets to extract. The key is a 
+            string corresponding to the name of the dist, and the value is an 
+            array of the subdists in that directory. For dists that don't have 
+            a lot of subdists, this value will probably just be an array 
+            containing the same string as the key.
+        @param log: Open log file
+        """
+        # Clean out chroot
+        try:
+            cc = ChrootCleaner(self.chroot)
+            cc.clean(log)
+        except ChrootCleanerError, e:
+            raise PackageChrootAssemblerError, "Error cleaning chroot %s: %s" % (self.chroot, e)
+        
+        # Then extract all dists and add /etc/resolv.conf to chroot
+        try:
+            self._extractAll(dists, log)
+            utils.copyWithOwnership(os.path.join(ROOT_PATH, RESOLV_CONF), os.path.join(self.chroot, RESOLV_CONF))
+        except Exception, e:
+            raise PackageChrootAssemblerError, "Error populating chroot %s: %s" % (self.chroot, e)
+
 # class PackageBuilder(object):
 #     """
 #     Build a package from a FreeBSD port
