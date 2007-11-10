@@ -30,6 +30,7 @@
 import cStringIO
 import exceptions
 import glob
+import gzip
 import os
 import re
 import shutil
@@ -600,376 +601,327 @@ class PackageChrootAssembler(object):
         except Exception, e:
             raise PackageChrootAssemblerError, "Error populating chroot %s: %s" % (self.chroot, e)
 
-# class PackageBuilder(object):
-#     """
-#     Build a package from a FreeBSD port
-#     """
-#     makeTarget = ('deinstall', 'clean', 'package-recursive')
-#     defaultMakeOptions = {
-#         'PACKAGE_BUILDING'  : 'yes',
-#         'BATCH'             : 'yes',
-#         'NOCLEANDEPENDS'    : 'yes'
-#     }
-# 
-#     """
-#     Build a FreeBSD Package 
-#     """
-#     def __init__(self, pkgroot, port, buildOptions=None):
-#         """
-#         Create a new PackageBuilder instance.
-# 
-#         @param pkgroot: Chroot directory where packages will be built
-#         @param port: Port to build
-#         @param buildOptions: Build options for the package
-#         """
-#         self.pkgroot = pkgroot
-#         self.port = port
-#         self.buildOptions = buildOptions
-# 
-#     def _ebBuildError(self, failure):
-#         try:
-#             failure.raiseException()
-#         except MakeCommandError, e:
-#             raise PackageBuildError, "An error occured building the port \"%s\", make command returned: %s" % (self.port, e)
-# 
-#     def build(self, log):
-#         """
-#         Build the package 
-#         @param log: Open log file
-#         @return Returns a deferred that will be called when make(1) completes
-#         """
-# 
-#         # Load up a deferred with the right call backs and return it
-#         # ready to be spawned
-#         makeOptions = self.defaultMakeOptions.copy()
-#         makeOptions.update(self.buildOptions)
-#         makecmd = MakeCommand(os.path.join(FREEBSD_PORTS_PATH, self.port), self.makeTarget, makeOptions, self.pkgroot)
-#         d = makecmd.make(log)
-#         d.addErrback(self._ebBuildError)
-#         return d
-# 
-# class InstallAssembler(object):
-#     """
-#     Assemble an installation configuration
-#     """
-#     def __init__(self, name, description, releaseroot, installConfigPath):
-#         """
-#         @param name: A unique name for this install instance 
-#         @param description: A human-readable description of this install type
-#         @param releaseroot: Directory containing the release binaries
-#         @param installConfigFile: The complete path to this installation's install.cfg
-#         """
-#         self.name = name
-#         self.description = description
-#         self.releaseroot = releaseroot
-#         self.installConfigSource = installConfigPath
-#         
-#         #
-#         # Source Paths
-#         #
-#         
-#         # Contains shared release boot files
-#         self.bootRoot = os.path.join(self.releaseroot, RELEASE_CD_PATH, 'boot')
-#         # Shared release mfsroot
-#         self.mfsCompressed = os.path.join(self.bootRoot, 'mfsroot.gz')
-#         # Directory containing generic kernel and its modules
-#         self.kernel = os.path.join(self.bootRoot, 'kernel')
-# 
-#     def _ebInstallError(self, failure):
-#         try:
-#             failure.raiseException()
-#         except MDConfigCommandError, e:
-#             raise InstallAssembleError, "An error occured operating on the mfsroot \"%s\": %s" % (self.mfsOutput, e)
-#         except MountCommandError, e:
-#             raise InstallAssembleError, "An error occured mounting \"%s\": %s" % (self.mfsOutput, e)
-#         except exceptions.IOError, e:
-#             raise InstallAssembleError, "An I/O error occured: %s" % e
-#         except Exception, e:
-#             raise InstallAssembleError, "An error occured: %s" % e
-# 
-#     def _decompressMFSRoot(self, mfsOutput):
-#       """
-#       Synchronous decompression/writing of mfsroot file
-#       (Not worth making async, so run in a thread)
-#       """
-#       compressedFile = gzip.GzipFile(self.mfsCompressed, 'rb')
-#       outputFile = open(mfsOutput, 'wb')
-#       while (True):
-#           data = compressedFile.read(1024)
-#           if (not data):
-#               break
-#           outputFile.write(data)
-# 
-#         return mfsOutput
-# 
-#     def _cbMountMFSRoot(self, mfsOutput, mountPoint, log):
-#       """
-#       Once the MFS root has been decompressed,
-#       mount it
-#       """
-#       mdconfig = MDConfigCommand(mfsOutput)
-#       # Create the mount point, if necessary
-#       if (not os.path.exists(mountPoint)):
-#           os.mkdir(mountPoint)
-#       self.mdmount = MDMountCommand(mdconfig, mountPoint)
-#       return self.mdmount.mount(log)
-# 
-#     def _cbCopyKernel(self, result, destdir):
-#         """
-#         Copy the kernel directory to the install-specific directory
-#         (Synchronous)
-#         """
-#         dest = os.path.join(destdir, 'kernel')
-#         d = threads.deferToThread(utils.copyRecursive, self.kernel, dest, symlinks=True)
-#         return d
-# 
-#     def _doWriteBootConf(self, destdir):
-#         """
-#         Write the per-install bootloader configuration file
-#         """
-#         subst = {}
-#         subst['bootdir'] = os.path.basename(destdir)
-# 
-#         output = open(os.path.join(destdir, 'boot.conf'), 'w')
-#         template = open(farb.BOOT_CONF_TMPL, 'r')
-# 
-#         for line in template:
-#             output.write(line % (subst))
-# 
-#         output.close()
-#         template.close()
-#         
-#     def build(self, destdir, log):
-#         """
-#         Build the MFSRoot, build the boot loader configuration, and copy the kernel.
-#         @param destdir: The installation-specific boot-loader directory
-#         @param log: Open log file
-#         @return Returns a deferred
-#         """
-# 
-#         #
-#         # Destination Paths
-#         #
-#         # Path to installation-specific mfsroot
-#         mfsOutput = os.path.join(destdir, "mfsroot")
-#         # Temporary mount point for the mfsroot image
-#         mountPoint = os.path.join(destdir, "mnt")
-#         # Write the install.cfg to the mfsroot mount point
-#         installConfigDest = os.path.join(mountPoint, 'install.cfg')
-# 
-#         # Create the destdir, if necessary
-#         if (not os.path.exists(destdir)):
-#             os.mkdir(destdir)
-# 
-#         # Write the uncompressed mfsroot file
-#         d = threads.deferToThread(self._decompressMFSRoot, mfsOutput)
-#         # Mount the mfsroot once it has been decompressed
-#         d.addErrback(self._ebInstallError)
-#         d.addCallback(self._cbMountMFSRoot, mountPoint, log)
-# 
-#         # Copy the install.cfg to the attached md device
-#         d.addCallback(lambda _: shutil.copy2(self.installConfigSource, installConfigDest))
-# 
-#         # Unmount/detach md device
-#         d.addCallback(lambda _: self.mdmount.umount(log))
-# 
-#         # Copy the kernel
-#         d.addCallback(self._cbCopyKernel, destdir)
-# 
-#         # Write boot.conf
-#         d.addCallback(lambda _: threads.deferToThread(self._doWriteBootConf, destdir))
-#         
-#         return d
-# 
-# 
-# class ReleaseAssembler(object):
-#     """
-#     Assemble the per-release installation data directory.
-#     """
-#     def __init__(self, name, releaseroot, pkgroot, localData = []):
-#         """
-#         Initialize the ReleaseAssembler
-#         @param name: A unique name for this release
-#         @param releaseroot: Directory containing the release binaries
-#         @param pkgroot: Chroot directory where packages were built
-#         @param localData: List of file and directory paths to copy to installRoot/local.
-#         """
-#         self.name = name
-#         self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
-#         self.pkgroot = pkgroot
-#         self.localData = localData
-# 
-#     def _cbCopyLocal(self, result, source, dest):
-#         if (os.path.isdir(source)):
-#             d = threads.deferToThread(utils.copyRecursive, source, os.path.join(dest, os.path.basename(source)), symlinks=True)
-#         else:
-#             d = threads.deferToThread(utils.copyWithOwnership, source, dest)
-# 
-#         return d
-# 
-#     def _ebBuild(self, failure):
-#         try:
-#             failure.raiseException()
-#         except exceptions.IOError, e:
-#             raise ReleaseAssembleError, "An I/O error occured: %s" % e
-#         except Exception, e:
-#             raise ReleaseAssembleError, "An error occured: %s" % e
-# 
-#     def build(self, destdir, log):
-#         """
-#         Create the install root, copy in the release data,
-#         write out the bootloader configuration and kernels.
-#         @param destdir: Per-release installation data directory.
-#         @param log: Open log file.
-#         """
-#         # Copy the installation data
-#         d = threads.deferToThread(utils.copyRecursive, os.path.join(self.cdroot, _getCDRelease(self.cdroot)), destdir, symlinks=True)
-# 
-#         # If there are packages, copy those too
-#         packagedir = os.path.join(self.pkgroot, RELEASE_PACKAGE_PATH)
-#         if (os.path.exists(packagedir)):
-#             d.addCallback(lambda _: threads.deferToThread(utils.copyRecursive, packagedir, os.path.join(destdir, 'packages'), symlinks=True))
-# 
-#         # Copy in any local data
-#         if (len(self.localData)):
-#             # Create the local directory
-#             localdir = os.path.join(destdir, 'local')
-#             d.addCallback(lambda _: os.mkdir(localdir))
-# 
-#             for path in self.localData:
-#                 d.addCallback(self._cbCopyLocal, path, localdir)
-# 
-#         # Add the FarBot package installer script and make it executable
-#         d.addCallback(lambda _: threads.deferToThread(utils.copyWithOwnership, farb.INSTALL_PACKAGE_SH, destdir))
-#         d.addCallback(lambda _: os.chmod(os.path.join(destdir, os.path.basename(farb.INSTALL_PACKAGE_SH)), 0755))
-# 
-#         return d
-# 
-# class NetInstallAssembler(object):
-#     """
-#     Assemble the netinstall directory, including the tftproot,
-#     using the supplied release and install assemblers.
-#     """
-#     def __init__(self, installroot, releaseAssemblers, installAssemblers):
-#         """
-#         Initialize the InstallRootBuilder
-#         @param installroot: Network install/boot directory.
-#         @param releaseAssemblers: List of ReleaseAssembler instances.
-#         @param installAssemblers: List of InstallAssembler instances.
-#         """
-#         self.installroot = installroot
-#         self.tftproot = os.path.join(installroot, 'tftproot')
-#         self.releaseAssemblers = releaseAssemblers
-#         self.installAssemblers = installAssemblers
-# 
-#     def _ebBuild(self, failure):
-#         """
-#         Called if any deferred in the DeferredList
-#         fails. Handles the original exception.
-#         """
-#         try:
-#             failure.value.subFailure.raiseException()
-#         except exceptions.IOError, e:
-#             raise NetInstallAssembleError, "An I/O error occured: %s" % e
-#         except exceptions.OSError, e:
-#             raise NetInstallAssembleError, "An OS error occured: %s" % e
-#         except Exception, e:
-#             raise NetInstallAssembleError, "An error occured: %s" % e
-# 
-#     def _doConfigureBootLoader(self, destdir):
-#         """
-#         Write out the forth for the boot loader installation menu
-#         """
-#         subst = {}
-# 
-#         # Format Strings
-#         variableFormat = 'variable %s\n'
-#         menuItemFormat = 'printmenuitem ."  %s" %s !\n'
-#         ifBlockFormat = 'dup %s @ = if\ns" /%s/boot.conf" read-conf\n0 boot-conf exit\nthen\n'
-# 
-#         # Output
-#         variables = cStringIO.StringIO()
-#         menuItems = cStringIO.StringIO()
-#         ifBlocks = cStringIO.StringIO()
-# 
-#         # Generate the code blocks
-#         for install in self.installAssemblers:
-#             # Variable declaration
-#             variableName = install.name + '_key'
-#             variables.write(variableFormat % (variableName))
-# 
-#             # Menu item
-#             menuItems.write(menuItemFormat % (install.description, variableName))
-# 
-#             # if block
-#             ifBlocks.write(ifBlockFormat % (variableName, install.name))
-# 
-#         # Write out the netinstall.4th file
-#         subst['variables'] = variables.getvalue()
-#         subst['menuitems'] = menuItems.getvalue()
-#         subst['ifblocks'] = ifBlocks.getvalue()
-#         output = open(os.path.join(destdir, 'netinstall.4th'), 'w')
-#         template = open(farb.NETINSTALL_FORTH_TMPL, 'r')
-# 
-#         for line in template:
-#             output.write(line % (subst))
-# 
-#         output.close()
-#         template.close()
-# 
-#         # Copy in our loader.conf and loader.rc
-#         utils.copyWithOwnership(farb.LOADER_CONF, destdir)
-#         utils.copyWithOwnership(farb.LOADER_RC, destdir)
-# 
-#     def build(self, log):
-#         """
-#         Create the install root, copy in the release data,
-#         write out the bootloader configuration and kernels.
-#         @param log: Open log file.
-#         """
-#         deferreds = []
-# 
-#         # Create the installation root, if necessary
-#         if (not os.path.exists(self.installroot)):
-#             os.mkdir(self.installroot)
-# 
-#         # Create the tftproot, if necessary
-#         if (not os.path.exists(self.tftproot)):
-#             os.mkdir(self.tftproot)
-# 
-#         # Copy over the shared boot loader and kernel. Lacking any better heuristic, we
-#         # grab the boot loader from the first release provided -- shouldn't
-#         # matter where we get it, really. However, there are some differences between
-#         # where releases store the generic kernel, so we try to impedence match.
-#         release = self.releaseAssemblers[0]
-#         source = os.path.join(release.cdroot, 'boot')
-#         dest = os.path.join(self.tftproot, os.path.basename(source))
-# 
-#         # Copy it
-#         d = threads.deferToThread(utils.copyRecursive, source, dest, symlinks=True)
-# 
-#         # Configure it
-#         d.addCallback(lambda _: threads.deferToThread(self._doConfigureBootLoader, dest))
-#         deferreds.append(d)
-# 
-#         # Assemble the release data
-#         for release in self.releaseAssemblers:
-#             destdir = os.path.join(self.installroot, release.name)
-# 
-#             d = release.build(destdir, log)
-#             deferreds.append(d)
-# 
-#         # Assemble the installation data
-#         for install in self.installAssemblers:
-#             destdir = os.path.join(self.tftproot, install.name)
-# 
-#             d = install.build(destdir, log)
-#             deferreds.append(d)
-# 
-#         d = defer.DeferredList(deferreds, fireOnOneErrback=True)
-#         d.addErrback(self._ebBuild)
-# 
-#         return d
+class PackageBuilder(object):
+    """
+    Build a package from a FreeBSD port
+    """
+    makeTarget = ('deinstall', 'clean', 'package-recursive')
+    defaultMakeOptions = {
+        'PACKAGE_BUILDING'  : 'yes',
+        'BATCH'             : 'yes',
+        'NOCLEANDEPENDS'    : 'yes'
+    }
+
+    """
+    Build a FreeBSD Package 
+    """
+    def __init__(self, pkgroot, port, buildOptions=None):
+        """
+        Create a new PackageBuilder instance.
+
+        @param pkgroot: Chroot directory where packages will be built
+        @param port: Port to build
+        @param buildOptions: Build options for the package
+        """
+        self.pkgroot = pkgroot
+        self.port = port
+        self.buildOptions = buildOptions
+
+    def build(self, log):
+        """
+        Build the package 
+        @param log: Open log file
+        """
+        makeOptions = self.defaultMakeOptions.copy()
+        makeOptions.update(self.buildOptions)
+        makecmd = MakeCommand(os.path.join(FREEBSD_PORTS_PATH, self.port), self.makeTarget, makeOptions, self.pkgroot)
+        try:
+            makecmd.make(log)
+        except MakeCommandError, e:
+            raise PackageBuildError, "An error occured building the port \"%s\": %s" % (self.port, e)
+
+class InstallAssembler(object):
+    """
+    Assemble an installation configuration
+    """
+    def __init__(self, name, description, releaseroot, installConfigPath):
+        """
+        @param name: A unique name for this install instance 
+        @param description: A human-readable description of this install type
+        @param releaseroot: Directory containing the release binaries
+        @param installConfigFile: The complete path to this installation's install.cfg
+        """
+        self.name = name
+        self.description = description
+        self.releaseroot = releaseroot
+        self.installConfigSource = installConfigPath
+        
+        #
+        # Source Paths
+        #
+        
+        # Contains shared release boot files
+        self.bootRoot = os.path.join(self.releaseroot, RELEASE_CD_PATH, 'boot')
+        # Shared release mfsroot
+        self.mfsCompressed = os.path.join(self.bootRoot, 'mfsroot.gz')
+        # Directory containing generic kernel and its modules
+        self.kernel = os.path.join(self.bootRoot, 'kernel')
+
+    def _decompressMFSRoot(self, mfsOutput):
+        """
+        Decompression/writing of mfsroot file
+        """
+        compressedFile = gzip.GzipFile(self.mfsCompressed, 'rb')
+        outputFile = open(mfsOutput, 'wb')
+        while (True):
+            data = compressedFile.read(1024)
+            if (not data):
+                break
+            outputFile.write(data)
+    
+    def _mountMFSRoot(self, mfsOutput, mountPoint, log):
+        """
+        Once the MFS root has been decompressed, mount it
+        """
+        mdconfig = MDConfigCommand(mfsOutput)
+        # Create the mount point, if necessary
+        if (not os.path.exists(mountPoint)):
+            os.mkdir(mountPoint)
+        self.mdmount = MDMountCommand(mdconfig, mountPoint)
+        self.mdmount.mount(log)
+
+    def _copyKernel(self, destdir):
+        """
+        Copy the kernel directory to the install-specific directory
+        """
+        dest = os.path.join(destdir, 'kernel')
+        utils.copyRecursive(self.kernel, dest, symlinks=True)
+
+    def _doWriteBootConf(self, destdir):
+        """
+        Write the per-install bootloader configuration file
+        """
+        subst = {}
+        subst['bootdir'] = os.path.basename(destdir)
+
+        output = open(os.path.join(destdir, 'boot.conf'), 'w')
+        template = open(farb.BOOT_CONF_TMPL, 'r')
+
+        for line in template:
+            output.write(line % (subst))
+
+        output.close()
+        template.close()
+        
+    def build(self, destdir, log):
+        """
+        Build the MFSRoot, build the boot loader configuration, and copy the kernel.
+        @param destdir: The installation-specific boot-loader directory
+        @param log: Open log file
+        """
+
+        #
+        # Destination Paths
+        #
+        # Path to installation-specific mfsroot
+        mfsOutput = os.path.join(destdir, "mfsroot")
+        # Temporary mount point for the mfsroot image
+        mountPoint = os.path.join(destdir, "mnt")
+        # Write the install.cfg to the mfsroot mount point
+        installConfigDest = os.path.join(mountPoint, 'install.cfg')
+
+        try:
+            # Create the destdir, if necessary
+            if (not os.path.exists(destdir)):
+                os.mkdir(destdir)
+
+            # Write the uncompressed mfsroot file
+            self._decompressMFSRoot(mfsOutput)
+        
+            # Mount the mfsroot once it has been decompressed
+            self._mountMFSRoot(mfsOutput, mountPoint, log)
+
+            # Copy the install.cfg to the attached md device
+            shutil.copy2(self.installConfigSource, installConfigDest)
+
+            # Unmount/detach md device
+            self.mdmount.umount(log)
+
+            # Copy the kernel
+            self._copyKernel(destdir)
+
+            # Write boot.conf
+            self._doWriteBootConf(destdir)
+        
+        except MDConfigCommandError, e:
+            raise InstallAssembleError, "An error occured operating on the mfsroot \"%s\": %s" % (self.mfsOutput, e)
+        except MountCommandError, e:
+            raise InstallAssembleError, "An error occured mounting \"%s\": %s" % (self.mfsOutput, e)
+        except exceptions.IOError, e:
+            raise InstallAssembleError, "An I/O error occured: %s" % e
+        except Exception, e:
+            raise InstallAssembleError, "An error occured: %s" % e
+
+class ReleaseAssembler(object):
+    """
+    Assemble the per-release installation data directory.
+    """
+    def __init__(self, name, releaseroot, pkgroot, localData = []):
+        """
+        Initialize the ReleaseAssembler
+        @param name: A unique name for this release
+        @param releaseroot: Directory containing the release binaries
+        @param pkgroot: Chroot directory where packages were built
+        @param localData: List of file and directory paths to copy to installRoot/local.
+        """
+        self.name = name
+        self.cdroot = os.path.join(releaseroot, RELEASE_CD_PATH)
+        self.pkgroot = pkgroot
+        self.localData = localData
+
+    def build(self, destdir, log):
+        """
+        Create the install root, copy in the release data,
+        write out the bootloader configuration and kernels.
+        @param destdir: Per-release installation data directory.
+        @param log: Open log file.
+        """
+        try:
+            # Copy the installation data
+            utils.copyRecursive(os.path.join(self.cdroot, _getCDRelease(self.cdroot)), destdir, symlinks=True)
+
+            # If there are packages, copy those too
+            packagedir = os.path.join(self.pkgroot, RELEASE_PACKAGE_PATH)
+            if (os.path.exists(packagedir)):
+                utils.copyRecursive(packagedir, os.path.join(destdir, 'packages'), symlinks=True)
+
+            # Copy in any local data
+            if (len(self.localData)):
+                # Create the local directory
+                localdir = os.path.join(destdir, 'local')
+                os.mkdir(localdir)
+
+                for path in self.localData:
+                    if (os.path.isdir(path)):
+                        utils.copyRecursive(path, os.path.join(localdir, os.path.basename(path)), symlinks=True)
+                    else:
+                        utils.copyWithOwnership(path, localdir)
+
+            # Add the FarBot package installer script and make it executable
+            utils.copyWithOwnership(farb.INSTALL_PACKAGE_SH, destdir)
+            os.chmod(os.path.join(destdir, os.path.basename(farb.INSTALL_PACKAGE_SH)), 0755)
+        except exceptions.IOError, e:
+            raise ReleaseAssembleError, "An I/O error occured: %s" % e
+        except Exception, e:
+            raise ReleaseAssembleError, "An error occured: %s" % e
+
+class NetInstallAssembler(object):
+    """
+    Assemble the netinstall directory, including the tftproot,
+    using the supplied release and install assemblers.
+    """
+    def __init__(self, installroot, releaseAssemblers, installAssemblers):
+        """
+        Initialize the InstallRootBuilder
+        @param installroot: Network install/boot directory.
+        @param releaseAssemblers: List of ReleaseAssembler instances.
+        @param installAssemblers: List of InstallAssembler instances.
+        """
+        self.installroot = installroot
+        self.tftproot = os.path.join(installroot, 'tftproot')
+        self.releaseAssemblers = releaseAssemblers
+        self.installAssemblers = installAssemblers
+
+    def _doConfigureBootLoader(self, destdir):
+        """
+        Write out the forth for the boot loader installation menu
+        """
+        subst = {}
+
+        # Format Strings
+        variableFormat = 'variable %s\n'
+        menuItemFormat = 'printmenuitem ."  %s" %s !\n'
+        ifBlockFormat = 'dup %s @ = if\ns" /%s/boot.conf" read-conf\n0 boot-conf exit\nthen\n'
+
+        # Output
+        variables = cStringIO.StringIO()
+        menuItems = cStringIO.StringIO()
+        ifBlocks = cStringIO.StringIO()
+
+        # Generate the code blocks
+        for install in self.installAssemblers:
+            # Variable declaration
+            variableName = install.name + '_key'
+            variables.write(variableFormat % (variableName))
+
+            # Menu item
+            menuItems.write(menuItemFormat % (install.description, variableName))
+
+            # if block
+            ifBlocks.write(ifBlockFormat % (variableName, install.name))
+
+        # Write out the netinstall.4th file
+        subst['variables'] = variables.getvalue()
+        subst['menuitems'] = menuItems.getvalue()
+        subst['ifblocks'] = ifBlocks.getvalue()
+        output = open(os.path.join(destdir, 'netinstall.4th'), 'w')
+        template = open(farb.NETINSTALL_FORTH_TMPL, 'r')
+
+        for line in template:
+            output.write(line % (subst))
+
+        output.close()
+        template.close()
+
+        # Copy in our loader.conf and loader.rc
+        utils.copyWithOwnership(farb.LOADER_CONF, destdir)
+        utils.copyWithOwnership(farb.LOADER_RC, destdir)
+
+    def build(self, log):
+        """
+        Create the install root, copy in the release data,
+        write out the bootloader configuration and kernels.
+        @param log: Open log file.
+        """
+        try:
+            # Create the installation root, if necessary
+            if (not os.path.exists(self.installroot)):
+                os.mkdir(self.installroot)
+
+            # Create the tftproot, if necessary
+            if (not os.path.exists(self.tftproot)):
+                os.mkdir(self.tftproot)
+
+            # Copy over the shared boot loader and kernel. Lacking any better heuristic, we
+            # grab the boot loader from the first release provided -- shouldn't
+            # matter where we get it, really. However, there are some differences between
+            # where releases store the generic kernel, so we try to impedence match.
+            release = self.releaseAssemblers[0]
+            source = os.path.join(release.cdroot, 'boot')
+            dest = os.path.join(self.tftproot, os.path.basename(source))
+
+            # Copy it
+            utils.copyRecursive(source, dest, symlinks=True)
+
+            # Configure it
+            self._doConfigureBootLoader(dest)
+
+            # Assemble the release data
+            for release in self.releaseAssemblers:
+                destdir = os.path.join(self.installroot, release.name)
+                release.build(destdir, log)
+
+            # Assemble the installation data
+            for install in self.installAssemblers:
+                destdir = os.path.join(self.tftproot, install.name)
+                install.build(destdir, log)
+
+        except exceptions.IOError, e:
+            raise NetInstallAssembleError, "An I/O error occured: %s" % e
+        except exceptions.OSError, e:
+            raise NetInstallAssembleError, "An OS error occured: %s" % e
+        except Exception, e:
+            raise NetInstallAssembleError, "An error occured: %s" % e
 
 def _getCDRelease(cdroot):
     # Get the release name from the cdrom.inf file in cdroot
