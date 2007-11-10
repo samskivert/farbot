@@ -31,8 +31,7 @@
 
 import os
 import ZConfig
-
-from twisted.trial import unittest
+import unittest
 
 import farb
 from farb import config

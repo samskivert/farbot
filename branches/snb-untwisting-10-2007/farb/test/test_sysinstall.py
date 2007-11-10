@@ -33,8 +33,7 @@ import os
 import ZConfig
 from cStringIO import StringIO
 import string
-
-from twisted.trial import unittest
+import unittest
 
 import farb
 from farb import sysinstall

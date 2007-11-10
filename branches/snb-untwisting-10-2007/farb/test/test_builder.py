@@ -29,9 +29,9 @@
 
 """ Builder Unit Tests """
 
-import os, shutil
-
-from twisted.trial import unittest
+import os
+import shutil
+import unittest
 
 import farb
 from farb import builder, utils
