@@ -489,7 +489,7 @@ class ReleaseBuilder(object):
 class ISOReader(object):
     """
     Copy a binary FreeBSD release from a mounted CD image into a build chroot's
-        RELEASE_CD_PATH. 
+    RELEASE_CD_PATH. 
     """
     def __init__(self, mountpoint, releaseroot):
         """
