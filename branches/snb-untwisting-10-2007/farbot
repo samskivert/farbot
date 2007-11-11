@@ -42,18 +42,18 @@ class Main(object):
     doAllActions = True
 
     def usage(self):
-        print "Usage: %s [-h] [-o] [-f config file] [-r action]" % sys.argv[0]
-        print "    -h             Print usage (this message)"
-        print "    -o             Do one action only.  Do not continue after <action>"
-        print "    -f <config>    Use configuration file <config>"
-        print "    -r <action>    Execute <action>"
-        print "\nSupported actions:"
-        print "    release        Build all defined releases, build all packages, and build the"
-        print "                   network installation root"
-        print "    package        Build all defined packages, and build the network"
-        print "                   installation root (requires a release build)"
-        print "    install        Build the network installation root (requires package and"
-        print "                   release builds)"
+        print >>sys.stderr, "Usage: %s [-h] [-o] [-f config file] [-r action]" % sys.argv[0]
+        print >>sys.stderr, "    -h             print >>sys.stderr, usage (this message)"
+        print >>sys.stderr, "    -o             Do one action only.  Do not continue after <action>"
+        print >>sys.stderr, "    -f <config>    Use configuration file <config>"
+        print >>sys.stderr, "    -r <action>    Execute <action>"
+        print >>sys.stderr, "\nSupported actions:"
+        print >>sys.stderr, "    release        Build all defined releases, build all packages, and build the"
+        print >>sys.stderr, "                   network installation root"
+        print >>sys.stderr, "    package        Build all defined packages, and build the network"
+        print >>sys.stderr, "                   installation root (requires a release build)"
+        print >>sys.stderr, "    install        Build the network installation root (requires package and"
+        print >>sys.stderr, "                   release builds)"
 
     def _doReleaseBuild(self, farbconfig):
         """
@@ -66,7 +66,7 @@ class Main(object):
             rbr.run()
             print "Release build completed."
         except runner.ReleaseBuildRunnerError, e:
-            print "%s" % e
+            print >>sys.stderr, e
             sys.exit(1)
 
     def _doPackageBuild(self, farbconfig):
@@ -80,7 +80,7 @@ class Main(object):
             pbr.run()
             print "Package build completed."
         except runner.PackageBuildRunnerError, e:
-            print "%s" % e
+            print >>sys.stderr, e
             sys.exit(1)
 
     def _doNetInstallBuild(self, farbconfig):
@@ -94,7 +94,7 @@ class Main(object):
             ibr.run()
             print "Network installation root created."
         except runner.NetInstallAssemblerRunnerError, e:
-            print "%s" % e
+            print >>sys.stderr, e
             sys.exit(1)
 
     def main(self):
@@ -129,14 +129,14 @@ class Main(object):
             config.verifyReferences(farbconfig)
             config.verifyPackages(farbconfig)
         except ZConfig.ConfigurationError, e:
-            print "Configuration Error: %s" % e
+            print >>sys.stderr, "Configuration Error: %s" % e
             sys.exit(1)
 
         # Set up logging
         try:
             farbconfig.Logging()
         except Exception, e:
-            print "Log initialization failed: %s" % e
+            print >>sys.stderr, "Log initialization failed: %s" % e
             sys.exit(1)
 
         # Execute requested action
@@ -152,7 +152,7 @@ class Main(object):
         elif (action == "install"):
             self._doNetInstallBuild(farbconfig)
         else:
-            print "Unknown action \"%s\".\n" % (action)
+            print >>sys.stderr, "Unknown action \"%s\".\n" % (action)
             self.usage()
             sys.exit(1)
 
