@@ -33,6 +33,7 @@
 import unittest
 from farb.test.test_builder import *
 from farb.test.test_config import *
+from farb.test.test_runner import *
 from farb.test.test_sysinstall import *
 from farb.test.test_utils import *
 
