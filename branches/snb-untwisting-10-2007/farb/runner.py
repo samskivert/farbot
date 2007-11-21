@@ -139,265 +139,192 @@ class PackageBuildRunner(BuildRunner):
     Run a set of package builds
     """
     def __init__(self, config):
-        super(PackageBuildRunner, self).__init__()
-        self.oe = utils.OrderedExecutor()
-        self.devmounts = {}
-        self.distfilescache = None
-        self.distfilesmounts = {}
+        super(PackageBuildRunner, self).__init__(config)
+    
+    def run(self):
+        devmount = None
+        distfilescache = None
+        distfilesmount = None
         
-        if config.PackageSets:
-            self.distfilescache = config.PackageSets.distfilescache
+        if self.config.PackageSets:
+            distfilescache = config.PackageSets.distfilescache
         
-        # Create the distfiles cache directory if necessary
         try:
-            if (self.distfilescache and not os.path.exists(self.distfilescache)):
-                os.makedirs(self.distfilescache)
+            # Create the distfiles cache directory if necessary
+            if (distfilescache and not os.path.exists(distfilescache)):
+                os.makedirs(distfilescache)
         except Exception, e:
-            print "Failed to create distfiles cache directory %s: %s" % (self.distfilescache, e)
-            sys.exit(1)
+            raise builder.PackageBuildRunnerError, "Failed to create distfiles cache directory %s: %s" % (distfilescache, e)
 
         # Iterate through all releases, starting a package build for all
         # listed packages
         for release in config.Releases.Release:
-            # Grab the list of packages provided by verifyPackages()
+            releaseName = release.getSectionName()
+            # Grab the list of packages set by verifyPackages()
             if (not release.packages):
                 continue
-
-            # Open a packaging log file
+            
             logPath = os.path.join(release.buildroot, 'packaging.log')
-            buildLog = open(logPath, 'w', 0)
-            self.logs.append(buildLog)
+            try:
+                try:
+                    # Open a packaging log file
+                    self.log = open(logPath, 'w', 0)
             
-            # TODO: Don't hard code dists. Most ports should only need base and 
-            # maybe some sources to build. On AMD64 we probably also need the lib32 
-            # dist. 
-            dists = { 
-                'base'  :   ['base'],
-                'src'   :   ['sbase', 'scontrib', 'scrypto', 'sgnu', 'setc', 'sgames', 'sinclude', 'skrb5', 'slib', 'slibexec', 'srelease', 'sbin', 'ssecure', 'ssbin', 'sshare', 'ssys', 'subin', 'susbin', 'stools', 'srescue']
-            }
+                    # TODO: Don't hard code dists. Most ports should only need base
+                    # and maybe some sources to build. On AMD64 we probably also
+                    # need the lib32 dist.
+                    dists = { 
+                        'base'  :   ['base'],
+                        'src'   :   ['sbase', 'scontrib', 'scrypto', 'sgnu', 'setc', 'sgames', 'sinclude', 'skrb5', 'slib', 'slibexec', 'srelease', 'sbin', 'ssecure', 'ssbin', 'sshare', 'ssys', 'subin', 'susbin', 'stools', 'srescue']
+                    }
             
-            # Populate a new package chroot from the release binaries we built
-            # or extracted from an ISO.
-            pctx = BuildContext("Extracting release binaries to \"%s\"" % (release.pkgroot), logPath)
-            assembler = builder.PackageChrootAssembler(release.releaseroot, release.pkgroot)
-            eu = utils.ExecutionUnit(pctx, assembler.extract, dists, buildLog)
-            self.oe.appendExecutionUnit(eu)
+                    # Populate a new package chroot from the release binaries we 
+                    # built or extracted from an ISO.
+                    self.log.write("Extracting release binaries to \"%s\"" % release.pkgroot)
+                    assembler = builder.PackageChrootAssembler(release.releaseroot, release.pkgroot)
+                    assembler.extract(dists, self.log)
 
-            # Mount devfs in the chroot
-            pctx = BuildContext("Mount devfs in \"%s\"" % (release.pkgroot), logPath)
-            devfs = builder.MountCommand('devfs', os.path.join(release.pkgroot, 'dev'), fstype='devfs')
-            self.devmounts[devfs] = buildLog
-            eu = utils.ExecutionUnit(pctx, devfs.mount, buildLog)
-            self.oe.appendExecutionUnit(eu)
+                    # Mount devfs in the chroot
+                    self.log.write("Mount devfs in \"%s\"" % release.pkgroot)
+                    devfs = builder.MountCommand('devfs', os.path.join(release.pkgroot, 'dev'), fstype='devfs')
+                    self.devmounts = devfs
+                    devfs.mount(self.log)
+                    
+                    # If we're using portsnap, run portsnap fetch now to get an 
+                    # updated snapshot.
+                    if (release.useportsnap):
+                        self.log.write("Fetching up-to-date ports snapshot")
+                        pc = builder.PortsnapCommand()
+                        pc.fetch(self.log)
+                
+                        # Then portsnap extract a fresh ports tree in the chroot
+                        self.log.write("Extracting ports tree in \"%s\"" % release.portsdir)
+                        pc.extract(release.portsdir, self.log)
+                    
+                    else:
+                        # Otherwise checkout the ports tree into the chroot with cvs
+                        self.log.write("%s release cvs checkout of \"%s\"" % (releaseName, release.portsdir))
+                        cvs = builder.CVSCommand(release.cvsroot)
+                        cvs.checkout('HEAD', 'ports', release.portsdir, self.log)
+                    
+                    # Mount distfiles cache directory in chroot if configured
+                    if distfilescache:
+                        mntpoint = os.path.join(release.pkgroot, 'usr', 'ports', 'distfiles')
+                        
+                        # The distfiles directory should always need to be 
+                        # created because we are working with a freshly created 
+                        # ports tree. 
+                        self.log.write("Creating \"%s\" directory" % mntpoint)
+                        os.mkdir(mntpoint)
+                        
+                        self.log.write("Mount nullfs in \"%s\"" % release.pkgroot)
+                        nullfs = builder.MountCommand(distfilescache, mntpoint, fstype='nullfs')
+                        distfilesmount = nullfs
+                        nullfs.mount(self.log)
+                    
+                    # Make the packages directory. 
+                    self.log.write("Creating \"%s\" directory" % release.packagedir)
+                    os.mkdir(release.packagedir)
+                    
+                    # Fire off a builder for each package
+                    for package in release.packages:
+                        self.log.write("Starting build of package \"%s\" for release \"%s\"" % (package.port, releaseName))
+
+                        # Grab the package build options
+                        buildoptions = {}
+                        if release.PackageBuildOptions:
+                            buildoptions.update(release.PackageBuildOptions.Options)
+                        if package.BuildOptions:
+                            buildoptions.update(package.BuildOptions.Options)
+
+                        # Build it
+                        pb = builder.PackageBuilder(release.pkgroot, package.port, buildoptions)
+                        pb.build(self.log)
+        
+                # Catch any exception. If it's from a command or package builder
+                # the relevant details should be contained in the exception 
+                # text.
+                except Exception, e:
+                    raise PackageBuildRunnerError, "Package build for release %s failed: %s\nFor more information, refer to the package build log \"%s\"" % (releaseName, e, logPath)
+        
+            finally:
+                # Unmount any devfs and distfiles nullfs mounts
+                if devmount:
+                    devmount.umount(self.log)
+                if distfilesmount:
+                    distfilesmount.umount(self.log)
             
-            # If we're using portsnap, run portsnap fetch now to get an updated 
-            # snapshot.
-            if (release.useportsnap):
-                pc = builder.PortsnapCommand()
-                pctx = BuildContext("Fetching up-to-date ports snapshot", logPath)
-                eu = utils.ExecutionUnit(pctx, pc.fetch, buildLog)
-                self.oe.appendExecutionUnit(eu)
-                
-                # Then portsnap extract a fresh ports tree in the chroot
-                pctx = BuildContext("Extracting ports tree in \"%s\"" % (release.portsdir), logPath)
-                eu = utils.ExecutionUnit(pctx, pc.extract, release.portsdir, buildLog)
-                self.oe.appendExecutionUnit(eu)
-                
-            else:
-                # Otherwise checkout the ports tree into the chroot with cvs
-                cvs = builder.CVSCommand(release.cvsroot)
-                pctx = BuildContext("%s release cvs checkout of \"%s\"" % (release.getSectionName(), release.portsdir), logPath)
-                eu = utils.ExecutionUnit(pctx, cvs.checkout, 'HEAD', 'ports', release.portsdir, buildLog)
-                self.oe.appendExecutionUnit(eu)
-
-            # Mount distfiles cache directory in chroot if configured
-            if self.distfilescache:
-                mntpoint = os.path.join(release.pkgroot, 'usr', 'ports', 'distfiles')
-                
-                # The distfiles directory should always need to be created 
-                # because we are working with a freshly created ports tree. 
-                pctx = BuildContext("creating \"%s\" directory" % (mntpoint), logPath)
-                eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, mntpoint)
-                self.oe.appendExecutionUnit(eu)
-                
-                pctx = BuildContext("Mount nullfs in \"%s\"" % (release.pkgroot), logPath)
-                nullfs = builder.MountCommand(self.distfilescache, mntpoint, fstype='nullfs')
-                self.distfilesmounts[nullfs] = buildLog
-                eu = utils.ExecutionUnit(pctx, nullfs.mount, buildLog)
-                self.oe.appendExecutionUnit(eu)
-                
-            # Make the packages directory. Like the distfiles directory above, 
-            # this will always need to be created. Checking for its existence 
-            # could lead to problems if that check is done before a deferred 
-            # process deletes the pkgroot.
-            pctx = BuildContext("creating \"%s\" directory" % (release.packagedir), logPath)
-            eu = utils.ExecutionUnit(pctx, defer.execute, os.mkdir, release.packagedir)
-            self.oe.appendExecutionUnit(eu)
-
-            # Fire off a builder for each package
-            for package in release.packages:
-                pctx = BuildContext("Package build for release \"%s\"" % release.getSectionName(), logPath)
-
-                # Grab the package build options
-                buildoptions = {}
-                if release.PackageBuildOptions:
-                    buildoptions.update(release.PackageBuildOptions.Options)
-                if package.BuildOptions:
-                    buildoptions.update(package.BuildOptions.Options)
-
-                # Add a package builder to the OrderedExecutor
-                pb = builder.PackageBuilder(release.pkgroot, package.port, buildoptions)
-                eu = utils.ExecutionUnit(pctx, pb.build, buildLog)
-                self.oe.appendExecutionUnit(eu)
-
-    def _cleanUpMounts(self):
-        # Unmount all devfs mounts
-        deferreds = []
-        for mount, log in self.devmounts.iteritems():
-            deferreds.append(mount.umount(log))
-            
-        # Same thing for distfiles nullfs mounts
-        if self.distfilescache:
-            for mount, log in self.distfilesmounts.iteritems():
-                deferreds.append(mount.umount(log))
-
-        d = defer.DeferredList(deferreds)
-        return d
-
-    def _decipherException(self, result, failure):
-        # Decipher the BuildContext and raise a normal exception, with the message formatted for printing
-        try:            
-            bctx = failure.value.executionContext
-            failure.value.originalFailure.raiseException()
-        except builder.PackageBuildError, e:
-            raise builder.PackageBuildError, "%s failed: %s.\nFor more information, refer to the package build log \"%s\"" % (bctx.description, e, bctx.logPath)
-        except builder.CVSCommandError, e:
-            raise builder.PackageBuildError, "%s failed: cvs returned: %s.\nFor more information, refer to the build log \"%s\"" % (bctx.description, e, bctx.logPath)
-        except Exception, e:
-            raise builder.PackageBuildError, "Unhandled package build error: %s" % (e)
-
-    def _ebPackageBuild(self, failure):
-        # Close our log files
-        self._closeLogs()
-
-        # Unmount anything in the chroot
-        d = self._cleanUpMounts()
-
-        # Decipher the exception
-        d.addCallback(self._decipherException, failure)
-
-        return d
-
-    def _cbPackageBuild(self, result):
-        # Close our log files
-        self._closeLogs()
-
-        # Unmount anything in the chroot
-        return self._cleanUpMounts()
-
-    def run(self):
-        # Run!
-        d = self.oe.run()
-        d.addCallbacks(self._cbPackageBuild, self._ebPackageBuild)
-        return d
+                # Close our log file
+                self._closeLog()
 
 class NetInstallAssemblerRunner(BuildRunner):
     """
     Run a set of installation builds
     """
     def __init__(self, config):
-        super(NetInstallAssemblerRunner, self).__init__()
-        self.oe = utils.OrderedExecutor()
+        super(NetInstallAssemblerRunner, self).__init__(config)
 
+    def run(self):
         liveReleases = {}
         installAssemblers = []
         releaseAssemblers = []
+        
+        try:
+            try:
+                # Open the build log file
+                logPath = os.path.join(config.Releases.buildroot, 'install.log')
+                self.log = open(logPath, 'w', 0)
 
-        # Open the build log file
-        logPath = os.path.join(config.Releases.buildroot, 'install.log')
-        installLog = open(logPath, 'w', 0)
-        self.logs.append(installLog)
+                # Clean the InstallRoot
+                if (os.path.exists(config.Releases.installroot)):
+                    for directory in os.listdir(config.Releases.installroot):
+                        shutil.rmtree(os.path.join(config.Releases.installroot, directory))
 
-        # Default BuildContext
-        bctx = BuildContext("Installation build", logPath)
+                # Iterate through all installations
+                for install in config.Installations.Installation:
+                    # Find the release for this installation
+                    for release in config.Releases.Release:
+                        if (release.getSectionName() == install.release.lower()):
+                            # Found it. Add it to the dictionary of releases.
+                            # It may already be in the dictionary from another installation.
+                            liveReleases[release.getSectionName()] = release
+                            break
 
-        # Clean the InstallRoot
-        if (os.path.exists(config.Releases.installroot)):
-            for directory in os.listdir(config.Releases.installroot):
-                eu = utils.ExecutionUnit(bctx, threads.deferToThread, shutil.rmtree, os.path.join(config.Releases.installroot, directory))
-                self.oe.appendExecutionUnit(eu)
+                    # Installation Name
+                    installName = install.getSectionName()
 
-        # Iterate through all installations
-        for install in config.Installations.Installation:
-            # Find the release for this installation
-            for release in config.Releases.Release:
-                if (release.getSectionName() == install.release.lower()):
-                    # Found it. Add it to the dictionary of releases.
-                    # It may already be in the dictionary from another installation.
-                    liveReleases[release.getSectionName()] = release
-                    break
+                    # Generate the install.cfg
+                    installConfig = sysinstall.InstallationConfig(install, config)
+                    installConfigPath = os.path.join(config.Releases.buildroot, '%s-install.cfg' % (installName))
+                    self.log.write("Generating install configuration file %s" % installConfigPath)
+                    outputFile = file(installConfigPath, 'w')
+                    installConfig.serialize(outputFile)
+                    outputFile.close()
 
-            # Installation Name
-            installName = install.getSectionName()
+                    # Instantiate the installation assembler
+                    self.log.write("Beginning %s installation build" % installName)
+                    ia = builder.InstallAssembler(installName, install.description, release.releaseroot, installConfigPath)
+                    installAssemblers.append(ia)
 
-            # Default BuildContext
-            bctx = BuildContext("%s installation build" % installName, logPath)
+                # Iterate over "live" releases
+                for releaseName, release in liveReleases.iteritems():
+                    # Instantiate the release assembler
+                    if (len(release.localdata)):
+                        ra = builder.ReleaseAssembler(releaseName, release.releaseroot, release.pkgroot, localData = release.localdata)
+                    else:
+                        ra = builder.ReleaseAssembler(releaseName, release.releaseroot, release.pkgroot)
 
-            # Generate the install.cfg
-            installConfig = sysinstall.InstallationConfig(install, config)
-            installConfigPath = os.path.join(config.Releases.buildroot, '%s-install.cfg' % (installName))
-            outputFile = file(installConfigPath, 'w')
+                    releaseAssemblers.append(ra)
 
-            # Serialize it
-            eu = utils.ExecutionUnit(bctx, threads.deferToThread, installConfig.serialize, outputFile)
-            self.oe.appendExecutionUnit(eu)
+                # Instantiate our NetInstall Assembler
+                nia = builder.NetInstallAssembler(config.Releases.installroot, releaseAssemblers, installAssemblers)
+                nia.build(self.log)
+            
+            except builder.NetInstallAssembleError, e:
+                raise NetInstallAssemblerRunnerError, "Failure setting up installation data: %s.\nFor more information, refer to the installation assembler log \"%s\"" % (e, self.log)
+            except Exception, e:
+                raise NetInstallAssemblerRunnerError, "Unhandled installation build error: %s" % (e)
 
-            # Close the output
-            eu = utils.ExecutionUnit(bctx, defer.execute, outputFile.close)
-            self.oe.appendExecutionUnit(eu)
-
-            # Instantiate the installation assembler
-            ia = builder.InstallAssembler(installName, install.description, release.releaseroot, installConfigPath)
-            installAssemblers.append(ia)
-
-        # Iterate over "live" releases
-        for releaseName, release in liveReleases.iteritems():
-                # Instantiate the release assembler
-                if (len(release.localdata)):
-                    ra = builder.ReleaseAssembler(releaseName, release.releaseroot, release.pkgroot, localData = release.localdata)
-                else:
-                    ra = builder.ReleaseAssembler(releaseName, release.releaseroot, release.pkgroot)
-
-                releaseAssemblers.append(ra)
-
-        # Reset default BuildContext
-        bctx = BuildContext("Installation build", logPath)
-
-        # Instantiate our NetInstall Assembler
-        nia = builder.NetInstallAssembler(config.Releases.installroot, releaseAssemblers, installAssemblers)
-        eu = utils.ExecutionUnit(bctx, nia.build, installLog)
-        self.oe.appendExecutionUnit(eu)
-
-    def _ebInstallBuild(self, failure):
-        # Close our log files
-        self._closeLogs()
-
-        # Decipher the BuildContext and raise a normal exception, with the message formatted for printing
-        try:            
-            bctx = failure.value.executionContext
-            failure.value.originalFailure.raiseException()
-        except builder.NetInstallAssembleError, e:
-            raise builder.NetInstallAssembleError, "%s failed: %s.\nFor more information, refer to the installation build log \"%s\"" % (bctx.description, e, bctx.logPath)
-        except Exception, e:
-            raise builder.NetInstallAssembleError, "Unhandled installation build error: %s" % (e)
-
-    def _cbInstallBuild(self, result):
-        # Close our log files
-        self._closeLogs()
-
-    def run(self):
-        # Run!
-        d = self.oe.run()
-        d.addCallbacks(self._cbInstallBuild, self._ebInstallBuild)
-        return d
-
+        finally:
+            # Close our log file
+            self._closeLog()
