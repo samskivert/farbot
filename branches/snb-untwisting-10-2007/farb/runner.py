@@ -67,21 +67,21 @@ class ReleaseBuildRunner(BuildRunner):
         # Used for MDMountCommand instance for the current release
         self.isomount = None
     
-    def _copyFromISO(self):
+    def _copyFromISO(self, release):
         # Create the ISOs mount point if needed
         mountpoint = os.path.join(release.buildroot, 'mnt')
         if (not os.path.exists(mountpoint)):
-            self.log.write("Creating mount point \"%s\" for ISO" % mountpoint)
+            self.log.write("Creating mount point \"%s\" for ISO\n" % mountpoint)
             os.mkdir(mountpoint)
 
         # Mount the ISO
-        self.log.write("Mount ISO at \"%s\"" % mountpoint)
+        self.log.write("Mount ISO at \"%s\"\n" % mountpoint)
         mdconfig = builder.MDConfigCommand(release.iso)                
         self.isomount = builder.MDMountCommand(mdconfig, mountpoint, fstype='cd9660')
-        self.isomount.mount(buildLog)
+        self.isomount.mount(self.log)
     
         # Copy ISO contents to release directory
-        self.log.write("Release %s copying to %s" % (release.getSectionName(), release.releaseroot))
+        self.log.write("Release %s copying to %s\n" % (release.getSectionName(), release.releaseroot))
         isoReader = builder.ISOReader(mountpoint, release.releaseroot)
         isoReader.copy(self.log)
     
@@ -92,14 +92,14 @@ class ReleaseBuildRunner(BuildRunner):
             releaseName = release.getSectionName()
             
             # Check all installations for a reference to this release
-            for install in config.Installations.Installation:
+            for install in self.config.Installations.Installation:
                 releaseFound = False
                 if (releaseName == install.release.lower()):
                     releaseFound = True
                     break
             if (not releaseFound):
                 # Skip the release, it's not used by any installation
-                break
+                continue
 
             logPath = os.path.join(release.buildroot, 'build.log')
             try:
@@ -112,10 +112,10 @@ class ReleaseBuildRunner(BuildRunner):
                     self.log = open(logPath, 'w', 0)
             
                     if (release.binaryrelease):
-                        self._copyFromISO()
+                        self._copyFromISO(release)
                     else:
                         # Instantiate our builder
-                        self.log.write("Starting build of release %s" % releaseName)
+                        self.log.write("Starting build of release %s\n" % releaseName)
                         releaseBuilder = builder.ReleaseBuilder(release.cvsroot, release.cvstag, release.releaseroot, release.installcds)
                         releaseBuilder.build(self.log)
             
@@ -147,7 +147,7 @@ class PackageBuildRunner(BuildRunner):
         distfilesmount = None
         
         if self.config.PackageSets:
-            distfilescache = config.PackageSets.distfilescache
+            distfilescache = self.config.PackageSets.distfilescache
         
         try:
             # Create the distfiles cache directory if necessary
@@ -158,7 +158,7 @@ class PackageBuildRunner(BuildRunner):
 
         # Iterate through all releases, starting a package build for all
         # listed packages
-        for release in config.Releases.Release:
+        for release in self.config.Releases.Release:
             releaseName = release.getSectionName()
             # Grab the list of packages set by verifyPackages()
             if (not release.packages):
@@ -180,12 +180,12 @@ class PackageBuildRunner(BuildRunner):
             
                     # Populate a new package chroot from the release binaries we 
                     # built or extracted from an ISO.
-                    self.log.write("Extracting release binaries to \"%s\"" % release.pkgroot)
+                    self.log.write("Extracting release binaries to \"%s\"\n" % release.pkgroot)
                     assembler = builder.PackageChrootAssembler(release.releaseroot, release.pkgroot)
                     assembler.extract(dists, self.log)
 
                     # Mount devfs in the chroot
-                    self.log.write("Mount devfs in \"%s\"" % release.pkgroot)
+                    self.log.write("Mount devfs in \"%s\"\n" % release.pkgroot)
                     devfs = builder.MountCommand('devfs', os.path.join(release.pkgroot, 'dev'), fstype='devfs')
                     self.devmounts = devfs
                     devfs.mount(self.log)
@@ -193,17 +193,17 @@ class PackageBuildRunner(BuildRunner):
                     # If we're using portsnap, run portsnap fetch now to get an 
                     # updated snapshot.
                     if (release.useportsnap):
-                        self.log.write("Fetching up-to-date ports snapshot")
+                        self.log.write("Fetching up-to-date ports snapshot\n")
                         pc = builder.PortsnapCommand()
                         pc.fetch(self.log)
                 
                         # Then portsnap extract a fresh ports tree in the chroot
-                        self.log.write("Extracting ports tree in \"%s\"" % release.portsdir)
+                        self.log.write("Extracting ports tree in \"%s\"\n" % release.portsdir)
                         pc.extract(release.portsdir, self.log)
                     
                     else:
                         # Otherwise checkout the ports tree into the chroot with cvs
-                        self.log.write("%s release cvs checkout of \"%s\"" % (releaseName, release.portsdir))
+                        self.log.write("%s release cvs checkout of \"%s\"\n" % (releaseName, release.portsdir))
                         cvs = builder.CVSCommand(release.cvsroot)
                         cvs.checkout('HEAD', 'ports', release.portsdir, self.log)
                     
@@ -214,21 +214,21 @@ class PackageBuildRunner(BuildRunner):
                         # The distfiles directory should always need to be 
                         # created because we are working with a freshly created 
                         # ports tree. 
-                        self.log.write("Creating \"%s\" directory" % mntpoint)
+                        self.log.write("Creating \"%s\" directory\n" % mntpoint)
                         os.mkdir(mntpoint)
                         
-                        self.log.write("Mount nullfs in \"%s\"" % release.pkgroot)
+                        self.log.write("Mount nullfs in \"%s\"\n" % release.pkgroot)
                         nullfs = builder.MountCommand(distfilescache, mntpoint, fstype='nullfs')
                         distfilesmount = nullfs
                         nullfs.mount(self.log)
                     
                     # Make the packages directory. 
-                    self.log.write("Creating \"%s\" directory" % release.packagedir)
+                    self.log.write("Creating \"%s\" directory\n" % release.packagedir)
                     os.mkdir(release.packagedir)
                     
                     # Fire off a builder for each package
                     for package in release.packages:
-                        self.log.write("Starting build of package \"%s\" for release \"%s\"" % (package.port, releaseName))
+                        self.log.write("Starting build of package \"%s\" for release \"%s\"\n" % (package.port, releaseName))
 
                         # Grab the package build options
                         buildoptions = {}
@@ -272,18 +272,18 @@ class NetInstallAssemblerRunner(BuildRunner):
         try:
             try:
                 # Open the build log file
-                logPath = os.path.join(config.Releases.buildroot, 'install.log')
+                logPath = os.path.join(self.config.Releases.buildroot, 'install.log')
                 self.log = open(logPath, 'w', 0)
 
                 # Clean the InstallRoot
-                if (os.path.exists(config.Releases.installroot)):
-                    for directory in os.listdir(config.Releases.installroot):
-                        shutil.rmtree(os.path.join(config.Releases.installroot, directory))
+                if (os.path.exists(self.config.Releases.installroot)):
+                    for directory in os.listdir(self.config.Releases.installroot):
+                        shutil.rmtree(os.path.join(self.config.Releases.installroot, directory))
 
                 # Iterate through all installations
-                for install in config.Installations.Installation:
+                for install in self.config.Installations.Installation:
                     # Find the release for this installation
-                    for release in config.Releases.Release:
+                    for release in self.config.Releases.Release:
                         if (release.getSectionName() == install.release.lower()):
                             # Found it. Add it to the dictionary of releases.
                             # It may already be in the dictionary from another installation.
@@ -294,15 +294,15 @@ class NetInstallAssemblerRunner(BuildRunner):
                     installName = install.getSectionName()
 
                     # Generate the install.cfg
-                    installConfig = sysinstall.InstallationConfig(install, config)
-                    installConfigPath = os.path.join(config.Releases.buildroot, '%s-install.cfg' % (installName))
-                    self.log.write("Generating install configuration file %s" % installConfigPath)
+                    installConfig = sysinstall.InstallationConfig(install, self.config)
+                    installConfigPath = os.path.join(self.config.Releases.buildroot, '%s-install.cfg' % (installName))
+                    self.log.write("Generating install configuration file %s\n" % installConfigPath)
                     outputFile = file(installConfigPath, 'w')
                     installConfig.serialize(outputFile)
                     outputFile.close()
 
                     # Instantiate the installation assembler
-                    self.log.write("Beginning %s installation build" % installName)
+                    self.log.write("Beginning %s installation build\n" % installName)
                     ia = builder.InstallAssembler(installName, install.description, release.releaseroot, installConfigPath)
                     installAssemblers.append(ia)
 
@@ -317,7 +317,7 @@ class NetInstallAssemblerRunner(BuildRunner):
                     releaseAssemblers.append(ra)
 
                 # Instantiate our NetInstall Assembler
-                nia = builder.NetInstallAssembler(config.Releases.installroot, releaseAssemblers, installAssemblers)
+                nia = builder.NetInstallAssembler(self.config.Releases.installroot, releaseAssemblers, installAssemblers)
                 nia.build(self.log)
             
             except builder.NetInstallAssembleError, e:
