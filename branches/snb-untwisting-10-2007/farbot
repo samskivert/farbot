@@ -62,7 +62,7 @@ class Main(object):
         """
         print "Building all releases ..."
         try:
-            rbr = ReleaseBuildRunner(farbconfig)
+            rbr = runner.ReleaseBuildRunner(farbconfig)
             rbr.run()
             print "Release build completed."
         except runner.ReleaseBuildRunnerError, e:
@@ -130,13 +130,6 @@ class Main(object):
             config.verifyPackages(farbconfig)
         except ZConfig.ConfigurationError, e:
             print >>sys.stderr, "Configuration Error: %s" % e
-            sys.exit(1)
-
-        # Set up logging
-        try:
-            farbconfig.Logging()
-        except Exception, e:
-            print >>sys.stderr, "Log initialization failed: %s" % e
             sys.exit(1)
 
         # Execute requested action
