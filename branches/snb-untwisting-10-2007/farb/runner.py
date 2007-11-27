@@ -143,7 +143,6 @@ class PackageBuildRunner(BuildRunner):
     
     def run(self):
         devmount = None
-        distfilescache = None
         distfilesmount = None
         
         if self.config.PackageSets:
@@ -186,9 +185,8 @@ class PackageBuildRunner(BuildRunner):
 
                     # Mount devfs in the chroot
                     self.log.write("Mount devfs in \"%s\"\n" % release.pkgroot)
-                    devfs = builder.MountCommand('devfs', os.path.join(release.pkgroot, 'dev'), fstype='devfs')
-                    self.devmounts = devfs
-                    devfs.mount(self.log)
+                    devmount = builder.MountCommand('devfs', os.path.join(release.pkgroot, 'dev'), fstype='devfs')
+                    devmount.mount(self.log)
                     
                     # If we're using portsnap, run portsnap fetch now to get an 
                     # updated snapshot.
