@@ -32,7 +32,7 @@ import os
 import shutil
 
 import farb
-from farb import builder
+from farb import builder, sysinstall
 
 # Exceptions
 class ReleaseBuildRunnerError(farb.FarbError):
