@@ -251,8 +251,10 @@ class PackageBuildRunner(BuildRunner):
                 # Unmount any devfs and distfiles nullfs mounts
                 if devmount:
                     devmount.umount(self.log)
+                    devmount = None
                 if distfilesmount:
                     distfilesmount.umount(self.log)
+                    distfilesmount = None
             
                 # Close our log file
                 self._closeLog()
