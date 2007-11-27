@@ -60,7 +60,8 @@ CONFIG_SUBS = {
     '@PSET@' : 'Base',
     '@RELEASETYPE@' : 'BinaryRelease True',
     '@PORTSOURCE@' : 'UsePortsnap True',
-    '@ISO@' : 'ISO ' + os.path.join(DATA_DIR, 'fake_cd.iso')
+    '@ISO@' : 'ISO ' + os.path.join(DATA_DIR, 'fake_cd.iso'),
+    '@DISTFILESCACHE@' : 'DistfilesCache ' + BUILDROOT
 }
 
 class ConfigParsingTestCase(unittest.TestCase):

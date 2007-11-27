@@ -82,6 +82,7 @@
 # Package Sets
 #
 <PackageSets>
+    @DISTFILESCACHE@
 	<PackageSet Base>
 		<Package>
 			Port            security/sudo 
