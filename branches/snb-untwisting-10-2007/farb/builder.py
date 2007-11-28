@@ -554,7 +554,7 @@ class PackageChrootAssembler(object):
         proc.stdin.close()
         retval = proc.wait()
         if retval != 0:
-            raise TarCommandError, "%s returned with exit code %d while extracting dist %s; see log file %s for details" % (argv[0], retval, distname, log)
+            raise TarCommandError, "%s returned with exit code %d while extracting dist %s" % (argv[0], retval, distname)
         
     def _extractAll(self, dists, log):
         # Extract each dist in the chroot
@@ -970,6 +970,6 @@ def _runCommand(argv, log, exception, env=ROOT_ENV, returnOut=False):
         outputString = process.stdout.read()
         
     if retval != 0:
-        raise exception, "Command %s returned with exit code %d; see log file %s for details" % (argv[0], retval, log)
+        raise exception, "Command %s returned with exit code %d" % (argv[0], retval)
     
     return outputString
