@@ -129,7 +129,7 @@ class ReleaseBuildRunner(BuildRunner):
             finally:
                 # Unmount any ISO and detach its MD device.
                 if self.isomount:
-                    self.log.write("Unounting ISO at \"%s\"\n" % self.isomount.mountpoint)
+                    self.log.write("Unmounting ISO at \"%s\"\n" % self.isomount.mountpoint)
                     self.isomount.umount(self.log)
                 
                 # Close our log file
