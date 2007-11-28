@@ -118,7 +118,7 @@
 	</Installation>
 	<Installation Test2>
 		Description	Clinical Trials
-		Release		6.1
+		Release		6.0
 		PackageSet	@PSET@
 		PackageSet	Database
 		NetworkDevice	em0
@@ -128,7 +128,7 @@
 	</Installation>
 	<Installation Test3>
 	    Description Clinical Trials
-	    Release     6.0
+	    Release     6.2-RELEASE
 	    PackageSet  @PSET@
 	    NetworkDevice   em0
 	    # No disks -- they will be partitioned and labeled interactively

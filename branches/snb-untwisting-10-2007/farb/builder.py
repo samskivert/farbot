@@ -314,11 +314,8 @@ class MakeCommand(object):
         # Create command argv
         argv = [MAKE_PATH, '-C', self.directory]
         if self.chrootdir:
-            runCmd = CHROOT_PATH
             argv.insert(0, self.chrootdir)
             argv.insert(0, CHROOT_PATH)
-        else:
-            runCmd = MAKE_PATH
 
         for target in self.targets:
             argv.append(target)

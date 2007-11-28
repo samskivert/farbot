@@ -183,12 +183,13 @@ class MakeCommandTestCase(unittest.TestCase):
         o.close()
     
     def test_makeChroot(self):
-        mc = builder.MakeCommand(BUILDROOT, ('makecommand',), chrootdir='/nonexistant') 
+        (head, tail) = os.path.split(BUILDROOT)
+        mc = builder.MakeCommand(os.path.sep + tail, ('makecommand',), chrootdir=head) 
         mc.make(self.log)
         self.log.seek(0)
         # take just the first line as make tells us what directories it
         # is entering and exiting on certain platforms
-        self.assertEquals(self.log.read().splitlines(1)[0], '%s /nonexistant %s -C %s makecommand\n' % (CHROOT_PATH, builder.MAKE_PATH, BUILDROOT))
+        self.assertEquals(self.log.read().splitlines(1)[0], '%s %s %s -C %s makecommand\n' % (CHROOT_PATH, head, builder.MAKE_PATH, os.path.sep + tail))
 
 class PortsnapCommandTestCase(unittest.TestCase):
 	def setUp(self):
@@ -392,7 +393,7 @@ class PackageBuilderTestCase(unittest.TestCase):
             'TEST1' : '1',
             'TEST2' : '2'
         }
-        self.builder = builder.PackageBuilder(PKGROOT, BUILDROOT, buildOptions)
+        self.builder = builder.PackageBuilder('', BUILDROOT, buildOptions)
         self.log = open(PROCESS_LOG, 'w+')
 
     def tearDown(self):

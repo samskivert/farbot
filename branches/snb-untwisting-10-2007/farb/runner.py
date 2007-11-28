@@ -129,6 +129,7 @@ class ReleaseBuildRunner(BuildRunner):
             finally:
                 # Unmount any ISO and detach its MD device.
                 if self.isomount:
+                    self.log.write("Unounting ISO at \"%s\"\n" % self.isomount.mountpoint)
                     self.isomount.umount(self.log)
                 
                 # Close our log file
@@ -172,6 +173,8 @@ class PackageBuildRunner(BuildRunner):
                     # TODO: Don't hard code dists. Most ports should only need base
                     # and maybe some sources to build. On AMD64 we probably also
                     # need the lib32 dist.
+                    # This also is breaking unit tests, since test data does not 
+                    # have these dists.
                     dists = { 
                         'base'  :   ['base'],
                         'src'   :   ['sbase', 'scontrib', 'scrypto', 'sgnu', 'setc', 'sgames', 'sinclude', 'skrb5', 'slib', 'slibexec', 'srelease', 'sbin', 'ssecure', 'ssbin', 'sshare', 'ssys', 'subin', 'susbin', 'stools', 'srescue']
@@ -248,9 +251,11 @@ class PackageBuildRunner(BuildRunner):
             finally:
                 # Unmount any devfs and distfiles nullfs mounts
                 if devmount:
+                    self.log.write("Unmounting devfs at %s\n" % devmount.mountpoint)
                     devmount.umount(self.log)
                     devmount = None
                 if distfilesmount:
+                    self.log.write("Unmounting distfiles cache at %s\n" % distfilesmount.mountpoint)
                     distfilesmount.umount(self.log)
                     distfilesmount = None
             
