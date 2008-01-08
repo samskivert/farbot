@@ -46,7 +46,7 @@ def releases_handler(section):
     # Validate release sections and instantiate
     # ReleaseBuilders.
     for release in section.Release:
-        if (tags.count(release.cvstag) > 0):
+        if (release.cvstag != None and tags.count(release.cvstag) > 0):
             raise ZConfig.ConfigurationError("CVS Tags may not be re-used in mutiple Release sections. (Tag: \"%s\")" % (release.cvstag))
         else:
             tags.append(release.cvstag)
