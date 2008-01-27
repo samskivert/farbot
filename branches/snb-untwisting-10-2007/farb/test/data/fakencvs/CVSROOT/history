@@ -1,5 +1,0 @@
-O474cc3dd|snb|~/Documents/ooo/farbot/branches/snb-untwisting-10-2007/farb/test/cvs/*0|src||src
-O474cc619|snb|~/Documents/ooo/farbot/branches/snb-untwisting-10-2007/farb/test/cvs/foo/*0|ports||ports
-O474cd969|snb|~/Documents/ooo/farbot/branches/snb-untwisting-10-2007/farb/test/data/*0|ports||ports
-A474cda16|snb|~/Documents/ooo/farbot/branches/snb-untwisting-10-2007/farb/test/data/*0|ports/databases/mysql50-server|1.1|Makefile
-A474cda33|snb|~/Documents/ooo/farbot/branches/snb-untwisting-10-2007/farb/test/data/*0|ports/security/sudo|1.1|Makefile
