@@ -384,6 +384,7 @@ class ChrootCleaner(object):
         @param log: Open log file
         """
         if (os.path.exists(self.chroot)):
+            log.write("Cleaning out anything in chroot %s\n" % self.chroot)
             # Remove all flags on files in the chroot, then delete it all
             if os.path.exists(self.chroot):
                 cc = ChflagsCommand(self.chroot)
@@ -531,6 +532,7 @@ class PackageChrootAssembler(object):
         self.chroot = chroot
     
     def _extractDist(self, distdir, distname, target, log):
+        log.write("Extracting dist %s from %s to %s\n" % (distname, distdir, target))
         # Create target directory if it isn't already there
         if (not os.path.exists(target)):
             os.makedirs(target)
@@ -733,21 +735,26 @@ class InstallAssembler(object):
                 os.mkdir(destdir)
 
             # Write the uncompressed mfsroot file
+            log.write("Decompressing %s to %s\n" % (self.mfsCompressed, mfsOutput))
             self._decompressMFSRoot(mfsOutput)
         
             # Mount the mfsroot once it has been decompressed
+            log.write("Mounting %s on %s\n" % (mfsOutput, mountPoint))
             self._mountMFSRoot(mfsOutput, mountPoint, log)
 
             # Copy the install.cfg to the attached md device
+            log.write("Copying %s to mfsroot mounted at %s\n" % (self.installConfigSource, mountPoint))
             shutil.copy2(self.installConfigSource, installConfigDest)
 
             # Unmount/detach md device
             self.mdmount.umount(log)
 
             # Copy the kernel
+            log.write("Copying kernel from %s to %s\n" % (self.kernel, destdir))
             self._copyKernel(destdir)
 
             # Write boot.conf
+            log.write("Writing out boot.conf file in %s\n" % destdir)
             self._doWriteBootConf(destdir)
         
         except MDConfigCommandError, e:
@@ -784,12 +791,13 @@ class ReleaseAssembler(object):
         @param log: Open log file.
         """
         try:
-            log.write("Creating install root %s from release %s\n" % (destdir, self.name))
             # Copy the installation data
+            log.write("Copying release files from %s to %s\n" % (os.path.join(self.cdroot, _getCDRelease(self.cdroot)), destdir))
             utils.copyRecursive(os.path.join(self.cdroot, _getCDRelease(self.cdroot)), destdir, symlinks=True)
 
             # If there are packages, copy those too
             packagedir = os.path.join(self.pkgroot, RELEASE_PACKAGE_PATH)
+            log.write("Copying packages from %s to %s\n" % (packagedir, os.path.join(destdir, 'packages')))
             if (os.path.exists(packagedir)):
                 utils.copyRecursive(packagedir, os.path.join(destdir, 'packages'), symlinks=True)
 
@@ -800,12 +808,14 @@ class ReleaseAssembler(object):
                 os.mkdir(localdir)
 
                 for path in self.localData:
+                    log.write("Copying extra local data from %s to %s\n" % (path, os.path.join(localdir, os.path.basename(path))))
                     if (os.path.isdir(path)):
                         utils.copyRecursive(path, os.path.join(localdir, os.path.basename(path)), symlinks=True)
                     else:
                         utils.copyWithOwnership(path, localdir)
 
             # Add the FarBot package installer script and make it executable
+            log.write("Installing package installer script to %s\n" % destdir)
             utils.copyWithOwnership(farb.INSTALL_PACKAGE_SH, destdir)
             os.chmod(os.path.join(destdir, os.path.basename(farb.INSTALL_PACKAGE_SH)), 0755)
         except exceptions.IOError, e:
@@ -899,19 +909,23 @@ class NetInstallAssembler(object):
             dest = os.path.join(self.tftproot, os.path.basename(source))
 
             # Copy it
+            log.write("Copying shared boot loader and kernel from %s to %s\n" % (source, dest))
             utils.copyRecursive(source, dest, symlinks=True)
 
             # Configure it
+            log.write("Generating netinstall.4th and copying loader.conf and loader.rc to %s\n" % dest)
             self._doConfigureBootLoader(dest)
 
             # Assemble the release data
             for release in self.releaseAssemblers:
                 destdir = os.path.join(self.installroot, release.name)
+                log.write("Assembling release data in %s\n" % destdir)
                 release.build(destdir, log)
 
             # Assemble the installation data
             for install in self.installAssemblers:
                 destdir = os.path.join(self.tftproot, install.name)
+                log.write("Assembling installation-specific data in %s\n" % destdir)
                 install.build(destdir, log)
 
         except exceptions.IOError, e:
