@@ -1,6 +1,6 @@
 # builder.py vi:ts=4:sw=4:expandtab:
 #
-# Copyright (c) 2006-2007 Three Rings Design, Inc.
+# Copyright (c) 2006-2008 Three Rings Design, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without

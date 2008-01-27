@@ -1,5 +1,5 @@
 <!--
-    ZConfig Configuration Schema for FARB
+    ZConfig Configuration Schema for farbot
     farb_conf.xml vi:ts=4:sw=4:expandtab
 -->
 <schema prefix="farb.config">
