@@ -62,7 +62,8 @@ CONFIG_SUBS = {
     '@RELEASETYPE@' : 'BinaryRelease True',
     '@PORTSOURCE@' : 'UsePortsnap True',
     '@ISO@' : 'ISO ' + os.path.join(DATA_DIR, 'fake_cd.iso'),
-    '@DISTFILESCACHE@' : 'DistfilesCache ' + os.path.join(BUILDROOT, 'distfiles')
+    '@DISTFILESCACHE@' : 'DistfilesCache ' + os.path.join(BUILDROOT, 'distfiles'),
+    '@DISTS@' : 'src base'
 }
 
 class ConfigParsingTestCase(unittest.TestCase):
@@ -157,6 +158,13 @@ class ConfigParsingTestCase(unittest.TestCase):
         config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
         release = config.Releases.Release[2]
         self.assertEquals(release.cvsroot, CVSROOT)
+
+    def test_ports_dist(self):
+        """ Test handling of a release with ports defined in Dists """
+        subs = CONFIG_SUBS.copy()
+        subs['@DISTS@'] = 'base ports src'
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
 
     def test_partition_softupdates(self):
         """ Verify that SoftUpdates flags are tweaked appropriately """

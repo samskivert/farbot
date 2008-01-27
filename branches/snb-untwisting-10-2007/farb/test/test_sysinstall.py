@@ -94,6 +94,7 @@ class ConfigTestCase(object):
         rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, CONFIG_SUBS)
         self.config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
         self.instSection = self.config.Installations.Installation[0]
+        self.releaseSection = self.config.Releases.Release[0]
         self.instSectionNoCommands = self.config.Installations.Installation[1]
         self.instSectionNoDisks = self.config.Installations.Installation[2]
 
@@ -131,7 +132,7 @@ class DistSetConfigTestCase(ConfigTestCase, unittest.TestCase):
         """
         Initialize a DistSetConfig
         """
-        dsc = sysinstall.DistSetConfig(self.instSection, self.config)
+        dsc = sysinstall.DistSetConfig(self.releaseSection, self.config)
 
     def test_serialize(self):
         """
@@ -139,9 +140,9 @@ class DistSetConfigTestCase(ConfigTestCase, unittest.TestCase):
         """
         output = StringIO()
         instSect = self.instSection
-        dsc = sysinstall.DistSetConfig(self.instSection, self.config)
+        dsc = sysinstall.DistSetConfig(self.releaseSection, self.config)
         # Do some basic validation of the serialized output
-        expectedOutput = 'dists=%s\ndistSetCustom\n' % (dsc.dists)
+        expectedOutput = 'dists=%s\ndistSetCustom\n' % ("src szomg swtf base")
         dsc.serialize(output)
         self.assertEquals(output.getvalue(), expectedOutput)
 

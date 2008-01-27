@@ -560,17 +560,17 @@ class PackageChrootAssembler(object):
         for key in dists.iterkeys():
             distdir = os.path.join(self.cdroot, os.path.join(self.cdroot, _getCDRelease(self.cdroot)), key)
             for distname in dists[key]:
-                # Just to make things difficult, not all dists extract relative 
-                # to /. The source distribution sets, for instance, should be 
-                # extracted in /usr/src/. 
-                # TODO: I'd love to handle this a better way, and I don't know 
-                # what releases of FreeBSD are this way (all of them?). It 
-                # would be a good idea to handle other distribution sets that 
-                # have this fun property (e.g. kernels extract to /boot). See 
-                # Distribution structs near the top of 
-                # /usr/src/usr.sbin/sysinstall/dist.c
+                # Just to make things difficult, not all dists extract
+                # relative to /. TODO: I'd love to handle this without hard 
+                # coding. The only place I see the relative path these
+                # distribution sets get extracted to is in the Distribution
+                # structs near the top of /usr/src/usr.sbin/sysinstall/dist.c. 
+                # Hopefully this does not change too much from release to 
+                # release.
                 if key == 'src':
                     target = os.path.join(self.chroot, 'usr', 'src')
+                elif key == 'kernels':
+                    target = os.path.join(self.chroot, 'boot')
                 else:
                     target = self.chroot
             
@@ -582,8 +582,8 @@ class PackageChrootAssembler(object):
         @param dists: Dictionary of distribution sets to extract. The key is a 
             string corresponding to the name of the dist, and the value is an 
             array of the subdists in that directory. For dists that don't have 
-            a lot of subdists, this value will probably just be an array 
-            containing the same string as the key.
+            a lot of subdists, this value will just be an array containing the 
+            same string as the key.
         @param log: Open log file
         """
         # Clean out chroot

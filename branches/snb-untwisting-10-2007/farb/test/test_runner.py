@@ -200,7 +200,7 @@ class NetInstallAssemblerRunnerTestCase(unittest.TestCase):
     def test_localData(self):
         """ Test that local data is copied into the release's InstallRoot """
         self.assertTrue(os.path.exists(os.path.join(INSTALLROOT, '6.0', 'local', 'Makefile')))
-        self.assertTrue(os.path.isdir(os.path.join(INSTALLROOT, '6.0', 'local', 'distfiles')))
+        self.assertTrue(os.path.isdir(os.path.join(INSTALLROOT, '6.0', 'local', 'fakencvs')))
         self.assertFalse(os.path.exists(os.path.join(INSTALLROOT, '6.2-release', 'local')))
         
     def test_tftproot(self):

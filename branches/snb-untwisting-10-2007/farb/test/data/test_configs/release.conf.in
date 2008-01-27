@@ -16,8 +16,10 @@
 		CVSRoot	@CVSROOT@
 		# Release Tag
 		CVSTag	@TAG1@
-		LocalData @BUILDROOT@/distfiles
+		LocalData @CVSROOT@
 		LocalData @BUILDROOT@/Makefile
+		Dists @DISTS@
+		SourceDists szomg swtf
 	</Release>
 
 	<Release 6-STABLE>
@@ -35,6 +37,8 @@
 		@RELEASETYPE@
 		@PORTSOURCE@
 		@ISO@
+		Dists @DISTS@
+		SourceDists szomg swtf
 	</Release>
 	    
 </Releases>

@@ -18,6 +18,9 @@
         <key name="BinaryRelease" datatype="boolean" required="no" default="false"/>
         <key name="ISO" datatype="string" required="no"/>
         <key name="UsePortsnap" datatype="boolean" required="no"/>
+        <key name="Dists" datatype="string-list" required="no" default="base kernels doc games manpages catpages proflibs dict info src"/>
+        <key name="SourceDists" datatype="string-list" required="no" default="sbase scontrib scrypto sgnu setc sgames sinclude skrb5 slib slibexec srelease sbin ssecure ssbin sshare ssys subin susbin stools srescue"/>
+        <key name="KernelDists" datatype="string-list" required="no" default="GENERIC SMP"/>
     </sectiontype>
 
     <sectiontype name="Releases" datatype=".releases_handler">

@@ -170,15 +170,17 @@ class PackageBuildRunner(BuildRunner):
                     # Open a packaging log file
                     self.log = open(logPath, 'w', 0)
             
-                    # TODO: Don't hard code dists. Most ports should only need base
-                    # and maybe some sources to build. On AMD64 we probably also
-                    # need the lib32 dist.
-                    # This also is breaking unit tests, since test data does not 
-                    # have these dists.
-                    dists = { 
-                        'base'  :   ['base'],
-                        'src'   :   ['sbase', 'scontrib', 'scrypto', 'sgnu', 'setc', 'sgames', 'sinclude', 'skrb5', 'slib', 'slibexec', 'srelease', 'sbin', 'ssecure', 'ssbin', 'sshare', 'ssys', 'subin', 'susbin', 'stools', 'srescue']
-                    }
+                    # Get list of distribution sets to use. If src or kernels 
+                    # are the defined dist, we'll need to get a sub-list of 
+                    # distribution sets from SourceDists and/or KernelDists
+                    dists = {}
+                    for dist in release.dists:
+                        if dist == 'src':
+                            dists[dist] = release.sourcedists
+                        elif dist == 'kernels':
+                            dists[dist] = release.kerneldists
+                        else:
+                            dists[dist] = [dist]
             
                     # Populate a new package chroot from the release binaries we 
                     # built or extracted from an ISO.
