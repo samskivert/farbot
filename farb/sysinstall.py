@@ -1,6 +1,6 @@
 # sysinstall.py vi:ts=4:sw=4:expandtab:
 #
-# Copyright (c) 2006-2007 Three Rings Design, Inc.
+# Copyright (c) 2006-2008 Three Rings Design, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import os
+import string
 import farb
 
 class ConfigSection(object):
@@ -119,24 +120,28 @@ class DistSetConfig(ConfigSection):
     sectionOptions = (
         'dists',        # Install these distribution sets
     )
-    # Distribution sets are currently hardcoded
-    # XXX: Add lib32 if on amd64?
-    dists = 'base kernels GENERIC SMP doc games manpages catpages proflibs dict info src sbase scontrib scrypto sgnu setc sgames sinclude skrb5 slib slibexec srelease sbin ssecure ssbin sshare ssys subin susbin stools srescue'
 
     # Section commands
     sectionCommands = (
         'distSetCustom',
     )
 
-    def __init__(self, section, config):
+    def __init__(self, release, config):
         """
         Initialize distribution set configuration for a given
         installation.
-        @param section: ZConfig Installation section
+        @param release: ZConfig Release section
         @param config: ZConfig Farbot Config
         """
-        # Do nothing, distribution sets are currently hardwired
-        pass
+        # Flatten lists of dists, source dists, and kernel dists, inserting the 
+        # sub lists after src or kernels. Not sure if it really necessary to have 
+        # those sub lists in that exact location, but let's be safe.
+        self.dists = release.dists
+        if self.dists.count('src') > 0:
+            self.dists.insert(self.dists.index('src') + 1, string.join(release.sourcedists))
+        if self.dists.count('kernels') > 0:
+            self.dists.insert(self.dists.index('kernels') + 1, string.join(release.kerneldists))
+        self.dists = string.join(self.dists)
 
     def serialize(self, output):
         self._serializeOptions(output)
@@ -327,7 +332,10 @@ class InstallationConfig(ConfigSection):
         self.networkConfig = NetworkConfig(section, config)
 
         # Distribution sets
-        self.distSetConfig = DistSetConfig(section, config)
+        for release in config.Releases.Release:
+            if release.getSectionName() == section.release.lower():
+                self.distSetConfig = DistSetConfig(release, config)
+                break
 
         # Disks (Partitions and Labels)
         self.diskPartitionConfigs = []

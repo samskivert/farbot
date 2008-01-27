@@ -1,8 +1,6 @@
 - More granularity of builds. Allow rebuilding of individual releases, 
   individual packagesets for a release, and even individual packages.
 - Make it possible to install a functional ports tree into releases. 
-- Create options to define what to include in a release: minimal system, X,
-  ports, sources, kernel source only, etc.
 - Give option of dumping built packages in a directory that is shared via
   http/ftp so it can be used for binary package updates on running systems with 
   portupgrade -P.

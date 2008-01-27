@@ -1,6 +1,7 @@
-# test_utils.py vi:ts=4:sw=4:expandtab:
+#!/usr/bin/env python
+# setup.py vi:ts=4:sw=4:expandtab:
 #
-# Copyright (c) 2006-2008 Three Rings Design, Inc.
+# Copyright (c) 2007-2008 Three Rings Design, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,41 +28,14 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-""" Misc Utilities Unit Tests """
+""" Run all unit tests. """
 
-import os
-import shutil
 import unittest
+from farb.test.test_builder import *
+from farb.test.test_config import *
+from farb.test.test_runner import *
+from farb.test.test_sysinstall import *
+from farb.test.test_utils import *
 
-from farb import utils
-
-# Useful Constants
-from farb.test import DATA_DIR
-from farb.test.test_builder import BUILDROOT
-
-class CopyRecursiveTestCase(unittest.TestCase):
-    """
-    Test copyRecursive
-    """
-    def setUp(self):
-        self.copySrc = os.path.join(BUILDROOT, 'Makefile')
-        self.copyDst = os.path.join(DATA_DIR, 'testcopy')
-        self.copyRecursiveDst = os.path.join(DATA_DIR, 'testrecurse')
-
-    def tearDown(self):
-        if (os.path.exists(self.copyRecursiveDst)):
-            shutil.rmtree(self.copyRecursiveDst)
-        if (os.path.exists(self.copyDst)):
-            os.unlink(self.copyDst)
-
-    def test_copyWithOwnership(self):
-        utils.copyWithOwnership(self.copySrc, self.copyDst) 
-        # TODO Would need root running this test in order to test
-        # if the ownership copying code works
-        self.assert_(os.path.exists(os.path.join(DATA_DIR, 'testcopy')))
-
-    def test_copyRecursive(self):
-        utils.copyRecursive(BUILDROOT, self.copyRecursiveDst) 
-        # TODO Would need root running this test in order to test
-        # if the ownership copying code works
-        self.assert_(os.path.exists(os.path.join(self.copyRecursiveDst, 'Makefile')))
+if __name__ == '__main__':
+    unittest.main()

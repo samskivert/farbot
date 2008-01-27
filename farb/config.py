@@ -1,6 +1,6 @@
 # config.py vi:ts=4:sw=4:expandtab:
 #
-# Copyright (c) 2006-2007 Three Rings Design, Inc.
+# Copyright (c) 2006-2008 Three Rings Design, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -69,7 +69,15 @@ def releases_handler(section):
         release.portsdir = os.path.join(release.pkgroot, 'usr', 'ports')
         # And the package dir ...
         release.packagedir = os.path.join(release.portsdir, 'packages')
-
+        
+        # Don't let a ports distribution set be defined
+        if release.dists.count('ports') > 0:
+            raise ZConfig.ConfigurationError("Do not define the ports distribution in Dists. Ports will be fetched with CVS or Portsnap.")
+        
+        # Make sure both base and kernels are at least defined in Dists
+        if release.dists.count('base') == 0 or release.dists.count('kernels') == 0:
+            raise ZConfig.ConfigurationError("At least base and kernels must be included in list Dists.")
+        
     return section
 
 def release_handler(section):

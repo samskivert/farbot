@@ -18,6 +18,8 @@
       <year>2006</year>
       
       <year>2007</year>
+      
+      <year>2008</year>
 
       <holder>Three Rings Design, Inc.</holder>
     </copyright>
@@ -65,11 +67,6 @@
           </listitem>
 
           <listitem>
-            <para><ulink url="http://twistedmatrix.com">Twisted Networking
-            Framework</ulink></para>
-          </listitem>
-
-          <listitem>
             <para><ulink url="http://www.zope.org/Members/fdrake/zconfig/">
             Zconfig</ulink></para>
           </listitem>
@@ -98,6 +95,10 @@
         installed in the Python-specified bin directory. An example
         configuration file, <filename>farbot.conf</filename>, is supplied with
         the source distribution.</para>
+        
+        <para>Farbot also includes some tests. These can be run before 
+        installing if desired with <programlisting>./runtests.py</programlisting>
+        </para>
       </sect2>
     </sect1>
 
@@ -275,6 +276,81 @@
 &lt;/PackageBuildOptions&gt;</programlisting>
                 </listitem>
               </varlistentry>
+              
+              <varlistentry>
+                <term>Dists</term>
+                <listitem>
+                  <simpara>Space delimited list of distribution sets to 
+                    install. At least <computeroutput>base</computeroutput>
+                    and <computeroutput>kernels</computeroutput> must be
+                    included. If this is left undefined the following dists
+                    will be installed: <computeroutput>base</computeroutput>, 
+                    <computeroutput>kernels</computeroutput>, 
+                    <computeroutput>doc</computeroutput>, 
+                    <computeroutput>games</computeroutput>, 
+                    <computeroutput>manpages</computeroutput>, 
+                    <computeroutput>catpages</computeroutput>, 
+                    <computeroutput>proflibs</computeroutput>, 
+                    <computeroutput>dict</computeroutput>, 
+                    <computeroutput>info</computeroutput>, and
+                    <computeroutput>src</computeroutput>. It may be a good
+                    idea to add <computeroutput>lib32</computeroutput> if you
+                    are building an amd64 release. Do not add
+                    <computeroutput>ports </computeroutput> to this list. The
+                    ports tree will be fetched for package building separately
+                    from the release building process using either
+                    <computeroutput>cvs </computeroutput> or
+                    <computeroutput>portsnap </computeroutput>.
+                  </simpara>
+                </listitem>
+              </varlistentry>
+              
+              <varlistentry>
+                <term>SourceDists</term>
+                <listitem>
+                  <simpara>List of source sub-distribution sets to install if 
+                    <computeroutput>src</computeroutput> is included in
+                    <computeroutput>Dists</computeroutput>. By default this
+                    will be <computeroutput>sbase</computeroutput>, 
+                    <computeroutput>scontrib</computeroutput>, 
+                    <computeroutput>scrypto</computeroutput>, 
+                    <computeroutput>sgnu</computeroutput>, 
+                    <computeroutput>setc</computeroutput>, 
+                    <computeroutput>sgames</computeroutput>, 
+                    <computeroutput>sinclude</computeroutput>, 
+                    <computeroutput>skrb5</computeroutput>, 
+                    <computeroutput>slib</computeroutput>, 
+                    <computeroutput>slibexec</computeroutput>, 
+                    <computeroutput>srelease</computeroutput>, 
+                    <computeroutput>sbin</computeroutput>, 
+                    <computeroutput>ssecure</computeroutput>, 
+                    <computeroutput>ssbin</computeroutput>, 
+                    <computeroutput>sshare</computeroutput>, 
+                    <computeroutput>ssys</computeroutput>, 
+                    <computeroutput>subin</computeroutput>, 
+                    <computeroutput>susbin</computeroutput>, 
+                    <computeroutput>stools</computeroutput>, and
+                    <computeroutput>srescue</computeroutput>. These are all
+                    the sources available in FreeBSD 6.x. If this release is
+                    FreeBSD 7 or higher you may wish to define this list and
+                    add <computeroutput>scddl</computeroutput> and/or
+                    <computeroutput>scompat</computeroutput>.
+                  </simpara>
+                </listitem>
+              </varlistentry>
+              
+              <varlistentry>
+                <term>KernelDists</term>
+                <listitem>
+                  <simpara>
+                    List of kernels to install. By default this will be 
+                    <computeroutput>GENERIC</computeroutput> and 
+                    <computeroutput>SMP</computeroutput> if this is left 
+                    undefined.
+                  </simpara>
+                </listitem>
+              </varlistentry>
+              
             </variablelist>
           </sect4>
         </sect3>

@@ -6,7 +6,7 @@
 	BuildRoot @BUILDROOT@
 
 	# Net Install/NFS Directory 
-	InstallRoot @BUILDROOT@
+	InstallRoot @INSTALLROOT@
 
 	# Host for NFS Server (Probably this machine)
 	NFSHost	10.0.50.1
@@ -16,8 +16,11 @@
 		CVSRoot	@CVSROOT@
 		# Release Tag
 		CVSTag	@TAG1@
-		LocalData /
-		LocalData /tmp
+		LocalData @CVSROOT@
+		LocalData @BUILDROOT@/Makefile
+		Dists @DISTS@
+		SourceDists szomg swtf
+		KernelDists GENERIC
 	</Release>
 
 	<Release 6-STABLE>
@@ -35,6 +38,9 @@
 		@RELEASETYPE@
 		@PORTSOURCE@
 		@ISO@
+		Dists @DISTS@
+		SourceDists szomg swtf
+		KernelDists GENERIC
 	</Release>
 	    
 </Releases>
@@ -82,6 +88,7 @@
 # Package Sets
 #
 <PackageSets>
+    @DISTFILESCACHE@
 	<PackageSet Base>
 		<Package>
 			Port            security/sudo 
@@ -117,7 +124,7 @@
 	</Installation>
 	<Installation Test2>
 		Description	Clinical Trials
-		Release		6.1
+		Release		6.0
 		PackageSet	@PSET@
 		PackageSet	Database
 		NetworkDevice	em0
@@ -127,7 +134,7 @@
 	</Installation>
 	<Installation Test3>
 	    Description Clinical Trials
-	    Release     6.0
+	    Release     6.2-RELEASE
 	    PackageSet  @PSET@
 	    NetworkDevice   em0
 	    # No disks -- they will be partitioned and labeled interactively

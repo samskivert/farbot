@@ -1,6 +1,6 @@
 # __init__.py vi:ts=4:sw=4:expandtab:
 #
-# Copyright (c) 2006-2007 Three Rings Design, Inc.
+# Copyright (c) 2006-2008 Three Rings Design, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@
 
 import os
 
-__all__ = ['builder', 'config', 'utils', 'sysinstall', 'test']
+__all__ = ['builder', 'config', 'runner', 'utils', 'sysinstall', 'test']
 
 # General Info
 __version__ = '0.1'
