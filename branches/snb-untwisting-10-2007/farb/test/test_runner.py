@@ -29,6 +29,7 @@
 
 """ Runner Unit Tests """
 
+import copy
 import os
 import shutil
 import unittest
@@ -38,13 +39,14 @@ import farb
 from farb import config, runner, utils
 
 # Useful Constants
-from farb.test import rewrite_config
-from farb.test.test_builder import BUILDROOT, CDROM_INF, CDROM_INF_IN, ISO_MOUNTPOINT, builder
+from farb.test import DATA_DIR, rewrite_config
+from farb.test.test_builder import BUILDROOT, INSTALLROOT, CDROM_INF, CDROM_INF_IN, ISO_MOUNTPOINT, builder
 from farb.test.test_config import RELEASE_CONFIG_FILE, RELEASE_CONFIG_FILE_IN, CONFIG_SUBS
 
 SCHEMA = ZConfig.loadSchema(farb.CONFIG_SCHEMA)
 RELEASE_NAMES = ['6.0', '6.2-release']
 DISTFILES_CACHE = os.path.join(BUILDROOT, 'distfiles')
+PACKAGEDIR = os.path.join(DATA_DIR, 'fake_pkgs')
 
 class ReleaseBuildRunnerTestCase(unittest.TestCase):
     def setUp(self):
@@ -134,4 +136,77 @@ class PackageBuildRunnerTestCase(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(BUILDROOT, '6.2-release', mysqlPort)))
     
 class NetInstallAssemblerRunnerTestCase(unittest.TestCase):
-    pass
+    def setUp(self):
+        subs = copy.deepcopy(CONFIG_SUBS)
+        subs['@INSTALLROOT@'] = INSTALLROOT
+        os.mkdir(INSTALLROOT)
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        farbconfig, handler = ZConfig.loadConfig(SCHEMA, RELEASE_CONFIG_FILE)
+        
+        # Copy in each release and package root needed
+        for release in RELEASE_NAMES:
+            rewrite_config(CDROM_INF_IN, CDROM_INF, {'@CD_VERSION_LINE@' : 'CD_VERSION = ' + release.upper()})
+            releasedest = os.path.join(BUILDROOT, release, 'releaseroot', builder.RELEASE_CD_PATH)
+            utils.copyRecursive(ISO_MOUNTPOINT, releasedest)
+            # The fake CD image we have is for 6.2, so we might need to rename a
+            # directory
+            os.rename(os.path.join(releasedest, '6.2-RELEASE'), os.path.join(releasedest, release.upper()))
+            
+            # Create the package root and its package directory
+            pkgdest = os.path.join(BUILDROOT, release, 'pkgroot', 'usr', 'ports', 'packages')
+            utils.copyRecursive(PACKAGEDIR, pkgdest)
+        
+        self.nbr = runner.NetInstallAssemblerRunner(farbconfig)
+        self.nbr.run()
+    
+    def tearDown(self):
+        os.unlink(RELEASE_CONFIG_FILE)
+        os.unlink(os.path.join(BUILDROOT, 'install.log'))
+        os.unlink(os.path.join(BUILDROOT, 'test1-install.cfg'))
+        os.unlink(os.path.join(BUILDROOT, 'test2-install.cfg'))
+        os.unlink(os.path.join(BUILDROOT, 'test3-install.cfg'))
+        shutil.rmtree(INSTALLROOT)
+        for release in RELEASE_NAMES:
+            releaseroot = os.path.join(BUILDROOT, release)
+            if os.path.exists(releaseroot):
+                shutil.rmtree(releaseroot)
+
+    def test_installLog(self):
+        """ Test that install log is created """
+        self.assertTrue(os.path.exists(os.path.join(BUILDROOT, 'install.log')))
+
+    def test_installCfg(self):
+        """ Test for the existence of all install.cfg files """
+        self.assertTrue(os.path.exists(os.path.join(BUILDROOT, 'test1-install.cfg')))
+        self.assertTrue(os.path.exists(os.path.join(BUILDROOT, 'test2-install.cfg')))
+        self.assertTrue(os.path.exists(os.path.join(BUILDROOT, 'test3-install.cfg')))
+
+    def test_runTwice(self):
+        """ Test doing one netinstall build after another """
+        self.nbr.run()
+
+    def test_installRoot(self):
+        """ 
+        Test that there are installation roots for each release that contain 
+        needed files 
+        """
+        self.assertTrue(os.path.isdir(os.path.join(INSTALLROOT, '6.0')))
+        self.assertTrue(os.path.isdir(os.path.join(INSTALLROOT, '6.2-release')))
+        self.assertTrue(os.path.exists(os.path.join(INSTALLROOT, '6.0', 'packages', 'All', 'sudo-1.6.9.6.tbz')))
+        self.assertTrue(os.path.exists(os.path.join(INSTALLROOT, '6.2-release', 'packages', 'All', 'mysql-client-5.0.45_1.tbz')))
+        self.assertTrue(os.path.exists(os.path.join(INSTALLROOT, '6.0', 'src', 'szomg.aa')))
+        self.assertTrue(os.path.exists(os.path.join(INSTALLROOT, '6.2-release', 'base', 'base.aa')))
+        
+    def test_localData(self):
+        """ Test that local data is copied into the release's InstallRoot """
+        self.assertTrue(os.path.exists(os.path.join(INSTALLROOT, '6.0', 'local', 'Makefile')))
+        self.assertTrue(os.path.isdir(os.path.join(INSTALLROOT, '6.0', 'local', 'distfiles')))
+        self.assertFalse(os.path.exists(os.path.join(INSTALLROOT, '6.2-release', 'local')))
+        
+    def test_tftproot(self):
+        """ Test that the tftproot directory has necessary files """
+        self.assertTrue(os.path.isdir(os.path.join(INSTALLROOT, 'tftproot')))
+        self.assertTrue(os.path.exists(os.path.join(INSTALLROOT, 'tftproot', 'boot', 'netinstall.4th')))
+        self.assertTrue(os.path.exists(os.path.join(INSTALLROOT, 'tftproot', 'test1', 'kernel', 'kernel')))
+        self.assertTrue(os.path.exists(os.path.join(INSTALLROOT, 'tftproot', 'test2', 'mfsroot')))
+        self.assertTrue(os.path.exists(os.path.join(INSTALLROOT, 'tftproot', 'test3', 'boot.conf')))

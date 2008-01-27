@@ -273,11 +273,11 @@ class NetInstallAssemblerRunner(BuildRunner):
         liveReleases = {}
         installAssemblers = []
         releaseAssemblers = []
-        
+
+        logPath = os.path.join(self.config.Releases.buildroot, 'install.log')        
         try:
             try:
                 # Open the build log file
-                logPath = os.path.join(self.config.Releases.buildroot, 'install.log')
                 self.log = open(logPath, 'w', 0)
 
                 # Clean the InstallRoot
@@ -326,7 +326,7 @@ class NetInstallAssemblerRunner(BuildRunner):
                 nia.build(self.log)
             
             except builder.NetInstallAssembleError, e:
-                raise NetInstallAssemblerRunnerError, "Failure setting up installation data: %s.\nFor more information, refer to the installation assembler log \"%s\"" % (e, self.log)
+                raise NetInstallAssemblerRunnerError, "Failure setting up installation data: %s.\nFor more information, refer to the installation assembler log \"%s\"" % (e, logPath)
             except Exception, e:
                 raise NetInstallAssemblerRunnerError, "Unhandled installation build error: %s" % (e)
 

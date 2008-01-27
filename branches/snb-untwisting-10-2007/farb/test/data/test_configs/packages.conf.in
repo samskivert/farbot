@@ -6,7 +6,7 @@
 	BuildRoot @BUILDROOT@
 
 	# Net Install/NFS Directory 
-	InstallRoot @BUILDROOT@
+	InstallRoot @INSTALLROOT@
 
 	# Host for NFS Server (Probably this machine)
 	NFSHost	10.0.50.1

@@ -6,7 +6,7 @@
 	BuildRoot @BUILDROOT@
 
 	# Net Install/NFS Directory 
-	InstallRoot @BUILDROOT@
+	InstallRoot @INSTALLROOT@
 
 	# Host for NFS Server (Probably this machine)
 	NFSHost	10.0.50.1
@@ -16,8 +16,8 @@
 		CVSRoot	@CVSROOT@
 		# Release Tag
 		CVSTag	@TAG1@
-		LocalData /
-		LocalData /tmp
+		LocalData @BUILDROOT@/distfiles
+		LocalData @BUILDROOT@/Makefile
 	</Release>
 
 	<Release 6-STABLE>

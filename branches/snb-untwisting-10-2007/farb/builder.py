@@ -784,6 +784,7 @@ class ReleaseAssembler(object):
         @param log: Open log file.
         """
         try:
+            log.write("Creating install root %s from release %s\n" % (destdir, self.name))
             # Copy the installation data
             utils.copyRecursive(os.path.join(self.cdroot, _getCDRelease(self.cdroot)), destdir, symlinks=True)
 

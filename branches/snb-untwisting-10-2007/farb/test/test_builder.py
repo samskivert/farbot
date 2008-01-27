@@ -87,6 +87,7 @@ class CVSCommandTestCase(unittest.TestCase):
         self.log.close()
         os.unlink(EXPORT_FILE)
         os.unlink(PROCESS_LOG)
+        shutil.rmtree(os.path.join(BUILDROOT, 'CVS'))
 
     def test_cvsCheckout(self):
         cvs = builder.CVSCommand(CVSROOT)
