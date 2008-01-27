@@ -1,1 +1,22 @@
-FarBot: FreeBSD Automated Release Bot
+Farbot: FreeBSD Automated Release Bot
+
+Farbot automates building of netinstall/PXE boot FreeBSD releases. It currently 
+handles the following:
+
+* Building FreeBSD releases, including grabbing any source needed. It is also
+  possible to just extract a release from a FreeBSD CD ISO if a custom build is
+  unnecessary.
+* Building packages for each release, derived from per installation package sets.
+* Laying out an NFS/TFTP exportable file system structure for all built
+  releases, customized for each installation type.
+* Generation of a customized bootloader with options to install each
+  installation type.
+
+To run farbot, you need a system running FreeBSD with Python 2.4 and the ZConfig 
+Python module. To install, just run 
+
+    ./setup.py install
+
+Farbot includes a suite of tests which can be run before installing if desired:
+
+    ./runtest.py

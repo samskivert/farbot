@@ -1,6 +1,6 @@
 # test_config.py vi:ts=4:sw=4:expandtab:
 #
-# Copyright (c) 2006-2007 Three Rings Design, Inc.
+# Copyright (c) 2006-2008 Three Rings Design, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,8 +31,7 @@
 
 import os
 import ZConfig
-
-from twisted.trial import unittest
+import unittest
 
 import farb
 from farb import config
@@ -54,6 +53,7 @@ PACKAGES_BAD_CONFIG_FILE_IN = PACKAGES_BAD_CONFIG_FILE + '.in'
 CONFIG_SUBS = {
     '@CVSROOT@' : CVSROOT,
     '@BUILDROOT@' : BUILDROOT,
+    '@INSTALLROOT@' : BUILDROOT,
     '@TAG1@' : 'RELENG_6_0',
     '@TAG2@' : 'RELENG_6',
     '@SWAPSU@' : 'False',
@@ -61,7 +61,9 @@ CONFIG_SUBS = {
     '@PSET@' : 'Base',
     '@RELEASETYPE@' : 'BinaryRelease True',
     '@PORTSOURCE@' : 'UsePortsnap True',
-    '@ISO@' : 'ISO ' + os.path.join(DATA_DIR, 'fake_cd.iso')
+    '@ISO@' : 'ISO ' + os.path.join(DATA_DIR, 'fake_cd.iso'),
+    '@DISTFILESCACHE@' : 'DistfilesCache ' + os.path.join(BUILDROOT, 'distfiles'),
+    '@DISTS@' : 'src base kernels'
 }
 
 class ConfigParsingTestCase(unittest.TestCase):
@@ -157,6 +159,27 @@ class ConfigParsingTestCase(unittest.TestCase):
         release = config.Releases.Release[2]
         self.assertEquals(release.cvsroot, CVSROOT)
 
+    def test_ports_dist(self):
+        """ Test handling of a release with ports defined in Dists """
+        subs = CONFIG_SUBS.copy()
+        subs['@DISTS@'] = 'base ports src generic'
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
+
+    def test_missing_base_dist(self):
+        """ Test handing of a release without base in Dists """
+        subs = CONFIG_SUBS.copy()
+        subs['@DISTS@'] = 'src kernels'
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
+
+    def test_missing_kernels_dist(self):
+        """ Test handing of a release without kernels in Dists """
+        subs = CONFIG_SUBS.copy()
+        subs['@DISTS@'] = 'src base'
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
+    
     def test_partition_softupdates(self):
         """ Verify that SoftUpdates flags are tweaked appropriately """
         bs = CONFIG_SUBS.copy()

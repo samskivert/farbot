@@ -27,10 +27,18 @@ if ! ([ $command = "fetch" -o $command = "extract" ]); then
     exit 2
 fi
 
-# Echo Settings
+# Echo ports directory 
 echo $command
 if [ "x$portsdir" != "x" ]; then
     echo $portsdir
+fi
+
+# And create ports directory and a dummy port if we were told to extract
+if [ $command = "extract" ] ; then
+    mkdir -p $portsdir
+    mkdir -p $portsdir/security/sudo
+    echo "all:" > $portsdir/security/sudo/Makefile
+	echo "	@echo Built sudo" >> $portsdir/security/sudo/Makefile
 fi
 
 # Looks good 

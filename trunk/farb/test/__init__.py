@@ -1,6 +1,6 @@
 # __init__.py vi:ts=4:sw=4:expandtab:
 #
-# Copyright (c) 2006-2007 Three Rings Design, Inc.
+# Copyright (c) 2006-2008 Three Rings Design, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,7 @@
 
 import os
 
-__all__ = ['test_builder', 'test_config', 'test_sysinstall', 'test_utils']
+__all__ = ['test_builder', 'test_config', 'test_runner', 'test_sysinstall', 'test_utils']
 
 # Useful Constants
 INSTALL_DIR = os.path.dirname(__file__)
