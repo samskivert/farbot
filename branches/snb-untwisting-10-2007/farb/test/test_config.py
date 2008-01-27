@@ -63,7 +63,7 @@ CONFIG_SUBS = {
     '@PORTSOURCE@' : 'UsePortsnap True',
     '@ISO@' : 'ISO ' + os.path.join(DATA_DIR, 'fake_cd.iso'),
     '@DISTFILESCACHE@' : 'DistfilesCache ' + os.path.join(BUILDROOT, 'distfiles'),
-    '@DISTS@' : 'src base'
+    '@DISTS@' : 'src base kernels'
 }
 
 class ConfigParsingTestCase(unittest.TestCase):
@@ -162,10 +162,24 @@ class ConfigParsingTestCase(unittest.TestCase):
     def test_ports_dist(self):
         """ Test handling of a release with ports defined in Dists """
         subs = CONFIG_SUBS.copy()
-        subs['@DISTS@'] = 'base ports src'
+        subs['@DISTS@'] = 'base ports src generic'
         rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
         self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
 
+    def test_missing_base_dist(self):
+        """ Test handing of a release without base in Dists """
+        subs = CONFIG_SUBS.copy()
+        subs['@DISTS@'] = 'src kernels'
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
+
+    def test_missing_kernels_dist(self):
+        """ Test handing of a release without kernels in Dists """
+        subs = CONFIG_SUBS.copy()
+        subs['@DISTS@'] = 'src base'
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
+    
     def test_partition_softupdates(self):
         """ Verify that SoftUpdates flags are tweaked appropriately """
         bs = CONFIG_SUBS.copy()

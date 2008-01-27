@@ -543,7 +543,7 @@ class PackageChrootAssembler(object):
         argv = [TAR_PATH, '--unlink', '-xpvzf', '-', '-C', target]
         proc = subprocess.Popen(argv, stdout=log, stderr=log, env=ROOT_ENV, stdin=subprocess.PIPE)
         
-        path = os.path.join(distdir, distname)
+        path = os.path.join(distdir, distname.lower())
         files = glob.glob(path + '.??')
         for filename in files:
             file = open(filename, 'rb')

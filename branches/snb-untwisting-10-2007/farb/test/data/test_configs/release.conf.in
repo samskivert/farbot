@@ -20,6 +20,7 @@
 		LocalData @BUILDROOT@/Makefile
 		Dists @DISTS@
 		SourceDists szomg swtf
+		KernelDists GENERIC
 	</Release>
 
 	<Release 6-STABLE>
@@ -39,6 +40,7 @@
 		@ISO@
 		Dists @DISTS@
 		SourceDists szomg swtf
+		KernelDists GENERIC
 	</Release>
 	    
 </Releases>

@@ -142,7 +142,7 @@ class DistSetConfigTestCase(ConfigTestCase, unittest.TestCase):
         instSect = self.instSection
         dsc = sysinstall.DistSetConfig(self.releaseSection, self.config)
         # Do some basic validation of the serialized output
-        expectedOutput = 'dists=%s\ndistSetCustom\n' % ("src szomg swtf base")
+        expectedOutput = 'dists=%s\ndistSetCustom\n' % ("src szomg swtf base kernels GENERIC")
         dsc.serialize(output)
         self.assertEquals(output.getvalue(), expectedOutput)
 

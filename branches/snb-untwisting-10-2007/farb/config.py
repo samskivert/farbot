@@ -73,7 +73,11 @@ def releases_handler(section):
         # Don't let a ports distribution set be defined
         if release.dists.count('ports') > 0:
             raise ZConfig.ConfigurationError("Do not define the ports distribution in Dists. Ports will be fetched with CVS or Portsnap.")
-
+        
+        # Make sure both base and kernels are at least defined in Dists
+        if release.dists.count('base') == 0 or release.dists.count('kernels') == 0:
+            raise ZConfig.ConfigurationError("At least base and kernels must be included in list Dists.")
+        
     return section
 
 def release_handler(section):
