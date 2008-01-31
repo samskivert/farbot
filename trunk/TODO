@@ -13,3 +13,6 @@
   This way the distfiles cache given by the DistfilesCache option in PackageSets
   can be periodically cleaned out without fear of accidentally deleting some
   distfile that can't be automatically downloaded (e.g. diablo-jdk).
+- Somehow save package build options to /var/db/ports/<portname>/option in 
+  imaged systems, so that important build options will not be forgotten when 
+  the package is later upgraded.
