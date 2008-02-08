@@ -43,7 +43,7 @@ class Main(object):
 
     def usage(self):
         print >>sys.stderr, "Usage: %s [-h] [-o] [-f config file] [-r action]" % sys.argv[0]
-        print >>sys.stderr, "    -h             print >>sys.stderr, usage (this message)"
+        print >>sys.stderr, "    -h             print usage (this message)"
         print >>sys.stderr, "    -o             Do one action only.  Do not continue after <action>"
         print >>sys.stderr, "    -f <config>    Use configuration file <config>"
         print >>sys.stderr, "    -r <action>    Execute <action>"
