@@ -26,8 +26,7 @@
         <p>
             Farbot automates building of netinstall/PXE boot FreeBSD releases. 
             It features a simple configuration file based on the concept of 
-            "Installations", "PackageSets", and "PartitionMaps". Check out an 
-            <a href="example.conf">example config.</a>
+            "Installations", "PackageSets", and "PartitionMaps".
         </p>
 
         <p>
@@ -56,21 +55,28 @@
 
         <h2><a id="get">Download</a></h2>
         <p>
-            The source for farbot 1.0 beta 1 can be downloaded
-            <a href="farbot-1.0-beta1.tar.gz">here</a>, and verified against 
-            this <a href="farbot-1.0-beta1.tar.gz.sig">PGP signature.</a>
+            The source for farbot 1.0 beta 2 can be downloaded
+            <a href="farbot-1.0-beta2.tar.gz">here</a>, and verified against 
+            this <a href="farbot-1.0-beta2.tar.gz.asc">PGP signature.</a>
         </p>
+        <p>
+            The public key needed to verify this signature (key ID 0x7E7582A4) 
+            can be obtained 
+            <a href="http://dpw.threerings.net/snb_public_key.asc">here</a>, or
+            retrieved from one of the subkeys.pgp.net keyservers.
+        <p>
+        <!--
         <p>
             The public key needed to verify this signature (key ID 0x85971303) 
             can be obtained 
             <a href="http://dpw.threerings.net/dpw_public_key.asc">here</a>, or
             retrieved from one of the subkeys.pgp.net keyservers. 
         </p>
+        -->
         
         <h2><a id="require">Requirements</a></h2>
         <ul>
-            <li><a href="http://www.python.org">Python 2.4</a></li>
-            <li><a href="http://twistedmatrix.com">Twisted Networking Framework</a></li>
+            <li><a href="http://www.python.org">Python 2.4 or greater</a></li>
             <li><a href="http://www.zope.org/Members/fdrake/zconfig/">Zconfig</a></li>
             <li>
                 To actually perform a release build farbot must be running on 
