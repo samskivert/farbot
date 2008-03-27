@@ -32,11 +32,11 @@ import os
 __all__ = ['builder', 'config', 'runner', 'utils', 'sysinstall', 'test']
 
 # General Info
-__version__ = '0.1'
+__version__ = '1.0'
 __license__ = 'BSD License'
 __author__ = 'Three Rings Design, Inc.'
 __author_email__ = 'dpw@threerings.net'
-__copyright__ = 'Copyright (C) 2006-2007 Three Rings Design, Inc. All rights reserved.'
+__copyright__ = 'Copyright (C) 2006-2008 Three Rings Design, Inc. All rights reserved.'
 
 # Useful Constants
 LOG_NAME = 'farb:'
