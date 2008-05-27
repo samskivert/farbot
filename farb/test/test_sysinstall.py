@@ -133,7 +133,7 @@ class DistSetConfigTestCase(ConfigTestCase, unittest.TestCase):
         Initialize a DistSetConfig
         """
         dsc = sysinstall.DistSetConfig(self.releaseSection, self.config)
-
+        
     def test_serialize(self):
         """
         Serialize a DistSetConfig
@@ -143,6 +143,18 @@ class DistSetConfigTestCase(ConfigTestCase, unittest.TestCase):
         dsc = sysinstall.DistSetConfig(self.releaseSection, self.config)
         # Do some basic validation of the serialized output
         expectedOutput = 'dists=%s\ndistSetCustom\n' % ("src szomg swtf base kernels GENERIC")
+        dsc.serialize(output)
+        self.assertEquals(output.getvalue(), expectedOutput)
+    
+    def test_serialize_default_dists(self):
+        """
+        Make sure list of distribution sets written out agrees with defaults 
+        when dists aren't explicitly specified in config file
+        """
+        output = StringIO()
+        instSect = self.instSection
+        dsc = sysinstall.DistSetConfig(self.config.Releases.Release[1], self.config)
+        expectedOutput = 'dists=%s\ndistSetCustom\n' % ("base kernels GENERIC SMP doc games manpages catpages proflibs dict info src sbase scontrib scrypto sgnu setc sgames sinclude skrb5 slib slibexec srelease sbin ssecure ssbin sshare ssys subin susbin stools srescue")
         dsc.serialize(output)
         self.assertEquals(output.getvalue(), expectedOutput)
 
