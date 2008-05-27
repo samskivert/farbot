@@ -180,6 +180,15 @@ class ConfigParsingTestCase(unittest.TestCase):
         rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
         self.assertRaises(ZConfig.ConfigurationError, ZConfig.loadConfig, self.schema, RELEASE_CONFIG_FILE)
     
+    def test_default_dists(self):
+        """ Ensure that default Dists are set properly """
+        subs = CONFIG_SUBS.copy()
+        rewrite_config(RELEASE_CONFIG_FILE_IN, RELEASE_CONFIG_FILE, subs)
+        config, handler = ZConfig.loadConfig(self.schema, RELEASE_CONFIG_FILE)
+        release = config.Releases.Release[1]
+        self.assertEquals(release.dists, ["base", "kernels", "doc", "games", "manpages", "catpages", "proflibs", "dict", "info", "src"])
+        self.assertEquals(release.kerneldists, ["GENERIC", "SMP"])
+    
     def test_partition_softupdates(self):
         """ Verify that SoftUpdates flags are tweaked appropriately """
         bs = CONFIG_SUBS.copy()
