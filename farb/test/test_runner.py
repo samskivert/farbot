@@ -181,6 +181,14 @@ class NetInstallAssemblerRunnerTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(BUILDROOT, 'test2-install.cfg')))
         self.assertTrue(os.path.exists(os.path.join(BUILDROOT, 'test3-install.cfg')))
 
+    def test_installCfgDists(self):
+        """ Make sure we have expected distribution sets in install.cfg """
+        cfgFiles = [os.path.join(BUILDROOT, 'test1-install.cfg'), os.path.join(BUILDROOT, 'test2-install.cfg'), os.path.join(BUILDROOT, 'test1-install.cfg')]
+        for cfgFile in cfgFiles:
+            for line in open(cfgFile, 'r'):
+                if line.startswith('dists='):
+                    self.assertEquals(line, 'dists=src szomg swtf base kernels GENERIC\n')
+    
     def test_runTwice(self):
         """ Test doing one netinstall build after another """
         self.nbr.run()

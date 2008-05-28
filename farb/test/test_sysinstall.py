@@ -142,7 +142,7 @@ class DistSetConfigTestCase(ConfigTestCase, unittest.TestCase):
         instSect = self.instSection
         dsc = sysinstall.DistSetConfig(self.releaseSection, self.config)
         # Do some basic validation of the serialized output
-        expectedOutput = 'dists=%s\ndistSetCustom\n' % ("src szomg swtf base kernels GENERIC")
+        expectedOutput = 'dists=%s\ndistSetCustom\n' % ('src szomg swtf base kernels GENERIC')
         dsc.serialize(output)
         self.assertEquals(output.getvalue(), expectedOutput)
     
@@ -154,7 +154,7 @@ class DistSetConfigTestCase(ConfigTestCase, unittest.TestCase):
         output = StringIO()
         instSect = self.instSection
         dsc = sysinstall.DistSetConfig(self.config.Releases.Release[1], self.config)
-        expectedOutput = 'dists=%s\ndistSetCustom\n' % ("base kernels GENERIC SMP doc games manpages catpages proflibs dict info src sbase scontrib scrypto sgnu setc sgames sinclude skrb5 slib slibexec srelease sbin ssecure ssbin sshare ssys subin susbin stools srescue")
+        expectedOutput = 'dists=%s\ndistSetCustom\n' % ('base kernels GENERIC SMP doc games manpages catpages proflibs dict info src sbase scontrib scrypto sgnu setc sgames sinclude skrb5 slib slibexec srelease sbin ssecure ssbin sshare ssys subin susbin stools srescue')
         dsc.serialize(output)
         self.assertEquals(output.getvalue(), expectedOutput)
 
