@@ -27,6 +27,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+import copy
 import os
 import string
 import farb
@@ -136,7 +137,7 @@ class DistSetConfig(ConfigSection):
         # Flatten lists of dists, source dists, and kernel dists, inserting the 
         # sub lists after src or kernels. Not sure if it really necessary to have 
         # those sub lists in that exact location, but let's be safe.
-        self.dists = release.dists
+        self.dists = copy.copy(release.dists)
         if self.dists.count('src') > 0:
             self.dists.insert(self.dists.index('src') + 1, string.join(release.sourcedists))
         if self.dists.count('kernels') > 0:
