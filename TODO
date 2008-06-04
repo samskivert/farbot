@@ -16,3 +16,5 @@
 - Somehow save package build options to /var/db/ports/<portname>/option in 
   imaged systems, so that important build options will not be forgotten when 
   the package is later upgraded.
+- Make a man page(s). Probably best to generate this from DocBook XML file like
+  is done with splat (http://dpw.threerings.net/projects/splat).
