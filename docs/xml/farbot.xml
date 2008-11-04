@@ -38,15 +38,16 @@
   <preface>
     <title>About farbot</title>
 
-    <para>farbot was written by Landon Fuller and Jonathan Le Plastrier for
-    the purpose of automating the process of building FreeBSD Jumpstart
-    [netboot] install releases. It handles the building of the releases,
-    builds any packages you wish to install, configures the bootloader, and
-    constructs the NFS exported directory structure needed for a netinstall,
-    all from a simple configuration file. We encourage you to submit any patch
-    you think would be useful. You may also join the <ulink
-    url="https://dpw.threerings.net/mailman/listinfo/farbot">farbot mailing
-    list</ulink>.</para>
+    <para>farbot was written by Landon Fuller, Jonathan Le Plastrier, and Nick
+    Barkas for the purpose of automating the process of building FreeBSD
+    Jumpstart [netboot] install releases. It handles the building of the
+    releases, builds any packages you wish to install, configures the
+    bootloader, and constructs the NFS exported directory structure needed for a
+    netinstall, all from a simple configuration file. We encourage you to submit
+    any patch you think would be useful. You may also join the <ulink
+    url="http://groups.google.com/group/farbot">farbot mailing list</ulink>.
+    </para>
+
   </preface>
 
   <chapter>
