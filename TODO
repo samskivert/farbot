@@ -18,3 +18,5 @@
   the package is later upgraded.
 - Make a man page(s). Probably best to generate this from DocBook XML file like
   is done with splat (http://code.google.com/p/splatd).
+- Add the possibility to set swap size based on the amount of physical memory in
+  the machine.
