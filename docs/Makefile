@@ -16,12 +16,12 @@
 # set XML_DEBUG_CATALOG= to see catalog debugging info
 
 SOURCEDIR?=		xml
-DOCBOOK_XSL?=	        ${PREFIX}/share/xsl/docbook-xsl/
+DOCBOOK_XSL?=	        /usr/local/share/xsl/docbook
 XHTMLDIR?=		xhtml
 STYLESHEET?=	        ${DOCBOOK_XSL}/html/chunk.xsl
 XSTYLESHEET?=	        ${DOCBOOK_XSL}/xhtml/chunk.xsl
-XML_CATALOG_FILES?=	${PREFIX}/etc/xml/catalog
-XML_DEBUG_CATALOG?=
+#XML_CATALOG_FILES?=	${PREFIX}/etc/xml/catalog
+#XML_DEBUG_CATALOG?=
 CSS_STYLESHEET?=	docbook.css
 RESOURCES?=		resources/
 USERLEVEL?=		user
@@ -36,7 +36,7 @@ STRINGPARAMS?=		--stringparam html.stylesheet ${CSS_STYLESHEET}
 
 xhtml:
 	mkdir -p ${XHTMLDIR}
-	install ${RESOURCES}${CSS_STYLESHEET} ${XHTMLDIR}
+	install -m 644 ${RESOURCES}${CSS_STYLESHEET} ${XHTMLDIR}
 	xsltproc --nonet --xinclude ${STRINGPARAMS} -o "${XHTMLDIR}/" "${XSTYLESHEET}" "${SOURCEDIR}/farbot.xml"
 
 check:
