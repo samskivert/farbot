@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title>Configuring farbot</title><link rel="stylesheet" href="docbook.css" type="text/css" /><meta name="generator" content="DocBook XSL Stylesheets V1.74.0" /><link rel="home" href="index.html" title="farbot: FreeBSD Automated Release 'Bot" /><link rel="up" href="ch01.html" title="Chapter 1. Installing and Using farbot" /><link rel="prev" href="ch01.html" title="Chapter 1. Installing and Using farbot" /><link rel="next" href="ch01s03.html" title="Configuring the Installation Host" /></head><body><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Configuring farbot</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="ch01.html">Prev</a> </td><th width="60%" align="center">Chapter 1. Installing and Using farbot</th><td width="20%" align="right"> <a accesskey="n" href="ch01s03.html">Next</a></td></tr></table><hr /></div><div class="sect1" lang="en" xml:lang="en"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a id="id394562"></a>Configuring farbot</h2></div></div></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id394568"></a>Introduction</h3></div></div></div><p>The farbot configuration file is composed of five different
+        section types: </p><div class="itemizedlist"><ul type="disc"><li>Releases Configuration</li><li>Partitions Configuration</li><li>PackageSets Configuration</li><li>Installations Configuration</li></ul></div><p> The configuration uses an Apache-style
+        syntax.</p></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id394612"></a>Releases Configuration</h3></div></div></div><p>The <code class="computeroutput">Releases</code> section defines
+        at least one <code class="computeroutput">Release</code> within a farbot
+        configuration file.</p><div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title"><a id="id394629"></a>Releases Configuration Options</h4></div></div></div><div class="variablelist"><dl><dt><span class="term">BuildRoot</span></dt><dd>Used as the working directory for release builds. A
+                per release directory is added by farbot at build
+                time.</dd><dt><span class="term">InstallRoot</span></dt><dd>Installation clients will load installation data from
+                this directory. This directory will end up being NFS and TFTP
+                exported.</dd><dt><span class="term">NFSHost</span></dt><dd>The IP address/FQDN of the machine that will be
+                acting as an NFS server for the installation files.</dd></dl></div><div class="sect4" lang="en" xml:lang="en"><div class="titlepage"><div><div><h5 class="title"><a id="id394686"></a>Release Configuration Options</h5></div></div></div><div class="variablelist"><dl><dt><span class="term">&lt;Release Name&gt;</span></dt><dd>The <code class="computeroutput">Release</code>
+                  section must be named. <em><span class="remark"><span class="emphasis"><em>ex: &lt;Release
+                  6.0&gt;</em></span></span></em></dd><dt><span class="term">CVSRoot</span></dt><dd>The FreeBSD CVS repository mirror. This option may 
+                  be omitted if <code class="computeroutput">BinaryRelease</code>
+                  and <code class="computeroutput">UsePortsnap</code> are both 
+                  true. <em><span class="remark">ex: /home/ncvs</span></em>
+                  </dd><dt><span class="term">CVSTag</span></dt><dd>The CVS tag for this release. This option is only 
+                  needed if <code class="computeroutput">BinaryRelease</code> is 
+                  not set to true. <em><span class="remark">ex: RELENG_6_0</span></em></dd><dt><span class="term">BinaryRelease</span></dt><dd>Use binaries from a FreeBSD CD ISO rather than 
+                  building the release from source. Default is false.</dd><dt><span class="term">ISO</span></dt><dd>Path to FreeBSD release CD ISO file to extract from 
+                  if <code class="computeroutput">BinaryRelease</code> is true. 
+                  <em><span class="remark">ex: /export/freebsd/6.2-RELEASE-i386-disc1.iso
+                  </span></em></dd><dt><span class="term">UsePortsnap</span></dt><dd>If true, use <code class="computeroutput">portsnap
+                  </code> rather than <code class="computeroutput">cvs
+                  </code> for extracting an up-to-date ports tree into
+                  the chroot used for building packages. The server running 
+                  farbot must be running FreeBSD 5.5 or later to use this 
+                  option, as earlier versions do not include <code class="computeroutput">
+                  portsnap</code> in the base system. Default value 
+                  is false.</dd><dt><span class="term">LocalData</span></dt><dd>Custom files to be made available at install time
+                  via the NFS mout in the path
+                  <code class="filename">/dist/local</code>.</dd><dt><span class="term">InstallCDs</span></dt><dd>Whether to create ISO install images from the 
+                  release built by farbot. Defaults to false, and is ignored if
+                  <code class="computeroutput">BinaryRelease</code> is true.
+                  </dd><dt><span class="term">PackageBuildOptions</span></dt><dd><p>An optional list of options to pass to every
+                  package build for this release. BuildOptions for a given
+                  package override this global setting..
+                  <em><span class="remark">ex:</span></em></p><pre class="programlisting">&lt;PackageBuildOptions&gt;
+    WITHOUT_X11  true
+&lt;/PackageBuildOptions&gt;</pre></dd><dt><span class="term">Dists</span></dt><dd>Space delimited list of distribution sets to 
+                    install. At least <code class="computeroutput">base</code>
+                    and <code class="computeroutput">kernels</code> must be
+                    included. If this is left undefined the following dists
+                    will be installed: <code class="computeroutput">base</code>, 
+                    <code class="computeroutput">kernels</code>, 
+                    <code class="computeroutput">doc</code>, 
+                    <code class="computeroutput">games</code>, 
+                    <code class="computeroutput">manpages</code>, 
+                    <code class="computeroutput">catpages</code>, 
+                    <code class="computeroutput">proflibs</code>, 
+                    <code class="computeroutput">dict</code>, 
+                    <code class="computeroutput">info</code>, and
+                    <code class="computeroutput">src</code>. It may be a good
+                    idea to add <code class="computeroutput">lib32</code> if you
+                    are building an amd64 release. Do not add
+                    <code class="computeroutput">ports </code> to this list. The
+                    ports tree will be fetched for package building separately
+                    from the release building process using either
+                    <code class="computeroutput">cvs </code> or
+                    <code class="computeroutput">portsnap </code>.
+                  </dd><dt><span class="term">SourceDists</span></dt><dd>List of source sub-distribution sets to install if 
+                    <code class="computeroutput">src</code> is included in
+                    <code class="computeroutput">Dists</code>. By default this
+                    will be <code class="computeroutput">sbase</code>, 
+                    <code class="computeroutput">scontrib</code>, 
+                    <code class="computeroutput">scrypto</code>, 
+                    <code class="computeroutput">sgnu</code>, 
+                    <code class="computeroutput">setc</code>, 
+                    <code class="computeroutput">sgames</code>, 
+                    <code class="computeroutput">sinclude</code>, 
+                    <code class="computeroutput">skrb5</code>, 
+                    <code class="computeroutput">slib</code>, 
+                    <code class="computeroutput">slibexec</code>, 
+                    <code class="computeroutput">srelease</code>, 
+                    <code class="computeroutput">sbin</code>, 
+                    <code class="computeroutput">ssecure</code>, 
+                    <code class="computeroutput">ssbin</code>, 
+                    <code class="computeroutput">sshare</code>, 
+                    <code class="computeroutput">ssys</code>, 
+                    <code class="computeroutput">subin</code>, 
+                    <code class="computeroutput">susbin</code>, 
+                    <code class="computeroutput">stools</code>, and
+                    <code class="computeroutput">srescue</code>. These are all
+                    the sources available in FreeBSD 6.x. If this release is
+                    FreeBSD 7 or higher you may wish to define this list and
+                    add <code class="computeroutput">scddl</code> and/or
+                    <code class="computeroutput">scompat</code>.
+                  </dd><dt><span class="term">KernelDists</span></dt><dd>
+                    List of kernels to install. By default this will be 
+                    <code class="computeroutput">GENERIC</code> and 
+                    <code class="computeroutput">SMP</code> if this is left 
+                    undefined.
+                  </dd></dl></div></div></div></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id395121"></a>Partitions Configuration</h3></div></div></div><p>The <code class="computeroutput">Partitions</code> section
+        defines at least one <code class="computeroutput">PartitionMap</code>
+        with at least one <code class="computeroutput">Partition</code> within a
+        farbot configuration file.</p><div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title"><a id="id395142"></a>PartitionMap Configuration Options</h4></div></div></div><div class="variablelist"><dl><dt><span class="term">&lt;PartitionMap Name&gt;</span></dt><dd>The <code class="computeroutput">PartitionMap</code>
+                section must be named. <em><span class="remark"><span class="emphasis"><em>ex: &lt;PartitionMap
+                Standard&gt;</em></span></span></em></dd></dl></div><div class="sect4" lang="en" xml:lang="en"><div class="titlepage"><div><div><h5 class="title"><a id="id395175"></a>Partition Configuration Options</h5></div></div></div><div class="variablelist"><dl><dt><span class="term">Mount</span></dt><dd>Mount point for this partition. <em><span class="remark">ex:
+                  /usr</span></em></dd><dt><span class="term">Size</span></dt><dd>The size of this partition. <em><span class="remark">ex:
+                  512MB</span></em></dd><dt><span class="term">Type</span></dt><dd>Type of filesystem. <em><span class="remark">ex:
+                  ufs</span></em></dd><dt><span class="term">SoftUpdates</span></dt><dd>Whether to enable soft updates on this
+                  filesystem.</dd></dl></div></div></div></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id395251"></a>PackageSets Configuration</h3></div></div></div><p>The <code class="computeroutput">PackageSets</code> section
+        defines at least one <code class="computeroutput">PackageSets</code>
+        within a farbot configuration file.</p><div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title"><a id="id395269"></a>PackageSets Configuration Options</h4></div></div></div><div class="variablelist"><dl><dt><span class="term">DistfilesCache</span></dt><dd>Optional directory for persistent storage of port 
+                distfiles between builds. Setting this option will obviate the 
+                need to re-download the same distfiles for each builds and for 
+                different releases, and provide a place to store distfiles 
+                which cannot be automatically fetched by the ports system.
+                </dd></dl></div></div><div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title"><a id="id395299"></a>PackageSet Configuration Options</h4></div></div></div><div class="variablelist"><dl><dt><span class="term">&lt;PackageSet Name&gt;</span></dt><dd>The <code class="computeroutput">PackageSet</code>
+                section must be named. <em><span class="remark"><span class="emphasis"><em>ex: &lt;PackageSet
+                Base&gt;</em></span></span></em></dd></dl></div><div class="sect4" lang="en" xml:lang="en"><div class="titlepage"><div><div><h5 class="title"><a id="id395331"></a>Package Configuration Options</h5></div></div></div><div class="variablelist"><dl><dt><span class="term">Port</span></dt><dd>The category and name of this port. <em><span class="remark">ex:
+                  security/sudo</span></em></dd><dt><span class="term">Package</span></dt><dd>Optional: The package name of this port, if it
+                  differs from the port name. <em><span class="remark">ex:
+                  mysql50-server</span></em></dd><dt><span class="term">BuildOptions</span></dt><dd><p>An optional list of options to pass to the package
+                  build. <em><span class="remark">ex:</span></em></p><pre class="programlisting">&lt;BuildOptions&gt;
+    WITH_COLLATION  latin1_general_ci
+    WITH_OPTION  true
+&lt;/BuildOptions&gt;</pre></dd></dl></div></div></div></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id395401"></a>Installations Configuration</h3></div></div></div><p>The <code class="computeroutput">Installations</code> section
+        defines at least one <code class="computeroutput">Installation</code>
+        within a farbot configuration file.</p><div class="sect3" lang="en" xml:lang="en"><div class="titlepage"><div><div><h4 class="title"><a id="id395418"></a>Installation Configuration Options</h4></div></div></div><div class="variablelist"><dl><dt><span class="term">&lt;Installation Name&gt;</span></dt><dd>The <code class="computeroutput">Installation</code>
+                section must be named. <em><span class="remark"><span class="emphasis"><em>ex: &lt;Installation
+                Database&gt;</em></span></span></em></dd><dt><span class="term">Description</span></dt><dd>A human-readable description for this installation,
+                used in the installation-selection boot menu generated by
+                farbot.</dd><dt><span class="term">Release</span></dt><dd>A <code class="computeroutput">Release</code> name
+                defined in the <code class="computeroutput">Releases</code>
+                section above. There may only be one release per
+                installation.</dd><dt><span class="term">PackageSet</span></dt><dd>A list of <code class="computeroutput">PackageSet</code>
+                names as defined in the
+                <code class="computeroutput">PackageSets</code>
+                section.</dd><dt><span class="term">NetworkDevice</span></dt><dd>The network device to mount the the NFS root from.
+                <em><span class="remark">ex: em0</span></em></dd></dl></div><div class="sect4" lang="en" xml:lang="en"><div class="titlepage"><div><div><h5 class="title"><a id="id395528"></a>Disk Section Options</h5></div></div></div><div class="variablelist"><dl><dt><span class="term">&lt;Disk Name&gt;</span></dt><dd>A disk name that matches the corresponding system
+                  disk for the following
+                  <code class="computeroutput">PartitionMap</code>. <em><span class="remark">ex:
+                  ad0</span></em></dd><dt><span class="term">PartitionMap</span></dt><dd>A <code class="computeroutput">PartitionMap</code>
+                  name as defined in the
+                  <code class="computeroutput">Partitions</code> section above.
+                  Only list one <code class="computeroutput">PartitionMap</code>
+                  per disk.</dd></dl></div></div><div class="sect4" lang="en" xml:lang="en"><div class="titlepage"><div><div><h5 class="title"><a id="id395585"></a>PostInstall Section Options</h5></div></div></div><div class="variablelist"><dl><dt><span class="term">Command</span></dt><dd>A command to be run from
+                  <code class="filename">/dist/local</code> after the installation
+                  boots for the first time. See LocalData above.</dd></dl></div></div></div></div><div class="sect2" lang="en" xml:lang="en"><div class="titlepage"><div><div><h3 class="title"><a id="id395617"></a>Example Configuration File</h3></div></div></div><p>An example configuration follows. The same configuration file
+        is included with the distribution as
+        <code class="filename">farbot.conf</code>.</p><pre class="programlisting">
+#
+# Releases
+#
+&lt;Releases&gt;
+    # Release Build Working Directory
+    BuildRoot   /export/freebsd/build
+
+    # Install/NFS Directory
+    # Clients will load installation data from this directory
+    InstallRoot /export/freebsd/netinstall
+
+    # NFS/TFTP Server Host/IP
+    # The host exporting the installation data.
+    # Should probably be the local machine
+    NFSHost     jumpstart.example.org
+
+    # This is an example release which is built from CVS.
+    &lt;Release 6-STABLE&gt;
+        # FreeBSD CVS Repository Mirror
+        CVSRoot     /home/ncvs
+        # Release Tag
+        CVSTag      RELENG_6
+
+        # LocalData will be copied into the release
+        # distribution. These files will be available at
+        # install time via the NFS mount, in the path /dist/local
+        LocalData   /export/freebsd/postinst
+
+        # Enable creation of ISO install images
+        # Requires cdrtools 
+        InstallCDs  True
+
+        # Global package build options to be applied to every package
+        # built in this release. Local BuildOptions will override this
+        &lt;PackageBuildOptions&gt;
+            WITHOUT_X11 yes 
+        &lt;/PackageBuildOptions&gt;
+        
+        # Distribution sets to install. The following dists will be installed
+        # by default for this release if Dists is left undefined: base,
+        # kernels, doc, games, manpages, catpages, proflibs, dict, info, and
+        # src. It may be a good idea to add lib32 if you are building an amd64
+        # release. At least base and kernels must be included.
+        Dists base kernels src
+        
+        # Source sub-distribution sets to install. The following are included
+        # by default if SourceDists is left undefined: sbase, scontrib,
+        # scrypto, sgnu, setc, sgames, sinclude, skrb5, slib, slibexec,
+        # srelease, sbin, ssecure, ssbin, sshare, ssys, subin, susbin, stools,
+        # and srescue. Note that these will only be installed if src is
+        # included in Dists. If installing FreeBSD 7 or higher, you may wish
+        # to add scddl and scompat to SourceDists.
+        SourceDists ssys
+        
+        # Kernel sub-distribution sets to install. Includes GENERIC and SMP 
+        # kernels by default if KernelDists is left undefined. Note that 
+        # FreeBSD 7+ includes only GENERIC, because the generic kernel has SMP 
+        # support.
+        KernelDists GENERIC SMP
+    &lt;/Release&gt;
+
+    # You may also use an already built release from a CD image. 
+    &lt;Release 6.3-RELEASE&gt;
+        # Extract the release from an install CD image rather than build it.
+        BinaryRelease   True
+
+        # Path to the ISO file to install from.
+        ISO             /export/freebsd/6.3-RELEASE-i386-disc1.iso
+        
+        # Use portsnap(8) rather than cvs(1) to install an up-to-date 
+        # ports tree that packages will be built from. Requires that 
+        # this release be FreeBSD 5.5 or later--portsnap is not in the 
+        # base system on earlier releases.
+        UsePortsnap     True
+    &lt;/Release&gt;
+&lt;/Releases&gt;
+
+#
+# Partition Maps
+#
+&lt;Partitions&gt;
+    &lt;PartitionMap Standard&gt;
+        &lt;Partition 1&gt;
+            Mount       /
+            Size        512MB
+            Type        ufs
+            SoftUpdates no
+        &lt;/Partition&gt;
+
+        &lt;Partition 2&gt;
+            Size        4GB
+            Type        swap
+        &lt;/Partition&gt;
+
+        &lt;Partition 3&gt;
+            Mount       /var
+            Size        10GB
+            Type        ufs
+        &lt;/Partition&gt;
+
+        &lt;Partition 4&gt;
+            Mount       /tmp
+            Size        1GB
+            Type        ufs
+        &lt;/Partition&gt;
+
+        &lt;Partition 5&gt;
+            # All remaining space
+            Mount       /usr
+            Size        0GB
+            Type        ufs
+        &lt;/Partition&gt;
+    &lt;/PartitionMap&gt;
+&lt;/Partitions&gt;
+
+#
+# Package Sets
+#
+&lt;PackageSets&gt;
+    # Optional directory for persistent storage of port 
+    # distfiles between builds. These distfiles are also
+    # shared by all releases.
+    DistfilesCache  /export/freebsd/distfiles
+    
+    &lt;PackageSet Base&gt;
+        &lt;Package&gt;
+            Port    security/sudo 
+        &lt;/Package&gt;
+    &lt;/PackageSet&gt;
+    &lt;PackageSet Database&gt;
+        &lt;Package&gt;
+            Port    databases/mysql50-server
+            # If your build options modify the name
+            # of the resulting package, use the Package
+            # option to define the correct name.
+            #Package    mysql50-server
+            &lt;BuildOptions&gt;
+                WITH_COLLATION  latin1_general_ci
+            &lt;/BuildOptions&gt;
+        &lt;/Package&gt;
+    &lt;/PackageSet&gt;
+&lt;/PackageSets&gt;
+
+
+#
+# Installation Types
+#
+&lt;Installations&gt;
+    &lt;Installation Standard&gt;
+        # Human-readable Description.
+        # Used in the installation-selection boot menu
+        Description Standard Installation
+        Release         6.3-RELEASE
+        PackageSet      Base
+        PackageSet      Database
+        NetworkDevice   em0
+        &lt;Disk ad0&gt;
+            PartitionMap    Standard
+        &lt;/Disk&gt;
+        &lt;PostInstall&gt;
+            Command /dist/local/postinst/local.sh database
+            Command /dist/local/postinst/cleanup.sh everything
+        &lt;/PostInstall&gt;
+    &lt;/Installation&gt;
+&lt;/Installations&gt;
+
+
+        </pre></div></div><div class="navfooter"><hr /><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="ch01.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="ch01.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="ch01s03.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">Chapter 1. Installing and Using farbot </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> Configuring the Installation Host</td></tr></table></div></body></html>

@@ -1,0 +1,25 @@
+- More granularity of builds. Allow rebuilding of individual releases, 
+  individual packagesets for a release, and even individual packages.
+- Make it possible to install a functional ports tree into releases. 
+- Give option of dumping built packages in a directory that is shared via
+  http/ftp so it can be used for binary package updates on running systems with 
+  portupgrade -P.
+- Add paging to bootloader menu so we can have more than 8 or so installation
+  types.
+- Allow customization of install from bootloader menu: give user option to
+  select release, packagesets, disk layout, etc. as an alternative to
+  pre-configured installations in farbot configuration file.
+- Add an option for per port distfiles which can be copied from some location.
+  This way the distfiles cache given by the DistfilesCache option in PackageSets
+  can be periodically cleaned out without fear of accidentally deleting some
+  distfile that can't be automatically downloaded (e.g. diablo-jdk).
+- Somehow save package build options to /var/db/ports/<portname>/option in 
+  imaged systems, so that important build options will not be forgotten when 
+  the package is later upgraded.
+- Make a man page(s). Probably best to generate this from DocBook XML file like
+  is done with splat (http://code.google.com/p/splatd).
+- Add the possibility to set swap size based on the amount of physical memory in
+  the machine.
+- If Amazon EC2 starts supporting FreeBSD AMIs, add the ability to build those
+  AMIs directly as a new release type.
+
