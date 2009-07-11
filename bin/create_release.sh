@@ -58,7 +58,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Build xhtml and man page documentation. This PREFIX is for systems that have
+# Build xhtml and man page documentation. Set DOCBOOK_XSL to override the
+# default if it was given as a second argument to this script.
 cd $TAG/docs
 if [ -z $2 ]; then
     make
