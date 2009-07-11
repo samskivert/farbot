@@ -38,7 +38,7 @@ fi
 # Run unit tests
 pushd .
 cd $TRUNK
-./runtest.py
+./runtests.py
 popd
 
 # Ensure tests succeed
